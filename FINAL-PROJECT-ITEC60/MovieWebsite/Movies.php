@@ -364,7 +364,7 @@ include 'CineVault-header.php';
       $genre_name = $genre ? $genre['genre_name'] : "Adventure";
       ?>
       <div id="dropdown-popular-adventure" class="trending-this-week d-flex justify-content-between">
-        <p class="trending-text text-white fs-24 fw-bold">Adventure Movies</p>
+        <p class="trending-text text-white fs-24 fw-bold"><?php echo htmlspecialchars($genre_name); ?> Movies</p>
       </div>
       <div class="top10-featured-wrapper position-relative">
         <div class="prev-button-trending position-absolute"

@@ -192,3 +192,6 @@ margin-top: -40px;
 #reference-container {
   margin-top: -20px;
 }
+.forgot-pass:hover {
+  text-decoration: underline !important; 
+}

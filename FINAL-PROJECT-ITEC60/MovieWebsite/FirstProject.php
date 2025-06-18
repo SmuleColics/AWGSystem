@@ -444,8 +444,16 @@ include 'CineVault-header.php';
 
     <!-- START OF SECTION ROMANCE -->
     <section class="section-trending ms-md-5 ms-3">
+      <?php
+      $genre_result = mysqli_query($con, "SELECT genre_id, genre_name FROM tbl_movie_series_genre WHERE genre_name LIKE '%Romance%' LIMIT 1");
+      $genre = mysqli_fetch_assoc($genre_result);
+      $genre_id = $genre ? $genre['genre_id'] : 22; // fallback if not found
+      $genre_name = $genre ? $genre['genre_name'] : "Romance";
+      ?>
       <div class="trending-this-week">
-        <p class="trending-text text-white fs-24 fw-bold">Romance</p>
+        <p class="trending-text text-white fs-24 fw-bold">
+          <?php echo htmlspecialchars($genre_name); ?>
+        </p>
       </div>
 
       <div class="top10-featured-wrapper position-relative">
@@ -675,8 +683,16 @@ include 'CineVault-header.php';
 
     <!-- START OF SECTION COMEDY -->
     <section class="section-action-movies ms-md-5 ms-3">
+      <?php
+      $comedy_result = mysqli_query($con, "SELECT genre_id, genre_name FROM tbl_movie_series_genre WHERE genre_name LIKE '%Comedy%' LIMIT 1");
+      $comedy = mysqli_fetch_assoc($comedy_result);
+      $comedy_id = $comedy ? $comedy['genre_id'] : 4; // fallback to Comedy's genre_id
+      $comedy_name = $comedy ? $comedy['genre_name'] : "Comedy";
+      ?>
       <div class="action-movies-top d-flex justify-content-between">
-        <p class="action-movies-text text-white fs-24 fw-bold">Comedy</p>
+        <p class="action-movies-text text-white fs-24 fw-bold">
+          <?php echo htmlspecialchars($comedy_name); ?>
+        </p>
       </div>
       <div class="top10-featured-wrapper position-relative">
         <div class="prev-button-comedy position-absolute"
@@ -906,7 +922,13 @@ include 'CineVault-header.php';
     <section class="section-featured text-white ms-md-5 ms-3">
       <div class="featured-container">
         <div class="featured-top">
-          <p class="featured-text">ACTION</p>
+          <?php
+          $action_result = mysqli_query($con, "SELECT genre_id, genre_name FROM tbl_movie_series_genre WHERE genre_name LIKE '%Action%' LIMIT 1");
+          $action = mysqli_fetch_assoc($action_result);
+          $action_id = $action ? $action['genre_id'] : 1; // fallback to genre_id 1 if not found
+          $action_name = $action ? $action['genre_name'] : "ACTION";
+          ?>
+          <p class="featured-text text-uppercase"><?php echo htmlspecialchars($action_name); ?></p>
           <p class="featured-movies-text fs-2">MOVIES/SERIES</p>
           <div class="top10-featured-wrapper position-relative">
             <div class="prev-button-featured position-absolute"

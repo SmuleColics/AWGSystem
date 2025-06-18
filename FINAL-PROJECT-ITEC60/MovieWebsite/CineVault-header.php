@@ -52,7 +52,7 @@ if (isset($_GET['logout'])) {
     <div class="container-fluid">
       <header class="d-flex justify-content-between align-items-center w-100 px-md-5 bg-transparent">
         <div class="left-header">
-          <a class="navbar-brand fw-semibold" href="#">Cine<span style="color: #607EBC">Vault</span></a>
+          <a class="navbar-brand fw-semibold" href="website-search.php">Cine<span style="color: #607EBC">Vault</span></a>
         </div>
 
         <div class="middle-header position-relative d-none d-lg-block">

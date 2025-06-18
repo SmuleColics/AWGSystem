@@ -257,7 +257,7 @@ include 'CineVault-header.php';
     </section>
     <?php if (!empty($comedy_modals)) echo $comedy_modals; ?>
   </main>
-  <footer style="margin-top: 260px;">
+  <footer style="margin-top: 270px;">
     <div class="footer text-white d-flex justify-content-between mx-5 align-items-center">
       <p class="footer-long-text">This site does not store any files on it's server, It only links to the media which is
         hosted on 3rd party services like YouTube, Dailymotion, Ok.ru, Vidsrc and more.</p>

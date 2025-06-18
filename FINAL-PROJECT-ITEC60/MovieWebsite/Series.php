@@ -532,33 +532,32 @@ include 'CineVault-header.php';
     <!-- ============== START OF SECTION TOP 10 SERIES ==============  -->
 
     <!-- ============== START OF SECTION SCI-FI & FANTASY ==============  -->
-    <?php
-    // Fetch the genre info dynamically
-    $genre_result = mysqli_query($con, "SELECT genre_id, genre_name FROM tbl_movie_series_genre WHERE genre_name LIKE '%Sci-Fi & Fantasy%' LIMIT 1");
+    <<?php
+    $genre_result = mysqli_query($con, "SELECT genre_id, genre_name FROM tbl_movie_series_genre WHERE genre_id = 23 LIMIT 1");
     $genre = mysqli_fetch_assoc($genre_result);
-    $genre_id = $genre ? $genre['genre_id'] : 23; // fallback if not found
+    $genre_id = $genre ? $genre['genre_id'] : 23;
     $genre_name = $genre ? $genre['genre_name'] : "Sci-Fi & Fantasy";
     ?>
 
-    <!-- START OF SECTION SCI-FI & FANTASY SERIES -->
-    <section id="section-popular-scifi-fantasy-series" class="section-trending ms-md-5 ms-3">
+      <!-- START OF SECTION SCI-FI & FANTASY SERIES -->
+      <section id="section-popular-scifi-fantasy-series" class="section-trending ms-md-5 ms-3">
 
-      <div id="dropdown-popular-scifi-fantasy" class="trending-this-week d-flex justify-content-between">
-        <p class="trending-text text-white fs-24 fw-bold"><?php echo htmlspecialchars($genre_name); ?></p>
-      </div>
-      <div class="top10-featured-wrapper position-relative">
-        <div class="prev-button-trending position-absolute"
-          style="left: 0; top: 50%; transform: translateY(-50%); z-index: 400;">
-          <button class="btn border-1 prev-chevron-btn-trending">
-            <i class="fas fa-chevron-left fa-2xl text-white-50"></i>
-          </button>
+        <div id="dropdown-popular-scifi-fantasy" class="trending-this-week d-flex justify-content-between">
+          <p class="trending-text text-white fs-24 fw-bold"><?php echo htmlspecialchars($genre_name); ?></p>
         </div>
-        <div class="trending-images-container d-flex gap-3 position-relative">
-          <?php
-          // Query for Sci-Fi & Fantasy Series
-          $scifi_query = mysqli_query(
-            $con,
-            "SELECT ms.*, g1.genre_name AS genre_1, g2.genre_name AS genre_2, g3.genre_name AS genre_3
+        <div class="top10-featured-wrapper position-relative">
+          <div class="prev-button-trending position-absolute"
+            style="left: 0; top: 50%; transform: translateY(-50%); z-index: 400;">
+            <button class="btn border-1 prev-chevron-btn-trending">
+              <i class="fas fa-chevron-left fa-2xl text-white-50"></i>
+            </button>
+          </div>
+          <div class="trending-images-container d-flex gap-3 position-relative">
+            <?php
+            // Query for Sci-Fi & Fantasy Series
+            $scifi_query = mysqli_query(
+              $con,
+              "SELECT ms.*, g1.genre_name AS genre_1, g2.genre_name AS genre_2, g3.genre_name AS genre_3
       FROM tbl_movie_series ms
       LEFT JOIN tbl_movie_series_genre g1 ON ms.genre_id1 = g1.genre_id
       LEFT JOIN tbl_movie_series_genre g2 ON ms.genre_id2 = g2.genre_id
@@ -571,57 +570,57 @@ include 'CineVault-header.php';
         AND ms.poster NOT LIKE '%HomeWallpaper%'
       ORDER BY ms.date_released DESC
       LIMIT 8"
-          );
-          $scifi_modals = "";
+            );
+            $scifi_modals = "";
 
-          while ($row = mysqli_fetch_assoc($scifi_query)):
-            $movie_series_id = $row['movie_series_id'];
-            $title = $row['title'];
-            $poster = $row['poster'];
-            $video = $row['video'];
-            $modal_poster_title = $row['modal_poster_title'];
-            $duration = $row['duration'];
-            $date_released = $row['date_released'];
-            $age_rating = $row['age_rating'];
-            $category = $row['category'];
-            $genre_1 = $row['genre_1'];
-            $genre_2 = $row['genre_2'];
-            $genre_3 = $row['genre_3'];
-            $cast = $row['cast'];
-            $description = $row['description'];
+            while ($row = mysqli_fetch_assoc($scifi_query)):
+              $movie_series_id = $row['movie_series_id'];
+              $title = $row['title'];
+              $poster = $row['poster'];
+              $video = $row['video'];
+              $modal_poster_title = $row['modal_poster_title'];
+              $duration = $row['duration'];
+              $date_released = $row['date_released'];
+              $age_rating = $row['age_rating'];
+              $category = $row['category'];
+              $genre_1 = $row['genre_1'];
+              $genre_2 = $row['genre_2'];
+              $genre_3 = $row['genre_3'];
+              $cast = $row['cast'];
+              $description = $row['description'];
 
-            $genres = htmlspecialchars($genre_1);
-            if (!empty($genre_2))
-              $genres .= ', ' . htmlspecialchars($genre_2);
-            if (!empty($genre_3))
-              $genres .= ', ' . htmlspecialchars($genre_3);
-            ?>
-            <div class="trending-images position-relative pe-2" style="overflow: visible;">
-              <a href="#" data-bs-toggle="modal" data-bs-target="#modal-scifi-<?php echo $movie_series_id ?>">
-                <div class="trending-hover position-relative">
-                  <img class="trending-img rounded-3"
-                    src="../DASHBOARD-HTML/MOVIE_SERIES_TITLE/<?php echo htmlspecialchars($poster); ?>"
-                    alt="<?php echo htmlspecialchars($title); ?>">
-                  <i class="fa-solid fa-play play-button"></i>
-                </div>
-              </a>
-            </div>
-            <?php
-            // --- Modal with seasons and episodes ---
-            // Fetch seasons and episodes for this series
-            $seasons_result = mysqli_query($con, "SELECT * FROM tbl_movie_series_seasons WHERE movie_series_id = {$movie_series_id} ORDER BY season_number");
-            $seasons = [];
-            while ($season = mysqli_fetch_assoc($seasons_result)) {
-              $episodes_result = mysqli_query($con, "SELECT * FROM tbl_movie_series_episodes WHERE season_id = {$season['season_id']} ORDER BY episode_id");
-              $episodes = [];
-              while ($ep = mysqli_fetch_assoc($episodes_result)) {
-                $episodes[] = $ep;
+              $genres = htmlspecialchars($genre_1);
+              if (!empty($genre_2))
+                $genres .= ', ' . htmlspecialchars($genre_2);
+              if (!empty($genre_3))
+                $genres .= ', ' . htmlspecialchars($genre_3);
+              ?>
+              <div class="trending-images position-relative pe-2" style="overflow: visible;">
+                <a href="#" data-bs-toggle="modal" data-bs-target="#modal-scifi-<?php echo $movie_series_id ?>">
+                  <div class="trending-hover position-relative">
+                    <img class="trending-img rounded-3"
+                      src="../DASHBOARD-HTML/MOVIE_SERIES_TITLE/<?php echo htmlspecialchars($poster); ?>"
+                      alt="<?php echo htmlspecialchars($title); ?>">
+                    <i class="fa-solid fa-play play-button"></i>
+                  </div>
+                </a>
+              </div>
+              <?php
+              // --- Modal with seasons and episodes ---
+              // Fetch seasons and episodes for this series
+              $seasons_result = mysqli_query($con, "SELECT * FROM tbl_movie_series_seasons WHERE movie_series_id = {$movie_series_id} ORDER BY season_number");
+              $seasons = [];
+              while ($season = mysqli_fetch_assoc($seasons_result)) {
+                $episodes_result = mysqli_query($con, "SELECT * FROM tbl_movie_series_episodes WHERE season_id = {$season['season_id']} ORDER BY episode_id");
+                $episodes = [];
+                while ($ep = mysqli_fetch_assoc($episodes_result)) {
+                  $episodes[] = $ep;
+                }
+                $season['episodes'] = $episodes;
+                $seasons[] = $season;
               }
-              $season['episodes'] = $episodes;
-              $seasons[] = $season;
-            }
 
-            $scifi_modals .= "
+              $scifi_modals .= "
       <div class='modal fade' id='modal-scifi-{$movie_series_id}' tabindex='-1' aria-labelledby='exampleModalLabel-scifi-{$movie_series_id}' aria-hidden='true'>
         <div class='modal-dialog modal-dialog-centered modal-lg modal-dark border-3'>
           <div class='modal-content bg-dark modals'>
@@ -637,12 +636,12 @@ include 'CineVault-header.php';
                     <source src=\"../DASHBOARD-HTML/MOVIE_SERIES_VIDEO/" . htmlspecialchars($video) . "\" type=\"video/mp4\">
                     Your browser does not support the video tag.
                   </video>";
-            if (!empty($modal_poster_title)) {
-              $scifi_modals .= "<img class='poster-title-img trend-title' src='../DASHBOARD-HTML/MOVIE_SERIES_TITLE/" . htmlspecialchars($modal_poster_title) . "' alt='' style='object-fit: cover; transform: scale(2.0) translate(36px, -14px);'>";
-            } else {
-              $scifi_modals .= "<p class='fw-bold fs-3 text-white position-absolute' style='top:10px; left:20px;'>" . htmlspecialchars($title) . "</p>";
-            }
-            $scifi_modals .= "
+              if (!empty($modal_poster_title)) {
+                $scifi_modals .= "<img class='poster-title-img trend-title' src='../DASHBOARD-HTML/MOVIE_SERIES_TITLE/" . htmlspecialchars($modal_poster_title) . "' alt='' style='object-fit: cover; transform: scale(2.0) translate(36px, -14px);'>";
+              } else {
+                $scifi_modals .= "<p class='fw-bold fs-3 text-white position-absolute' style='top:10px; left:20px;'>" . htmlspecialchars($title) . "</p>";
+              }
+              $scifi_modals .= "
                   <a href=\"play-vid.php?video=" . urlencode($video) . "&type=movie_series&id=" . $movie_series_id . "\" class=\"btn btn-light play-btn text-center fs-18 text-end position-absolute\" style=\"width: 120px;\">
                     <i class=\"fa-solid fa-play me-1\"></i> Play
                   </a>
@@ -676,33 +675,33 @@ include 'CineVault-header.php';
                 </div>
       ";
 
-            // --- SEASONS AND EPISODES DROPDOWN ---
-            if (!empty($seasons)) {
-              $scifi_modals .= '
+              // --- SEASONS AND EPISODES DROPDOWN ---
+              if (!empty($seasons)) {
+                $scifi_modals .= '
         <div class="col-12 d-flex justify-content-between align-items-center mx-4" style="width: 100%">
             <div>
                 <p class="fs-3 mb-0" style="color: #f4fff8;">Episodes</p>
             </div>
             <div class="position-relative" style="min-width:180px; ">
                 <select style="transform: translateX(-48px);" id="modal-season-select-scifi-' . $movie_series_id . '" class="form-control me-5">';
-              foreach ($seasons as $s) {
-                $scifi_modals .= '<option value="season-' . $s['season_id'] . '">' . htmlspecialchars($s['season_title']) . '</option>';
-              }
-              $scifi_modals .= '</select>
+                foreach ($seasons as $s) {
+                  $scifi_modals .= '<option value="season-' . $s['season_id'] . '">' . htmlspecialchars($s['season_title']) . '</option>';
+                }
+                $scifi_modals .= '</select>
                 <i class="fa-solid fa-caret-down caret-season" style="position: absolute; bottom: 12px; right: 63px; color: #f4fff8; pointer-events: none;"></i>
             </div>
         </div>';
-              foreach ($seasons as $idx => $s) {
-                $scifi_modals .= '<div class="col-12 mb-4 modal-episodes-block"
+                foreach ($seasons as $idx => $s) {
+                  $scifi_modals .= '<div class="col-12 mb-4 modal-episodes-block"
             id="modal-episodes-scifi-' . $movie_series_id . '-season-' . $s['season_id'] . '"
             style="' . ($idx === 0 ? '' : 'display:none;') . '">';
-                foreach ($s['episodes'] as $ep_idx => $ep) {
-                  $scifi_modals .= '
+                  foreach ($s['episodes'] as $ep_idx => $ep) {
+                    $scifi_modals .= '
                 <div class="mx-3 py-2 d-flex gap-2">
                     <div class="d-flex align-items-center gap-3 me-2 ms-4">
                         <p class="mb-0 fs-2 db-text-sec">' . ($ep_idx + 1) . '</p>';
-                  if (!empty($ep['episode_video'])) {
-                    $scifi_modals .= '
+                    if (!empty($ep['episode_video'])) {
+                      $scifi_modals .= '
                         <a href="play-vid.php?video=' . urlencode($ep['episode_video']) . '&type=episode&id=' . $ep['episode_id'] . '">
                             <video
                                 class="position-relative rounded-3 m-0 p-0 video-player video-episode"
@@ -712,8 +711,8 @@ include 'CineVault-header.php';
                                 Your browser does not support the video tag.
                             </video>
                         </a>';
-                  }
-                  $scifi_modals .= '
+                    }
+                    $scifi_modals .= '
                     </div>
                     <div class="db-text-sec me-4">
                         <div class="d-flex align-items-center justify-content-between mb-2">
@@ -725,61 +724,61 @@ include 'CineVault-header.php';
                         </div>
                     </div>
                 </div>';
+                  }
+                  if (empty($s['episodes'])) {
+                    $scifi_modals .= '<div class="mx-4 py-2 db-text-sec">No episodes available for this season.</div>';
+                  }
+                  $scifi_modals .= '</div>';
                 }
-                if (empty($s['episodes'])) {
-                  $scifi_modals .= '<div class="mx-4 py-2 db-text-sec">No episodes available for this season.</div>';
-                }
-                $scifi_modals .= '</div>';
-              }
-              $scifi_modals .= '
+                $scifi_modals .= '
         <script>
         document.addEventListener("DOMContentLoaded", function () {
             var select = document.getElementById("modal-season-select-scifi-' . $movie_series_id . '");
             if (select) {
                 select.addEventListener("change", function () {
                     var val = this.value;';
-              foreach ($seasons as $s) {
-                $scifi_modals .= '
+                foreach ($seasons as $s) {
+                  $scifi_modals .= '
                     document.getElementById("modal-episodes-scifi-' . $movie_series_id . '-season-' . $s['season_id'] . '").style.display = (val === "season-' . $s['season_id'] . '") ? "" : "none";';
-              }
-              $scifi_modals .= '
+                }
+                $scifi_modals .= '
                 });
             }
         });
         </script>
         ';
-            }
-            $scifi_modals .= "
+              }
+              $scifi_modals .= "
               </div>
             </div>
           </div>
         </div>
       </div>
       ";
-          endwhile; ?>
+            endwhile; ?>
+          </div>
+          <div class="next-button-trending position-absolute"
+            style="right: 0; top: 50%; transform: translateY(-50%);z-index: 400;">
+            <button class="btn border-1 next-chevron-btn-trending">
+              <i class="fas fa-chevron-right fa-2xl text-white-50"></i>
+            </button>
+          </div>
         </div>
-        <div class="next-button-trending position-absolute"
-          style="right: 0; top: 50%; transform: translateY(-50%);z-index: 400;">
-          <button class="btn border-1 next-chevron-btn-trending">
-            <i class="fas fa-chevron-right fa-2xl text-white-50"></i>
-          </button>
-        </div>
-      </div>
-    </section>
-    <?php echo $scifi_modals; ?>
-    <!-- END OF SECTION SCI-FI & FANTASY SERIES -->
+      </section>
+      <?php echo $scifi_modals; ?>
+      <!-- END OF SECTION SCI-FI & FANTASY SERIES -->
 
-    <!-- START OF SECTION CARTOONS -->
-    <?php
-    $genre_id = 27;
-    // Fetch genre name for display
-    $genre_result = mysqli_query($con, "SELECT genre_name FROM tbl_movie_series_genre WHERE genre_id = $genre_id LIMIT 1");
-    $genre = mysqli_fetch_assoc($genre_result);
-    $genre_name = $genre ? $genre['genre_name'] : "Kids";
+      <!-- START OF SECTION CARTOONS -->
+      <?php
+      $genre_id = 27;
+      // Fetch genre name for display
+      $genre_result = mysqli_query($con, "SELECT genre_name FROM tbl_movie_series_genre WHERE genre_id = $genre_id LIMIT 1");
+      $genre = mysqli_fetch_assoc($genre_result);
+      $genre_name = $genre ? $genre['genre_name'] : "Kids";
 
-    $cartoons_query = mysqli_query(
-      $con,
-      "SELECT ms.*, g1.genre_name AS genre_1, g2.genre_name AS genre_2, g3.genre_name AS genre_3
+      $cartoons_query = mysqli_query(
+        $con,
+        "SELECT ms.*, g1.genre_name AS genre_1, g2.genre_name AS genre_2, g3.genre_name AS genre_3
     FROM tbl_movie_series ms
     LEFT JOIN tbl_movie_series_genre g1 ON ms.genre_id1 = g1.genre_id
     LEFT JOIN tbl_movie_series_genre g2 ON ms.genre_id2 = g2.genre_id
@@ -792,69 +791,69 @@ include 'CineVault-header.php';
       AND ms.poster NOT LIKE '%HomeWallpaper%'
     ORDER BY ms.date_released DESC
     LIMIT 8"
-    );
-    $cartoons_modals = "";
-    ?>
-    <section id="section-cartoons" class="ms-md-5 ms-3" style="margin-top: 60px;">
-      <div class="action-movies-top d-flex justify-content-between">
-        <p class="action-movies-text text-white fs-24 fw-bold">For <?php echo htmlspecialchars($genre_name); ?></p>
-      </div>
-      <div class="top10-featured-wrapper position-relative">
-        <div class="prev-button-comedy position-absolute"
-          style="left: 0; top: 50%; transform: translateY(-50%); z-index: 400;">
-          <button class="btn border-1 prev-chevron-btn-comedy">
-            <i class="fas fa-chevron-left fa-2xl text-white-50"></i>
-          </button>
+      );
+      $cartoons_modals = "";
+      ?>
+      <section id="section-cartoons" class="ms-md-5 ms-3" style="margin-top: 60px;">
+        <div class="action-movies-top d-flex justify-content-between">
+          <p class="action-movies-text text-white fs-24 fw-bold">For <?php echo htmlspecialchars($genre_name); ?></p>
         </div>
-        <div class="action-images-container d-flex gap-3 position-relative">
-          <?php
-          while ($row = mysqli_fetch_assoc($cartoons_query)):
-            $movie_series_id = $row['movie_series_id'];
-            $cartoon_title = $row['title'];
-            $cartoon_poster = $row['poster'];
-            $cartoon_video = $row['video'];
-            $cartoon_modal_poster_title = $row['modal_poster_title'];
-            $cartoon_duration = $row['duration'];
-            $cartoon_date_released = $row['date_released'];
-            $cartoon_age_rating = $row['age_rating'];
-            $cartoon_category = $row['category'];
-            $cartoon_genre_1 = $row['genre_1'];
-            $cartoon_genre_2 = $row['genre_2'];
-            $cartoon_genre_3 = $row['genre_3'];
-            $cartoon_cast = $row['cast'];
-            $cartoon_description = $row['description'];
-
-            $genres = htmlspecialchars($cartoon_genre_1);
-            if (!empty($cartoon_genre_2))
-              $genres .= ', ' . htmlspecialchars($cartoon_genre_2);
-            if (!empty($cartoon_genre_3))
-              $genres .= ', ' . htmlspecialchars($cartoon_genre_3);
-            ?>
-            <div class="comedy-images position-relative pe-2" style="overflow: visible;">
-              <a href="#" data-bs-toggle="modal" data-bs-target="#modal-cartoons-<?php echo $movie_series_id ?>">
-                <div class="trending-hover position-relative">
-                  <img class="action-movies-img rounded-3"
-                    src="../DASHBOARD-HTML/MOVIE_SERIES_TITLE/<?php echo htmlspecialchars($cartoon_poster); ?>"
-                    alt="<?php echo htmlspecialchars($cartoon_title); ?>">
-                  <i class="fa-solid fa-play play-button-comedy"></i>
-                </div>
-              </a>
-            </div>
+        <div class="top10-featured-wrapper position-relative">
+          <div class="prev-button-comedy position-absolute"
+            style="left: 0; top: 50%; transform: translateY(-50%); z-index: 400;">
+            <button class="btn border-1 prev-chevron-btn-comedy">
+              <i class="fas fa-chevron-left fa-2xl text-white-50"></i>
+            </button>
+          </div>
+          <div class="action-images-container d-flex gap-3 position-relative">
             <?php
-            // Fetch seasons and episodes for this series
-            $seasons_result = mysqli_query($con, "SELECT * FROM tbl_movie_series_seasons WHERE movie_series_id = {$movie_series_id} ORDER BY season_number");
-            $seasons = [];
-            while ($season = mysqli_fetch_assoc($seasons_result)) {
-              $episodes_result = mysqli_query($con, "SELECT * FROM tbl_movie_series_episodes WHERE season_id = {$season['season_id']} ORDER BY episode_id");
-              $episodes = [];
-              while ($ep = mysqli_fetch_assoc($episodes_result)) {
-                $episodes[] = $ep;
-              }
-              $season['episodes'] = $episodes;
-              $seasons[] = $season;
-            }
+            while ($row = mysqli_fetch_assoc($cartoons_query)):
+              $movie_series_id = $row['movie_series_id'];
+              $cartoon_title = $row['title'];
+              $cartoon_poster = $row['poster'];
+              $cartoon_video = $row['video'];
+              $cartoon_modal_poster_title = $row['modal_poster_title'];
+              $cartoon_duration = $row['duration'];
+              $cartoon_date_released = $row['date_released'];
+              $cartoon_age_rating = $row['age_rating'];
+              $cartoon_category = $row['category'];
+              $cartoon_genre_1 = $row['genre_1'];
+              $cartoon_genre_2 = $row['genre_2'];
+              $cartoon_genre_3 = $row['genre_3'];
+              $cartoon_cast = $row['cast'];
+              $cartoon_description = $row['description'];
 
-            $cartoons_modals .= "
+              $genres = htmlspecialchars($cartoon_genre_1);
+              if (!empty($cartoon_genre_2))
+                $genres .= ', ' . htmlspecialchars($cartoon_genre_2);
+              if (!empty($cartoon_genre_3))
+                $genres .= ', ' . htmlspecialchars($cartoon_genre_3);
+              ?>
+              <div class="comedy-images position-relative pe-2" style="overflow: visible;">
+                <a href="#" data-bs-toggle="modal" data-bs-target="#modal-cartoons-<?php echo $movie_series_id ?>">
+                  <div class="trending-hover position-relative">
+                    <img class="action-movies-img rounded-3"
+                      src="../DASHBOARD-HTML/MOVIE_SERIES_TITLE/<?php echo htmlspecialchars($cartoon_poster); ?>"
+                      alt="<?php echo htmlspecialchars($cartoon_title); ?>">
+                    <i class="fa-solid fa-play play-button-comedy"></i>
+                  </div>
+                </a>
+              </div>
+              <?php
+              // Fetch seasons and episodes for this series
+              $seasons_result = mysqli_query($con, "SELECT * FROM tbl_movie_series_seasons WHERE movie_series_id = {$movie_series_id} ORDER BY season_number");
+              $seasons = [];
+              while ($season = mysqli_fetch_assoc($seasons_result)) {
+                $episodes_result = mysqli_query($con, "SELECT * FROM tbl_movie_series_episodes WHERE season_id = {$season['season_id']} ORDER BY episode_id");
+                $episodes = [];
+                while ($ep = mysqli_fetch_assoc($episodes_result)) {
+                  $episodes[] = $ep;
+                }
+                $season['episodes'] = $episodes;
+                $seasons[] = $season;
+              }
+
+              $cartoons_modals .= "
 <div class='modal fade' id='modal-cartoons-{$movie_series_id}' tabindex='-1' aria-labelledby='exampleModalLabel-cartoons-{$movie_series_id}' aria-hidden='true'>
   <div class='modal-dialog modal-dialog-centered modal-lg modal-dark border-3'>
     <div class='modal-content bg-dark modals'>
@@ -870,12 +869,12 @@ include 'CineVault-header.php';
               <source src=\"../DASHBOARD-HTML/MOVIE_SERIES_VIDEO/" . htmlspecialchars($cartoon_video) . "\" type=\"video/mp4\">
               Your browser does not support the video tag.
             </video>";
-            if (!empty($cartoon_modal_poster_title)) {
-              $cartoons_modals .= "<img class='poster-title-img trend-title' src='../DASHBOARD-HTML/MOVIE_SERIES_TITLE/" . htmlspecialchars($cartoon_modal_poster_title) . "' alt='' style='object-fit: cover; transform: scale(2.0) translate(36px, -14px);'>";
-            } else {
-              $cartoons_modals .= "<p class='fw-bold fs-3 text-white position-absolute' style='top:10px; left:20px;'>" . htmlspecialchars($cartoon_title) . "</p>";
-            }
-            $cartoons_modals .= "
+              if (!empty($cartoon_modal_poster_title)) {
+                $cartoons_modals .= "<img class='poster-title-img trend-title' src='../DASHBOARD-HTML/MOVIE_SERIES_TITLE/" . htmlspecialchars($cartoon_modal_poster_title) . "' alt='' style='object-fit: cover; transform: scale(2.0) translate(36px, -14px);'>";
+              } else {
+                $cartoons_modals .= "<p class='fw-bold fs-3 text-white position-absolute' style='top:10px; left:20px;'>" . htmlspecialchars($cartoon_title) . "</p>";
+              }
+              $cartoons_modals .= "
             <a href=\"play-vid.php?video=" . urlencode($cartoon_video) . "&type=movie_series&id=" . $movie_series_id . "\" class=\"btn btn-light play-btn text-center fs-18 text-end position-absolute\" style=\"width: 120px;\">
               <i class=\"fa-solid fa-play me-1\"></i> Play
             </a>
@@ -909,33 +908,33 @@ include 'CineVault-header.php';
           </div>
       ";
 
-            // SEASONS AND EPISODES DROPDOWN
-            if (!empty($seasons)) {
-              $cartoons_modals .= '
+              // SEASONS AND EPISODES DROPDOWN
+              if (!empty($seasons)) {
+                $cartoons_modals .= '
       <div class="col-12 d-flex justify-content-between align-items-center mx-4" style="width: 100%">
           <div>
               <p class="fs-3 mb-0" style="color: #f4fff8;">Episodes</p>
           </div>
           <div class="position-relative" style="min-width:180px; ">
               <select style="transform: translateX(-48px);" id="modal-season-select-cartoons-' . $movie_series_id . '" class="form-control me-5">';
-              foreach ($seasons as $s) {
-                $cartoons_modals .= '<option value="season-' . $s['season_id'] . '">' . htmlspecialchars($s['season_title']) . '</option>';
-              }
-              $cartoons_modals .= '</select>
+                foreach ($seasons as $s) {
+                  $cartoons_modals .= '<option value="season-' . $s['season_id'] . '">' . htmlspecialchars($s['season_title']) . '</option>';
+                }
+                $cartoons_modals .= '</select>
               <i class="fa-solid fa-caret-down caret-season" style="position: absolute; bottom: 12px; right: 63px; color: #f4fff8; pointer-events: none;"></i>
           </div>
       </div>';
-              foreach ($seasons as $idx => $s) {
-                $cartoons_modals .= '<div class="col-12 mb-4 modal-episodes-block"
+                foreach ($seasons as $idx => $s) {
+                  $cartoons_modals .= '<div class="col-12 mb-4 modal-episodes-block"
           id="modal-episodes-cartoons-' . $movie_series_id . '-season-' . $s['season_id'] . '"
           style="' . ($idx === 0 ? '' : 'display:none;') . '">';
-                foreach ($s['episodes'] as $ep_idx => $ep) {
-                  $cartoons_modals .= '
+                  foreach ($s['episodes'] as $ep_idx => $ep) {
+                    $cartoons_modals .= '
                 <div class="mx-3 py-2 d-flex gap-2">
                     <div class="d-flex align-items-center gap-3 me-2 ms-4">
                         <p class="mb-0 fs-2 db-text-sec">' . ($ep_idx + 1) . '</p>';
-                  if (!empty($ep['episode_video'])) {
-                    $cartoons_modals .= '
+                    if (!empty($ep['episode_video'])) {
+                      $cartoons_modals .= '
                         <a href="play-vid.php?video=' . urlencode($ep['episode_video']) . '&type=episode&id=' . $ep['episode_id'] . '">
                             <video
                                 class="position-relative rounded-3 m-0 p-0 video-player video-episode"
@@ -945,8 +944,8 @@ include 'CineVault-header.php';
                                 Your browser does not support the video tag.
                             </video>
                         </a>';
-                  }
-                  $cartoons_modals .= '
+                    }
+                    $cartoons_modals .= '
                     </div>
                     <div class="db-text-sec me-4">
                         <div class="d-flex align-items-center justify-content-between mb-2">
@@ -958,62 +957,62 @@ include 'CineVault-header.php';
                         </div>
                     </div>
                 </div>';
+                  }
+                  if (empty($s['episodes'])) {
+                    $cartoons_modals .= '<div class="mx-4 py-2 db-text-sec">No episodes available for this season.</div>';
+                  }
+                  $cartoons_modals .= '</div>';
                 }
-                if (empty($s['episodes'])) {
-                  $cartoons_modals .= '<div class="mx-4 py-2 db-text-sec">No episodes available for this season.</div>';
-                }
-                $cartoons_modals .= '</div>';
-              }
-              $cartoons_modals .= '
+                $cartoons_modals .= '
       <script>
       document.addEventListener("DOMContentLoaded", function () {
           var select = document.getElementById("modal-season-select-cartoons-' . $movie_series_id . '");
           if (select) {
               select.addEventListener("change", function () {
                   var val = this.value;';
-              foreach ($seasons as $s) {
-                $cartoons_modals .= '
+                foreach ($seasons as $s) {
+                  $cartoons_modals .= '
                   document.getElementById("modal-episodes-cartoons-' . $movie_series_id . '-season-' . $s['season_id'] . '").style.display = (val === "season-' . $s['season_id'] . '") ? "" : "none";';
-              }
-              $cartoons_modals .= '
+                }
+                $cartoons_modals .= '
               });
           }
       });
       </script>
       ';
-            }
-            $cartoons_modals .= "
+              }
+              $cartoons_modals .= "
         </div>
       </div>
     </div>
   </div>
 </div>
 ";
-          endwhile;
-          ?>
+            endwhile;
+            ?>
+          </div>
+          <div class="next-button-comedy position-absolute"
+            style="right: 0; top: 50%; transform: translateY(-50%);z-index: 400;">
+            <button class="btn border-1 next-chevron-btn-comedy">
+              <i class="fas fa-chevron-right fa-2xl text-white-50"></i>
+            </button>
+          </div>
         </div>
-        <div class="next-button-comedy position-absolute"
-          style="right: 0; top: 50%; transform: translateY(-50%);z-index: 400;">
-          <button class="btn border-1 next-chevron-btn-comedy">
-            <i class="fas fa-chevron-right fa-2xl text-white-50"></i>
-          </button>
-        </div>
-      </div>
-    </section>
-    <?php echo $cartoons_modals; ?>
-    <!-- END OF SECTION CARTOONS -->
+      </section>
+      <?php echo $cartoons_modals; ?>
+      <!-- END OF SECTION CARTOONS -->
 
-    <!-- START OF SECTION ANIME -->
-    <?php
-    // Anime genre_id (replace '3' if your anime genre_id is different)
-    $genre_id = 3; // Example: genre_id for Animation/Anime
-    $genre_result = mysqli_query($con, "SELECT genre_name FROM tbl_movie_series_genre WHERE genre_id = $genre_id LIMIT 1");
-    $genre = mysqli_fetch_assoc($genre_result);
-    $genre_name = $genre ? $genre['genre_name'] : "Anime";
+      <!-- START OF SECTION ANIME -->
+      <?php
+      // Anime genre_id (replace '3' if your anime genre_id is different)
+      $genre_id = 3; // Example: genre_id for Animation/Anime
+      $genre_result = mysqli_query($con, "SELECT genre_name FROM tbl_movie_series_genre WHERE genre_id = $genre_id LIMIT 1");
+      $genre = mysqli_fetch_assoc($genre_result);
+      $genre_name = $genre ? $genre['genre_name'] : "Anime";
 
-    $anime_query = mysqli_query(
-      $con,
-      "SELECT ms.*, g1.genre_name AS genre_1, g2.genre_name AS genre_2, g3.genre_name AS genre_3
+      $anime_query = mysqli_query(
+        $con,
+        "SELECT ms.*, g1.genre_name AS genre_1, g2.genre_name AS genre_2, g3.genre_name AS genre_3
     FROM tbl_movie_series ms
     LEFT JOIN tbl_movie_series_genre g1 ON ms.genre_id1 = g1.genre_id
     LEFT JOIN tbl_movie_series_genre g2 ON ms.genre_id2 = g2.genre_id
@@ -1026,70 +1025,70 @@ include 'CineVault-header.php';
       AND ms.poster NOT LIKE '%HomeWallpaper%'
     ORDER BY ms.date_released DESC
     LIMIT 8"
-    );
-    $anime_modals = "";
-    ?>
-    <section class="section-featured text-white ms-md-5 ms-3">
-      <div class="featured-container">
-        <div class="featured-top">
-          <p class="featured-text text-uppercase"><?php echo htmlspecialchars($genre_name); ?></p>
-          <p class="featured-movies-text fs-2">SERIES</p>
-          <div class="top10-featured-wrapper position-relative">
-            <div class="prev-button-featured position-absolute"
-              style="left: 0; top: 50%; transform: translateY(-50%); z-index: 400;">
-              <button class="btn border-1 prev-chevron-btn-featured">
-                <i class="fas fa-chevron-left fa-2xl text-white-50"></i>
-              </button>
-            </div>
-            <div class="featured-images-container d-flex gap-3 position-relative">
-              <?php
-              while ($row = mysqli_fetch_assoc($anime_query)):
-                $movie_series_id = $row['movie_series_id'];
-                $anime_title = $row['title'];
-                $anime_poster = $row['poster'];
-                $anime_video = $row['video'];
-                $anime_modal_poster_title = $row['modal_poster_title'];
-                $anime_duration = $row['duration'];
-                $anime_date_released = $row['date_released'];
-                $anime_age_rating = $row['age_rating'];
-                $anime_category = $row['category'];
-                $anime_genre_1 = $row['genre_1'];
-                $anime_genre_2 = $row['genre_2'];
-                $anime_genre_3 = $row['genre_3'];
-                $anime_cast = $row['cast'];
-                $anime_description = $row['description'];
-
-                $genres = htmlspecialchars($anime_genre_1);
-                if (!empty($anime_genre_2))
-                  $genres .= ', ' . htmlspecialchars($anime_genre_2);
-                if (!empty($anime_genre_3))
-                  $genres .= ', ' . htmlspecialchars($anime_genre_3);
-                ?>
-                <div class="featured-images position-relative pe-2" style="overflow: visible;">
-                  <a href="#" data-bs-toggle="modal" data-bs-target="#modal-anime-<?php echo $movie_series_id ?>">
-                    <div class="trending-hover position-relative">
-                      <img class="featured-img rounded-3"
-                        src="../DASHBOARD-HTML/MOVIE_SERIES_TITLE/<?php echo htmlspecialchars($anime_poster); ?>"
-                        alt="<?php echo htmlspecialchars($anime_title); ?>">
-                      <i class="fa-solid fa-play play-button-featured"></i>
-                    </div>
-                  </a>
-                </div>
+      );
+      $anime_modals = "";
+      ?>
+      <section class="section-featured text-white ms-md-5 ms-3">
+        <div class="featured-container">
+          <div class="featured-top">
+            <p class="featured-text text-uppercase"><?php echo htmlspecialchars($genre_name); ?></p>
+            <p class="featured-movies-text fs-2">SERIES</p>
+            <div class="top10-featured-wrapper position-relative">
+              <div class="prev-button-featured position-absolute"
+                style="left: 0; top: 50%; transform: translateY(-50%); z-index: 400;">
+                <button class="btn border-1 prev-chevron-btn-featured">
+                  <i class="fas fa-chevron-left fa-2xl text-white-50"></i>
+                </button>
+              </div>
+              <div class="featured-images-container d-flex gap-3 position-relative">
                 <?php
-                // Fetch seasons and episodes for this anime series
-                $seasons_result = mysqli_query($con, "SELECT * FROM tbl_movie_series_seasons WHERE movie_series_id = {$movie_series_id} ORDER BY season_number");
-                $seasons = [];
-                while ($season = mysqli_fetch_assoc($seasons_result)) {
-                  $episodes_result = mysqli_query($con, "SELECT * FROM tbl_movie_series_episodes WHERE season_id = {$season['season_id']} ORDER BY episode_id");
-                  $episodes = [];
-                  while ($ep = mysqli_fetch_assoc($episodes_result)) {
-                    $episodes[] = $ep;
-                  }
-                  $season['episodes'] = $episodes;
-                  $seasons[] = $season;
-                }
+                while ($row = mysqli_fetch_assoc($anime_query)):
+                  $movie_series_id = $row['movie_series_id'];
+                  $anime_title = $row['title'];
+                  $anime_poster = $row['poster'];
+                  $anime_video = $row['video'];
+                  $anime_modal_poster_title = $row['modal_poster_title'];
+                  $anime_duration = $row['duration'];
+                  $anime_date_released = $row['date_released'];
+                  $anime_age_rating = $row['age_rating'];
+                  $anime_category = $row['category'];
+                  $anime_genre_1 = $row['genre_1'];
+                  $anime_genre_2 = $row['genre_2'];
+                  $anime_genre_3 = $row['genre_3'];
+                  $anime_cast = $row['cast'];
+                  $anime_description = $row['description'];
 
-                $anime_modals .= "
+                  $genres = htmlspecialchars($anime_genre_1);
+                  if (!empty($anime_genre_2))
+                    $genres .= ', ' . htmlspecialchars($anime_genre_2);
+                  if (!empty($anime_genre_3))
+                    $genres .= ', ' . htmlspecialchars($anime_genre_3);
+                  ?>
+                  <div class="featured-images position-relative pe-2" style="overflow: visible;">
+                    <a href="#" data-bs-toggle="modal" data-bs-target="#modal-anime-<?php echo $movie_series_id ?>">
+                      <div class="trending-hover position-relative">
+                        <img class="featured-img rounded-3"
+                          src="../DASHBOARD-HTML/MOVIE_SERIES_TITLE/<?php echo htmlspecialchars($anime_poster); ?>"
+                          alt="<?php echo htmlspecialchars($anime_title); ?>">
+                        <i class="fa-solid fa-play play-button-featured"></i>
+                      </div>
+                    </a>
+                  </div>
+                  <?php
+                  // Fetch seasons and episodes for this anime series
+                  $seasons_result = mysqli_query($con, "SELECT * FROM tbl_movie_series_seasons WHERE movie_series_id = {$movie_series_id} ORDER BY season_number");
+                  $seasons = [];
+                  while ($season = mysqli_fetch_assoc($seasons_result)) {
+                    $episodes_result = mysqli_query($con, "SELECT * FROM tbl_movie_series_episodes WHERE season_id = {$season['season_id']} ORDER BY episode_id");
+                    $episodes = [];
+                    while ($ep = mysqli_fetch_assoc($episodes_result)) {
+                      $episodes[] = $ep;
+                    }
+                    $season['episodes'] = $episodes;
+                    $seasons[] = $season;
+                  }
+
+                  $anime_modals .= "
 <div class='modal fade' id='modal-anime-{$movie_series_id}' tabindex='-1' aria-labelledby='exampleModalLabel-anime-{$movie_series_id}' aria-hidden='true'>
   <div class='modal-dialog modal-dialog-centered modal-lg modal-dark border-3'>
     <div class='modal-content bg-dark modals'>
@@ -1105,12 +1104,12 @@ include 'CineVault-header.php';
               <source src=\"../DASHBOARD-HTML/MOVIE_SERIES_VIDEO/" . htmlspecialchars($anime_video) . "\" type=\"video/mp4\">
               Your browser does not support the video tag.
             </video>";
-                if (!empty($anime_modal_poster_title)) {
-                  $anime_modals .= "<img class='poster-title-img trend-title' src='../DASHBOARD-HTML/MOVIE_SERIES_TITLE/" . htmlspecialchars($anime_modal_poster_title) . "' alt='' style='object-fit: cover; transform: scale(2.0) translate(36px, -14px);'>";
-                } else {
-                  $anime_modals .= "<p class='fw-bold fs-3 text-white position-absolute' style='top:10px; left:20px;'>" . htmlspecialchars($anime_title) . "</p>";
-                }
-                $anime_modals .= "
+                  if (!empty($anime_modal_poster_title)) {
+                    $anime_modals .= "<img class='poster-title-img trend-title' src='../DASHBOARD-HTML/MOVIE_SERIES_TITLE/" . htmlspecialchars($anime_modal_poster_title) . "' alt='' style='object-fit: cover; transform: scale(2.0) translate(36px, -14px);'>";
+                  } else {
+                    $anime_modals .= "<p class='fw-bold fs-3 text-white position-absolute' style='top:10px; left:20px;'>" . htmlspecialchars($anime_title) . "</p>";
+                  }
+                  $anime_modals .= "
             <a href=\"play-vid.php?video=" . urlencode($anime_video) . "&type=movie_series&id=" . $movie_series_id . "\" class=\"btn btn-light play-btn text-center fs-18 text-end position-absolute\" style=\"width: 120px;\">
               <i class=\"fa-solid fa-play me-1\"></i> Play
             </a>
@@ -1144,33 +1143,33 @@ include 'CineVault-header.php';
           </div>
       ";
 
-                // SEASONS AND EPISODES DROPDOWN
-                if (!empty($seasons)) {
-                  $anime_modals .= '
+                  // SEASONS AND EPISODES DROPDOWN
+                  if (!empty($seasons)) {
+                    $anime_modals .= '
       <div class="col-12 d-flex justify-content-between align-items-center mx-4" style="width: 100%">
           <div>
               <p class="fs-3 mb-0" style="color: #f4fff8;">Episodes</p>
           </div>
           <div class="position-relative" style="min-width:180px; ">
               <select style="transform: translateX(-48px);" id="modal-season-select-anime-' . $movie_series_id . '" class="form-control me-5">';
-                  foreach ($seasons as $s) {
-                    $anime_modals .= '<option value="season-' . $s['season_id'] . '">' . htmlspecialchars($s['season_title']) . '</option>';
-                  }
-                  $anime_modals .= '</select>
+                    foreach ($seasons as $s) {
+                      $anime_modals .= '<option value="season-' . $s['season_id'] . '">' . htmlspecialchars($s['season_title']) . '</option>';
+                    }
+                    $anime_modals .= '</select>
               <i class="fa-solid fa-caret-down caret-season" style="position: absolute; bottom: 12px; right: 63px; color: #f4fff8; pointer-events: none;"></i>
           </div>
       </div>';
-                  foreach ($seasons as $idx => $s) {
-                    $anime_modals .= '<div class="col-12 mb-4 modal-episodes-block"
+                    foreach ($seasons as $idx => $s) {
+                      $anime_modals .= '<div class="col-12 mb-4 modal-episodes-block"
               id="modal-episodes-anime-' . $movie_series_id . '-season-' . $s['season_id'] . '"
               style="' . ($idx === 0 ? '' : 'display:none;') . '">';
-                    foreach ($s['episodes'] as $ep_idx => $ep) {
-                      $anime_modals .= '
+                      foreach ($s['episodes'] as $ep_idx => $ep) {
+                        $anime_modals .= '
                   <div class="mx-3 py-2 d-flex gap-2">
                       <div class="d-flex align-items-center gap-3 me-2 ms-4">
                           <p class="mb-0 fs-2 db-text-sec">' . ($ep_idx + 1) . '</p>';
-                      if (!empty($ep['episode_video'])) {
-                        $anime_modals .= '
+                        if (!empty($ep['episode_video'])) {
+                          $anime_modals .= '
                           <a href="play-vid.php?video=' . urlencode($ep['episode_video']) . '&type=episode&id=' . $ep['episode_id'] . '">
                               <video
                                   class="position-relative rounded-3 m-0 p-0 video-player video-episode"
@@ -1180,8 +1179,8 @@ include 'CineVault-header.php';
                                   Your browser does not support the video tag.
                               </video>
                           </a>';
-                      }
-                      $anime_modals .= '
+                        }
+                        $anime_modals .= '
                       </div>
                       <div class="db-text-sec me-4">
                           <div class="d-flex align-items-center justify-content-between mb-2">
@@ -1193,111 +1192,111 @@ include 'CineVault-header.php';
                           </div>
                       </div>
                   </div>';
+                      }
+                      if (empty($s['episodes'])) {
+                        $anime_modals .= '<div class="mx-4 py-2 db-text-sec">No episodes available for this season.</div>';
+                      }
+                      $anime_modals .= '</div>';
                     }
-                    if (empty($s['episodes'])) {
-                      $anime_modals .= '<div class="mx-4 py-2 db-text-sec">No episodes available for this season.</div>';
-                    }
-                    $anime_modals .= '</div>';
-                  }
-                  $anime_modals .= '
+                    $anime_modals .= '
       <script>
       document.addEventListener("DOMContentLoaded", function () {
           var select = document.getElementById("modal-season-select-anime-' . $movie_series_id . '");
           if (select) {
               select.addEventListener("change", function () {
                   var val = this.value;';
-                  foreach ($seasons as $s) {
-                    $anime_modals .= '
+                    foreach ($seasons as $s) {
+                      $anime_modals .= '
                   document.getElementById("modal-episodes-anime-' . $movie_series_id . '-season-' . $s['season_id'] . '").style.display = (val === "season-' . $s['season_id'] . '") ? "" : "none";';
-                  }
-                  $anime_modals .= '
+                    }
+                    $anime_modals .= '
               });
           }
       });
       </script>
       ';
-                }
-                $anime_modals .= "
+                  }
+                  $anime_modals .= "
         </div>
       </div>
     </div>
   </div>
 </div>
 ";
-              endwhile;
-              ?>
-            </div>
-            <div class="next-button-featured position-absolute"
-              style="right: 0; top: 50%; transform: translateY(-50%);z-index: 400;">
-              <button class="btn border-1 next-chevron-btn-featured">
-                <i class="fas fa-chevron-right fa-2xl text-white-50"></i>
-              </button>
+                endwhile;
+                ?>
+              </div>
+              <div class="next-button-featured position-absolute"
+                style="right: 0; top: 50%; transform: translateY(-50%);z-index: 400;">
+                <button class="btn border-1 next-chevron-btn-featured">
+                  <i class="fas fa-chevron-right fa-2xl text-white-50"></i>
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </section>
-    <?php echo $anime_modals; ?>
-    <!-- END OF SECTION ANIME -->
+      </section>
+      <?php echo $anime_modals; ?>
+      <!-- END OF SECTION ANIME -->
 
-    <!-- START OF MOVIES 5 -->
-    <section class="movies-1 mt-80">
-      <div>
-        <?php
-        // Fetch the movie/series for HomeWallpaper5
-        $wallpaper5_query = mysqli_query($con, "
+      <!-- START OF MOVIES 5 -->
+      <section class="movies-1 mt-80">
+        <div>
+          <?php
+          // Fetch the movie/series for HomeWallpaper5
+          $wallpaper5_query = mysqli_query($con, "
       SELECT * FROM tbl_movie_series
       WHERE poster LIKE '%HomeWallpaper5%'
       LIMIT 1
     ");
-        $wallpaper5 = mysqli_fetch_assoc($wallpaper5_query);
-        if ($wallpaper5):
-          ?>
-          <img src="../DASHBOARD-HTML/MOVIE_SERIES_TITLE/<?php echo htmlspecialchars($wallpaper5['poster']); ?>"
-            class="d-block w-100 wallpaper-lotr bg-danger"
-            alt="<?php echo htmlspecialchars($wallpaper5['title']); ?> Wallpaper">
+          $wallpaper5 = mysqli_fetch_assoc($wallpaper5_query);
+          if ($wallpaper5):
+            ?>
+            <img src="../DASHBOARD-HTML/MOVIE_SERIES_TITLE/<?php echo htmlspecialchars($wallpaper5['poster']); ?>"
+              class="d-block w-100 wallpaper-lotr bg-danger"
+              alt="<?php echo htmlspecialchars($wallpaper5['title']); ?> Wallpaper">
 
-          <div
-            class="wallpaper-description-tem d-flex flex-column justify-content-end align-items-end position-relative me-5">
+            <div
+              class="wallpaper-description-tem d-flex flex-column justify-content-end align-items-end position-relative me-5">
 
-            <div class="d-flex justify-content-center">
-              <img class="tem-title-img position-relative mb-1"
-                src="../DASHBOARD-HTML/MOVIE_SERIES_TITLE/<?php echo htmlspecialchars($wallpaper5['modal_poster_title']); ?>"
-                alt="<?php echo htmlspecialchars($wallpaper5['title']); ?> Title">
+              <div class="d-flex justify-content-center">
+                <img class="tem-title-img position-relative mb-1"
+                  src="../DASHBOARD-HTML/MOVIE_SERIES_TITLE/<?php echo htmlspecialchars($wallpaper5['modal_poster_title']); ?>"
+                  alt="<?php echo htmlspecialchars($wallpaper5['title']); ?> Title">
+              </div>
+
+              <div class="rating-text-tem my-4 position-relative text-white">
+                <p><?php echo htmlspecialchars($wallpaper5['description']); ?></p>
+              </div>
+
+              <div class="watch-now-tem position-relative">
+                <button class="btn btn-primary rounded-5 watch-now-small"
+                  onclick="window.location.href='play-vid.php?video=<?php echo urlencode($wallpaper5['video']); ?>&type=movie_series&id=<?php echo $wallpaper5['movie_series_id']; ?>'">
+                  <i class="fa-solid fa-play mx-1"></i>
+                  <span>Watch Now</span>
+                </button>
+              </div>
+
             </div>
+          <?php endif; ?>
+        </div>
+      </section>
+      <!-- END OF MOVIES 5 -->
 
-            <div class="rating-text-tem my-4 position-relative text-white">
-              <p><?php echo htmlspecialchars($wallpaper5['description']); ?></p>
-            </div>
+      <!-- START OF SECTION KDRAMA -->
+      <?php
+      // Set the genre_id for KDrama. Change this value if your actual genre_id differs.
+      $genre_id = 20;
 
-            <div class="watch-now-tem position-relative">
-              <button class="btn btn-primary rounded-5 watch-now-small"
-                onclick="window.location.href='play-vid.php?video=<?php echo urlencode($wallpaper5['video']); ?>&type=movie_series&id=<?php echo $wallpaper5['movie_series_id']; ?>'">
-                <i class="fa-solid fa-play mx-1"></i>
-                <span>Watch Now</span>
-              </button>
-            </div>
+      // Fetch genre name for display
+      $genre_result = mysqli_query($con, "SELECT genre_name FROM tbl_movie_series_genre WHERE genre_id = $genre_id LIMIT 1");
+      $genre = mysqli_fetch_assoc($genre_result);
+      $genre_name = $genre ? $genre['genre_name'] : "KDRAMA";
 
-          </div>
-        <?php endif; ?>
-      </div>
-    </section>
-    <!-- END OF MOVIES 5 -->
-
-    <!-- START OF SECTION KDRAMA -->
-    <?php
-    // Set the genre_id for KDrama. Change this value if your actual genre_id differs.
-    $genre_id = 20;
-
-    // Fetch genre name for display
-    $genre_result = mysqli_query($con, "SELECT genre_name FROM tbl_movie_series_genre WHERE genre_id = $genre_id LIMIT 1");
-    $genre = mysqli_fetch_assoc($genre_result);
-    $genre_name = $genre ? $genre['genre_name'] : "KDRAMA";
-
-    // Query for KDrama Series (category 'Series')
-    $kdrama_query = mysqli_query(
-      $con,
-      "SELECT ms.*, g1.genre_name AS genre_1, g2.genre_name AS genre_2, g3.genre_name AS genre_3
+      // Query for KDrama Series (category 'Series')
+      $kdrama_query = mysqli_query(
+        $con,
+        "SELECT ms.*, g1.genre_name AS genre_1, g2.genre_name AS genre_2, g3.genre_name AS genre_3
     FROM tbl_movie_series ms
     LEFT JOIN tbl_movie_series_genre g1 ON ms.genre_id1 = g1.genre_id
     LEFT JOIN tbl_movie_series_genre g2 ON ms.genre_id2 = g2.genre_id
@@ -1310,69 +1309,69 @@ include 'CineVault-header.php';
       AND ms.poster NOT LIKE '%HomeWallpaper%'
     ORDER BY ms.date_released DESC
     LIMIT 8"
-    );
-    $kdrama_modals = "";
-    ?>
-    <section id="section-drama" class="section-action-movies ms-md-5 ms-3" style="margin-top: -150px;">
-      <div class="action-movies-top d-flex justify-content-between">
-        <p class="action-movies-text text-white fs-24 fw-bold"><?php echo htmlspecialchars($genre_name); ?></p>
-      </div>
-      <div class="top10-featured-wrapper position-relative">
-        <div class="prev-button-drama position-absolute"
-          style="left: 0; top: 50%; transform: translateY(-50%); z-index: 400;">
-          <button class="btn border-1 prev-chevron-btn-drama">
-            <i class="fas fa-chevron-left fa-2xl text-white-50"></i>
-          </button>
+      );
+      $kdrama_modals = "";
+      ?>
+      <section id="section-drama" class="section-action-movies ms-md-5 ms-3" style="margin-top: -150px;">
+        <div class="action-movies-top d-flex justify-content-between">
+          <p class="action-movies-text text-white fs-24 fw-bold"><?php echo htmlspecialchars($genre_name); ?></p>
         </div>
-        <div class="action-images-container d-flex gap-3 position-relative">
-          <?php
-          while ($row = mysqli_fetch_assoc($kdrama_query)):
-            $movie_series_id = $row['movie_series_id'];
-            $kdrama_title = $row['title'];
-            $kdrama_poster = $row['poster'];
-            $kdrama_video = $row['video'];
-            $kdrama_modal_poster_title = $row['modal_poster_title'];
-            $kdrama_duration = $row['duration'];
-            $kdrama_date_released = $row['date_released'];
-            $kdrama_age_rating = $row['age_rating'];
-            $kdrama_category = $row['category'];
-            $kdrama_genre_1 = $row['genre_1'];
-            $kdrama_genre_2 = $row['genre_2'];
-            $kdrama_genre_3 = $row['genre_3'];
-            $kdrama_cast = $row['cast'];
-            $kdrama_description = $row['description'];
-
-            $genres = htmlspecialchars($kdrama_genre_1);
-            if (!empty($kdrama_genre_2))
-              $genres .= ', ' . htmlspecialchars($kdrama_genre_2);
-            if (!empty($kdrama_genre_3))
-              $genres .= ', ' . htmlspecialchars($kdrama_genre_3);
-            ?>
-            <div class="comedy-images position-relative pe-2" style="overflow: visible;">
-              <a href="#" data-bs-toggle="modal" data-bs-target="#modal-kdrama-<?php echo $movie_series_id ?>">
-                <div class="trending-hover position-relative">
-                  <img class="action-movies-img rounded-3"
-                    src="../DASHBOARD-HTML/MOVIE_SERIES_TITLE/<?php echo htmlspecialchars($kdrama_poster); ?>"
-                    alt="<?php echo htmlspecialchars($kdrama_title); ?>">
-                  <i class="fa-solid fa-play play-button-comedy"></i>
-                </div>
-              </a>
-            </div>
+        <div class="top10-featured-wrapper position-relative">
+          <div class="prev-button-drama position-absolute"
+            style="left: 0; top: 50%; transform: translateY(-50%); z-index: 400;">
+            <button class="btn border-1 prev-chevron-btn-drama">
+              <i class="fas fa-chevron-left fa-2xl text-white-50"></i>
+            </button>
+          </div>
+          <div class="action-images-container d-flex gap-3 position-relative">
             <?php
-            // Fetch seasons and episodes for this series
-            $seasons_result = mysqli_query($con, "SELECT * FROM tbl_movie_series_seasons WHERE movie_series_id = {$movie_series_id} ORDER BY season_number");
-            $seasons = [];
-            while ($season = mysqli_fetch_assoc($seasons_result)) {
-              $episodes_result = mysqli_query($con, "SELECT * FROM tbl_movie_series_episodes WHERE season_id = {$season['season_id']} ORDER BY episode_id");
-              $episodes = [];
-              while ($ep = mysqli_fetch_assoc($episodes_result)) {
-                $episodes[] = $ep;
-              }
-              $season['episodes'] = $episodes;
-              $seasons[] = $season;
-            }
+            while ($row = mysqli_fetch_assoc($kdrama_query)):
+              $movie_series_id = $row['movie_series_id'];
+              $kdrama_title = $row['title'];
+              $kdrama_poster = $row['poster'];
+              $kdrama_video = $row['video'];
+              $kdrama_modal_poster_title = $row['modal_poster_title'];
+              $kdrama_duration = $row['duration'];
+              $kdrama_date_released = $row['date_released'];
+              $kdrama_age_rating = $row['age_rating'];
+              $kdrama_category = $row['category'];
+              $kdrama_genre_1 = $row['genre_1'];
+              $kdrama_genre_2 = $row['genre_2'];
+              $kdrama_genre_3 = $row['genre_3'];
+              $kdrama_cast = $row['cast'];
+              $kdrama_description = $row['description'];
 
-            $kdrama_modals .= "
+              $genres = htmlspecialchars($kdrama_genre_1);
+              if (!empty($kdrama_genre_2))
+                $genres .= ', ' . htmlspecialchars($kdrama_genre_2);
+              if (!empty($kdrama_genre_3))
+                $genres .= ', ' . htmlspecialchars($kdrama_genre_3);
+              ?>
+              <div class="comedy-images position-relative pe-2" style="overflow: visible;">
+                <a href="#" data-bs-toggle="modal" data-bs-target="#modal-kdrama-<?php echo $movie_series_id ?>">
+                  <div class="trending-hover position-relative">
+                    <img class="action-movies-img rounded-3"
+                      src="../DASHBOARD-HTML/MOVIE_SERIES_TITLE/<?php echo htmlspecialchars($kdrama_poster); ?>"
+                      alt="<?php echo htmlspecialchars($kdrama_title); ?>">
+                    <i class="fa-solid fa-play play-button-comedy"></i>
+                  </div>
+                </a>
+              </div>
+              <?php
+              // Fetch seasons and episodes for this series
+              $seasons_result = mysqli_query($con, "SELECT * FROM tbl_movie_series_seasons WHERE movie_series_id = {$movie_series_id} ORDER BY season_number");
+              $seasons = [];
+              while ($season = mysqli_fetch_assoc($seasons_result)) {
+                $episodes_result = mysqli_query($con, "SELECT * FROM tbl_movie_series_episodes WHERE season_id = {$season['season_id']} ORDER BY episode_id");
+                $episodes = [];
+                while ($ep = mysqli_fetch_assoc($episodes_result)) {
+                  $episodes[] = $ep;
+                }
+                $season['episodes'] = $episodes;
+                $seasons[] = $season;
+              }
+
+              $kdrama_modals .= "
 <div class='modal fade' id='modal-kdrama-{$movie_series_id}' tabindex='-1' aria-labelledby='exampleModalLabel-kdrama-{$movie_series_id}' aria-hidden='true'>
   <div class='modal-dialog modal-dialog-centered modal-lg modal-dark border-3'>
     <div class='modal-content bg-dark modals'>
@@ -1388,12 +1387,12 @@ include 'CineVault-header.php';
               <source src=\"../DASHBOARD-HTML/MOVIE_SERIES_VIDEO/" . htmlspecialchars($kdrama_video) . "\" type=\"video/mp4\">
               Your browser does not support the video tag.
             </video>";
-            if (!empty($kdrama_modal_poster_title)) {
-              $kdrama_modals .= "<img class='poster-title-img trend-title' src='../DASHBOARD-HTML/MOVIE_SERIES_TITLE/" . htmlspecialchars($kdrama_modal_poster_title) . "' alt='' style='object-fit: cover; transform: scale(2.0) translate(36px, -14px);'>";
-            } else {
-              $kdrama_modals .= "<p class='fw-bold fs-3 text-white position-absolute' style='top:10px; left:20px;'>" . htmlspecialchars($kdrama_title) . "</p>";
-            }
-            $kdrama_modals .= "
+              if (!empty($kdrama_modal_poster_title)) {
+                $kdrama_modals .= "<img class='poster-title-img trend-title' src='../DASHBOARD-HTML/MOVIE_SERIES_TITLE/" . htmlspecialchars($kdrama_modal_poster_title) . "' alt='' style='object-fit: cover; transform: scale(2.0) translate(36px, -14px);'>";
+              } else {
+                $kdrama_modals .= "<p class='fw-bold fs-3 text-white position-absolute' style='top:10px; left:20px;'>" . htmlspecialchars($kdrama_title) . "</p>";
+              }
+              $kdrama_modals .= "
             <a href=\"play-vid.php?video=" . urlencode($kdrama_video) . "&type=movie_series&id=" . $movie_series_id . "\" class=\"btn btn-light play-btn text-center fs-18 text-end position-absolute\" style=\"width: 120px;\">
               <i class=\"fa-solid fa-play me-1\"></i> Play
             </a>
@@ -1427,33 +1426,33 @@ include 'CineVault-header.php';
           </div>
       ";
 
-            // SEASONS AND EPISODES DROPDOWN
-            if (!empty($seasons)) {
-              $kdrama_modals .= '
+              // SEASONS AND EPISODES DROPDOWN
+              if (!empty($seasons)) {
+                $kdrama_modals .= '
       <div class="col-12 d-flex justify-content-between align-items-center mx-4" style="width: 100%">
           <div>
               <p class="fs-3 mb-0" style="color: #f4fff8;">Episodes</p>
           </div>
           <div class="position-relative" style="min-width:180px; ">
               <select style="transform: translateX(-48px);" id="modal-season-select-kdrama-' . $movie_series_id . '" class="form-control me-5">';
-              foreach ($seasons as $s) {
-                $kdrama_modals .= '<option value="season-' . $s['season_id'] . '">' . htmlspecialchars($s['season_title']) . '</option>';
-              }
-              $kdrama_modals .= '</select>
+                foreach ($seasons as $s) {
+                  $kdrama_modals .= '<option value="season-' . $s['season_id'] . '">' . htmlspecialchars($s['season_title']) . '</option>';
+                }
+                $kdrama_modals .= '</select>
               <i class="fa-solid fa-caret-down caret-season" style="position: absolute; bottom: 12px; right: 63px; color: #f4fff8; pointer-events: none;"></i>
           </div>
       </div>';
-              foreach ($seasons as $idx => $s) {
-                $kdrama_modals .= '<div class="col-12 mb-4 modal-episodes-block"
+                foreach ($seasons as $idx => $s) {
+                  $kdrama_modals .= '<div class="col-12 mb-4 modal-episodes-block"
           id="modal-episodes-kdrama-' . $movie_series_id . '-season-' . $s['season_id'] . '"
           style="' . ($idx === 0 ? '' : 'display:none;') . '">';
-                foreach ($s['episodes'] as $ep_idx => $ep) {
-                  $kdrama_modals .= '
+                  foreach ($s['episodes'] as $ep_idx => $ep) {
+                    $kdrama_modals .= '
                 <div class="mx-3 py-2 d-flex gap-2">
                     <div class="d-flex align-items-center gap-3 me-2 ms-4">
                         <p class="mb-0 fs-2 db-text-sec">' . ($ep_idx + 1) . '</p>';
-                  if (!empty($ep['episode_video'])) {
-                    $kdrama_modals .= '
+                    if (!empty($ep['episode_video'])) {
+                      $kdrama_modals .= '
                         <a href="play-vid.php?video=' . urlencode($ep['episode_video']) . '&type=episode&id=' . $ep['episode_id'] . '">
                             <video
                                 class="position-relative rounded-3 m-0 p-0 video-player video-episode"
@@ -1463,8 +1462,8 @@ include 'CineVault-header.php';
                                 Your browser does not support the video tag.
                             </video>
                         </a>';
-                  }
-                  $kdrama_modals .= '
+                    }
+                    $kdrama_modals .= '
                     </div>
                     <div class="db-text-sec me-4">
                         <div class="d-flex align-items-center justify-content-between mb-2">
@@ -1476,93 +1475,93 @@ include 'CineVault-header.php';
                         </div>
                     </div>
                 </div>';
+                  }
+                  if (empty($s['episodes'])) {
+                    $kdrama_modals .= '<div class="mx-4 py-2 db-text-sec">No episodes available for this season.</div>';
+                  }
+                  $kdrama_modals .= '</div>';
                 }
-                if (empty($s['episodes'])) {
-                  $kdrama_modals .= '<div class="mx-4 py-2 db-text-sec">No episodes available for this season.</div>';
-                }
-                $kdrama_modals .= '</div>';
-              }
-              $kdrama_modals .= '
+                $kdrama_modals .= '
       <script>
       document.addEventListener("DOMContentLoaded", function () {
           var select = document.getElementById("modal-season-select-kdrama-' . $movie_series_id . '");
           if (select) {
               select.addEventListener("change", function () {
                   var val = this.value;';
-              foreach ($seasons as $s) {
-                $kdrama_modals .= '
+                foreach ($seasons as $s) {
+                  $kdrama_modals .= '
                   document.getElementById("modal-episodes-kdrama-' . $movie_series_id . '-season-' . $s['season_id'] . '").style.display = (val === "season-' . $s['season_id'] . '") ? "" : "none";';
-              }
-              $kdrama_modals .= '
+                }
+                $kdrama_modals .= '
               });
           }
       });
       </script>
       ';
-            }
-            $kdrama_modals .= "
+              }
+              $kdrama_modals .= "
         </div>
       </div>
     </div>
   </div>
 </div>
 ";
-          endwhile;
-          ?>
+            endwhile;
+            ?>
+          </div>
+          <div class="next-button-drama position-absolute"
+            style="right: 0; top: 50%; transform: translateY(-50%);z-index: 400;">
+            <button class="btn border-1 next-chevron-btn-drama">
+              <i class="fas fa-chevron-right fa-2xl text-white-50"></i>
+            </button>
+          </div>
         </div>
-        <div class="next-button-drama position-absolute"
-          style="right: 0; top: 50%; transform: translateY(-50%);z-index: 400;">
-          <button class="btn border-1 next-chevron-btn-drama">
-            <i class="fas fa-chevron-right fa-2xl text-white-50"></i>
-          </button>
-        </div>
-      </div>
-    </section>
-    <?php echo $kdrama_modals; ?>
-    <!-- END OF SECTION KDRAMA -->
+      </section>
+      <?php echo $kdrama_modals; ?>
+      <!-- END OF SECTION KDRAMA -->
 
-    <!-- START OF MOVIES 6 -->
-    <section class="movies-2 mt-80">
-      <div>
-        <?php
-        // Fetch the movie/series for HomeWallpaper6
-        $wallpaper6_query = mysqli_query($con, "
+      <!-- START OF MOVIES 6 -->
+      <section class="movies-2 mt-80">
+        <div>
+          <?php
+          // Fetch the movie/series for HomeWallpaper6
+          $wallpaper6_query = mysqli_query($con, "
       SELECT * FROM tbl_movie_series
       WHERE poster LIKE '%HomeWallpaper6%'
       LIMIT 1
     ");
-        $wallpaper6 = mysqli_fetch_assoc($wallpaper6_query);
-        if ($wallpaper6):
-          ?>
-          <img src="../DASHBOARD-HTML/MOVIE_SERIES_TITLE/<?php echo htmlspecialchars($wallpaper6['poster']); ?>"
-            class="d-block w-100 wallpaper-lotr" alt="<?php echo htmlspecialchars($wallpaper6['title']); ?> Wallpaper">
+          $wallpaper6 = mysqli_fetch_assoc($wallpaper6_query);
+          if ($wallpaper6):
+            ?>
+            <img src="../DASHBOARD-HTML/MOVIE_SERIES_TITLE/<?php echo htmlspecialchars($wallpaper6['poster']); ?>"
+              class="d-block w-100 wallpaper-lotr" alt="<?php echo htmlspecialchars($wallpaper6['title']); ?> Wallpaper">
 
-          <div
-            class="wallpaper-description-lotr d-flex flex-column justify-content-end align-items-end position-relative me-5">
+            <div
+              class="wallpaper-description-lotr d-flex flex-column justify-content-end align-items-end position-relative me-5">
 
-            <div class="d-flex justify-content-center">
-              <img class="lotr-title-img position-relative mb-1"
-                src="../DASHBOARD-HTML/MOVIE_SERIES_TITLE/<?php echo htmlspecialchars($wallpaper6['modal_poster_title']); ?>"
-                alt="<?php echo htmlspecialchars($wallpaper6['title']); ?> Title">
+              <div class="d-flex justify-content-center">
+                <img class="lotr-title-img position-relative mb-1"
+                  src="../DASHBOARD-HTML/MOVIE_SERIES_TITLE/<?php echo htmlspecialchars($wallpaper6['modal_poster_title']); ?>"
+                  alt="<?php echo htmlspecialchars($wallpaper6['title']); ?> Title">
+              </div>
+
+              <div class="rating-text-lotr my-4 position-relative text-white">
+                <p><?php echo htmlspecialchars($wallpaper6['description']); ?></p>
+              </div>
+
+              <div class="watch-now-lotr position-relative">
+                <button class="btn btn-primary rounded-5 watch-now-small"
+                  onclick="window.location.href='play-vid.php?video=<?php echo urlencode($wallpaper6['video']); ?>&type=movie_series&id=<?php echo $wallpaper6['movie_series_id']; ?>'">
+                  <i class="fa-solid fa-play mx-1"></i>
+                  <span>Watch Now</span>
+                </button>
+              </div>
+
             </div>
-
-            <div class="rating-text-lotr my-4 position-relative text-white">
-              <p><?php echo htmlspecialchars($wallpaper6['description']); ?></p>
-            </div>
-
-            <div class="watch-now-lotr position-relative">
-              <button class="btn btn-primary rounded-5 watch-now-small"
-                onclick="window.location.href='play-vid.php?video=<?php echo urlencode($wallpaper6['video']); ?>&type=movie_series&id=<?php echo $wallpaper6['movie_series_id']; ?>'">
-                <i class="fa-solid fa-play mx-1"></i>
-                <span>Watch Now</span>
-              </button>
-            </div>
-
-          </div>
-        <?php endif; ?>
-      </div>
-    </section>
-    <!-- END OF MOVIES 6 -->
+          <?php endif; ?>
+        </div>
+      </section>
+      <!-- END OF MOVIES 6 -->
   </main>
   <!-- END OF THE MAIN CONTENT -->
 

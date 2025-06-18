@@ -23,9 +23,8 @@ include('SignIn/db-con.php');
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="icon" href="../MOVIE-IMG/HEADER-IMG/CINEVAULT-LOGO.svg">
 </head>
-
 <body class="bg-dark" style="height: fit-content">
-  <!-- START OF HEADER -->
+  <!-- START OF HEADER -->: 1
   <header class="d-flex justify-content-between align-items-center mx-5 bg-transparent landing-page-header fixed-top">
     <div class="left-header ">
       <a class="navbar-brand fs-20 text-white fw-semibold ms-md-5" href="#">Cine<span
@@ -42,7 +41,7 @@ include('SignIn/db-con.php');
   <!-- START OF MAIN CONTENT -->
   <main>
 
-    <section class="section-movie-poster">
+    <section class="section-movie-poster" style="transform: translateY(-25px);">
       <img class="landing-page-img position-relative" src="ImagesLP/LandingPageWallpaper.jpg" alt="">
       <div class="movie-poster-text db-text-sec text-center position-absolute">
         <h1 class="endless-movies fs-56 fw-bold text-nowrap text-center">Endless movies, TV <span
@@ -237,9 +236,9 @@ include('SignIn/db-con.php');
 
     </section>
     <!-- END OF SECTION MORE REASONS TO JOIN -->
-
+            
     <!-- START OF FOOTER -->
-    <footer class="footer-landing-page">
+    <footer class="footer-lp">
       <div class="row db-text-sec">
 
         <div class="col-sm-6 col-md-3">
@@ -302,82 +301,10 @@ include('SignIn/db-con.php');
           </div>
         </div>
         <p class="pt-5 color-light-white">CineVault Philippines</p>
-      </div>
-    </footer>
+      </div> 
+    </footer> 
     <!-- END OF FOOTER -->
-
-    <!-- ========== LANDING PAGE MODAL ========== -->
-
-    <?php
-    $select_query = mysqli_query($con, "SELECT * FROM tbl_trending");
-
-    while ($row = mysqli_fetch_assoc($select_query)) {
-      $trending_id = $row['trending_id'];
-      $modal_poster = $row['modal_poster'];
-      $modal_poster_title = $row['modal_poster_title'];
-      $date_released = $row['date_released'];
-      $age_rating = $row['age_rating'];
-      $category = $row['category'];
-      $genre_1 = $row['genre_1'];
-      $genre_2 = $row['genre_2'];
-      $genre_3 = $row['genre_3'];
-      $description = $row['description'];
-
-      echo "
-      <div class='modal fade' id='modal-$trending_id' tabindex='-1' aria-labelledby='exampleModalLabel' aria-hidden='true'>
-        <div class='modal-dialog modal-dialog-centered modal-lg modal-dark border-3'>
-          <div class='modal-content bg-dark modals'>
-            
-            <div class='modal-body'>
-              <div class='modal-body-content'>
-                <div class='modal-pic-container m-0 position-relative'>
-                  <img class='w-100 position-relative rounded-3 m-0 p-0 sosyal-wallpaper' src='../DASHBOARD-HTML/TRENDING_IMAGES/$modal_poster' alt=''>
-                  <img class='poster-title-img' src='../DASHBOARD-HTML/TRENDING_IMAGES/$modal_poster_title' alt='' style='height: 52px;'  >
-                
-                  <button type='button' class='btn-close btn-close-white position-absolute modal-close-button' data-bs-dismiss='modal' aria-label='Close'></button>
-                </div>   
-
-                <div class='modal-body-text p-4 mt-1'>
-                  <div class='modal-text-ratings d-flex gap-1 text-white'>
-                    <p class='modal-text-rating'>$date_released</p>
-                    <p class='modal-text-rating'>$age_rating+</p>
-                    <p class='modal-text-rating'>$category</p>
-                    <p class='modal-text-rating'>$genre_1</p>";
-
-      if (!empty($genre_2)) {
-        echo "<p class='modal-text-rating'>$genre_2</p>";
-      }
-      if (!empty($genre_3)) {
-        echo "<p class='modal-text-rating'>$genre_3</p>";
-      }
-
-      echo "      
-                  </div>
-
-                  <p class='text-white'>$description</p>
-              
-                  <div>
-                    <button class='btn btn-primary fs-4 mb-3'>
-                      <a class='text-white text-decoration-none' href='SignIn/LP-Signup.php'>
-                        Get started <i class='fa-solid fa-chevron-right text-white'></i>
-                      </a>
-                    </button>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-            
-          </div>
-        </div>
-      </div>
-      ";
-    }
-
-    ?>
-
-    <!-- END OF MODALS -->
-
+  
   </main>
   <!-- END OF MAIN CONTENT -->
   <script>

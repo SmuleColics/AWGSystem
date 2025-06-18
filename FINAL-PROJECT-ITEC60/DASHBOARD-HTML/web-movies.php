@@ -239,7 +239,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["delete-btn-modal"])) {
           </div>
           <div class="modal-body px-4">
             <input type="hidden" name="delete-id" id="delete-id" required>
-            <h4 class="my-4 db-text-sec">Are you sure you want to delete this movie/series?</h4>
+            <h4 class="my-4 db-text-sec text-center">Are you sure you want to delete this movie/series?</h4>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-danger" data-bs-dismiss="modal">NO</button>

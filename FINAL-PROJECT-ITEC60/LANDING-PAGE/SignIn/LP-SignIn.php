@@ -5,12 +5,15 @@ session_start();
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sign In</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+    crossorigin="anonymous">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+    crossorigin="anonymous"></script>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="SignIn.css">
   <link rel="stylesheet" href="../../DASHBOARD-CSS/for-all.css">
@@ -21,7 +24,8 @@ session_start();
 <body class="bg-dark overflow-hidden">
   <header class="signin-header fixed-top d-flex align-items-center ms-5 fw-semibold">
     <div class="left-header fs-20">
-      <a class="navbar-brand fw-semibold db-text-sec ms-5"  href="../LandingPageMovie.php">Cine<span class="db-text-primary">Vault</span></a>
+      <a class="navbar-brand fw-semibold db-text-sec ms-5" href="../LandingPageMovie.php">Cine<span
+          class="db-text-primary">Vault</span></a>
     </div>
   </header>
 
@@ -90,28 +94,32 @@ session_start();
         <h1 class="signin-text db-text-sec text-start mb-4">Sign In</h1>
         <form class="signin-form db-text-sec d-flex flex-column gap-3" action="" method="post">
           <div class="d-grid input-container">
-            <input class="signin-inputs bg-transparent" type="text" name="email" placeholder="Email or mobile number" required
-            <?php if(!$valid_email) echo "style='border-color: red;'" ?>>
-            <label for="email">Email or mobile number</label>
-            <?php if(!$valid_email): ?>
+            <input class="signin-inputs bg-transparent" type="text" name="email" placeholder="Email or mobile number"
+              required <?php if (!$valid_email)
+                echo "style='border-color: red;'" ?>>
+              <label for="email">Email or mobile number</label>
+            <?php if (!$valid_email): ?>
               <p class="mb-2 mt-1 text-danger text-start" style="font-size: 14px;"><?php echo $email_error ?></p>
             <?php endif; ?>
           </div>
           <div class="d-grid input-container">
             <input class="signin-inputs bg-transparent" type="password" name="password" placeholder="Password" required
-            <?php if(!$valid_pass) echo "style='border-color: red;'" ?>>
-            <label for="password">Password</label>
-            <?php if(!$valid_pass): ?>
+              <?php if (!$valid_pass)
+                echo "style='border-color: red;'" ?>>
+              <label for="password">Password</label>
+            <?php if (!$valid_pass): ?>
               <p class="mb-2 mt-1 text-danger text-start" style="font-size: 14px;"><?php echo $pass_error ?></p>
             <?php endif; ?>
-            <?php if(!$valid_approval): ?>
+            <?php if (!$valid_approval): ?>
               <p class="mb-2 mt-1 text-danger text-start" style="font-size: 14px;"><?php echo $approval_error ?></p>
             <?php endif; ?>
           </div>
-          <div class="d-grid mb-4">
+          <div class="d-grid mb-1">
             <input class="btn db-bg-primary db-text-sec fs-20" type="submit" name="signin-button" value="Sign In">
           </div>
-
+          <p class="text-center">
+            <a href="forgot-pass.php" class="forgot-pass db-text-sec text-decoration-none">Forgot your password?</a>
+          </p>
           <p class="text-start">
             <span class="box-text db-text-sec">New to CineVault?</span>
             <a href="LP-SignUp.php" class="db-text-primary text-decoration-none signup-now">Sign up now.</a>
@@ -121,4 +129,5 @@ session_start();
     </section>
   </main>
 </body>
+
 </html>
