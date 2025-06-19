@@ -16,9 +16,25 @@ if ($id && $type === 'movie_series') {
         WHERE ms.movie_series_id = $id LIMIT 1
     ");
     if ($row = mysqli_fetch_assoc($result)) {
+        // Get the first available genre
         $genre = $row['genre_1'] ?: ($row['genre_2'] ?: $row['genre_3']);
         if ($genre) {
-            setcookie("recommended_genre", $genre, time() + 60 * 60 * 24 * 7, "/");
+            // Get current preferred genres from cookie
+            $preferred = [];
+            if (isset($_COOKIE['preferred_genres']) && $_COOKIE['preferred_genres'] !== '') {
+                $preferred = array_map('trim', explode(',', $_COOKIE['preferred_genres']));
+            }
+            // Remove if already present
+            $preferred = array_filter($preferred, function($g) use ($genre) {
+                return $g !== $genre;
+            });
+            // Add new genre at the end
+            $preferred[] = $genre;
+            // Keep only last 3
+            if (count($preferred) > 3) {
+                $preferred = array_slice($preferred, -3);
+            }
+            setcookie("preferred_genres", implode(',', $preferred), time() + 60 * 60 * 24 * 30, "/");
         }
     }
 }

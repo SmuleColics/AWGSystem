@@ -3,6 +3,8 @@
 include '../includes/db-connection.php';
 session_start();
 
+$user_id = $_SESSION['user_id'];
+
 // Notification logic for "New Arrivals" (most recent 5 movies/series)
 $notif_sql = "SELECT movie_series_id, title, date_posted 
               FROM tbl_movie_series 
@@ -127,7 +129,7 @@ if (isset($_GET['logout'])) {
               </button>
               <ul class="dropdown-menu dropdown-menu-dark mt-1 profile-dropdown" style="transform: translateX(-130px);">
                 <li class="dropdown-profile-top d-flex mb-1" style="height: 50px;">
-                  <a class="dropdown-item d-flex align-items-center" href="">
+                  <a href="user-view-profile.php" class="dropdown-item d-flex align-items-center" href="">
                     <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center ms-1"
                       style="height: 32px; width: 32px; transform: translateX(-9px);">
                       <i class="fa-solid fa-user db-text-sec fs-18"></i>

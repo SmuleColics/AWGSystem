@@ -5,27 +5,40 @@ include '../includes/db-connection.php';
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-// Use the correct path for your installation
 require '../LANDING-PAGE/PHPMailer/src/Exception.php';
 require '../LANDING-PAGE/PHPMailer/src/PHPMailer.php';
 require '../LANDING-PAGE/PHPMailer/src/SMTP.php';
 
-// Handle Approve POST
+// Handle Approve POST (for pending accounts)
 if (isset($_POST['approve_id'])) {
-  $signup_id = intval($_POST['approve_id']);
-  $update = mysqli_query($con, "UPDATE tbl_payment SET status='approved' WHERE signup_id=$signup_id");
+  $pending_id = intval($_POST['approve_id']);
+  $pending = mysqli_query($con, "SELECT * FROM tbl_signup_pending WHERE pending_id=$pending_id");
+  if ($row = mysqli_fetch_assoc($pending)) {
+    // Insert into tbl_signup_acc
+    $stmt = $con->prepare("INSERT INTO tbl_signup_acc (first_name, last_name, mobile_number, signup_email, signup_password) VALUES (?, ?, ?, ?, ?)");
+    $stmt->bind_param("sssss", $row['first_name'], $row['last_name'], $row['mobile_number'], $row['signup_email'], $row['signup_password']);
+    $stmt->execute();
+    $signup_id = $stmt->insert_id;
+    $stmt->close();
 
-  // Get the user's email
-  $result = mysqli_query($con, "SELECT signup_email FROM tbl_signup_acc WHERE signup_id=$signup_id");
-  if ($row = mysqli_fetch_assoc($result)) {
+    // Insert payment as approved
+    $payment_amount = 99;
+    $reference_no = $row['reference_no'];
+    $date_created = date('Y-m-d H:i:s');
+    mysqli_query($con, "INSERT INTO tbl_payment (signup_id, payment_amount, reference_no, date_created, status) VALUES ($signup_id, $payment_amount, '$reference_no', '$date_created', 'approved')");
+
+    // Remove from pending
+    mysqli_query($con, "DELETE FROM tbl_signup_pending WHERE pending_id=$pending_id");
+
+    // Send approval email
     $to = $row['signup_email'];
     $mail = new PHPMailer(true);
     try {
       $mail->isSMTP();
       $mail->Host = 'smtp.gmail.com';
       $mail->SMTPAuth = true;
-      $mail->Username = 'oxy467777@gmail.com'; // Your Gmail address
-      $mail->Password = 'qnee ctax qhdw eebc';    // Your Gmail App Password
+      $mail->Username = 'oxy467777@gmail.com';
+      $mail->Password = 'qnee ctax qhdw eebc';
       $mail->SMTPSecure = 'ssl';
       $mail->Port = 465;
 
@@ -46,22 +59,21 @@ if (isset($_POST['approve_id'])) {
   }
 }
 
-// Handle Deny POST
+// Handle Deny POST (for pending accounts)
 if (isset($_POST['deny_id'])) {
-  $signup_id = intval($_POST['deny_id']);
-  $update = mysqli_query($con, "UPDATE tbl_payment SET status='denied' WHERE signup_id=$signup_id");
-
-  // Get the user's email
-  $result = mysqli_query($con, "SELECT signup_email FROM tbl_signup_acc WHERE signup_id=$signup_id");
-  if ($row = mysqli_fetch_assoc($result)) {
+  $pending_id = intval($_POST['deny_id']);
+  $pending = mysqli_query($con, "SELECT * FROM tbl_signup_pending WHERE pending_id=$pending_id");
+  if ($row = mysqli_fetch_assoc($pending)) {
     $to = $row['signup_email'];
+    mysqli_query($con, "DELETE FROM tbl_signup_pending WHERE pending_id=$pending_id");
+
     $mail = new PHPMailer(true);
     try {
       $mail->isSMTP();
       $mail->Host = 'smtp.gmail.com';
       $mail->SMTPAuth = true;
-      $mail->Username = 'oxy467777@gmail.com'; // Your Gmail address
-      $mail->Password = 'qnee ctax qhdw eebc';    // Your Gmail App Password
+      $mail->Username = 'oxy467777@gmail.com';
+      $mail->Password = 'qnee ctax qhdw eebc';
       $mail->SMTPSecure = 'ssl';
       $mail->Port = 465;
 
@@ -82,7 +94,7 @@ if (isset($_POST['deny_id'])) {
   }
 }
 
-// Handle Archive (Delete) POST
+// Handle Archive (Delete) POST (for already approved accounts)
 if (isset($_POST['modal-delete-button'])) {
   $delete_id = (int) $_POST['delete-id'];
   $archive_query = mysqli_query($con, "UPDATE tbl_signup_acc SET is_archived=1 WHERE signup_id=$delete_id");
@@ -99,31 +111,23 @@ if (isset($_POST['modal-delete-button'])) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard Company Profile</title>
-  <!-- ========== CSS LINK ========== -->
+  <title>Signup Accounts</title>
   <link rel="stylesheet" href="../DASHBOARD-CSS/dashboard.css">
-  <!-- ===== DATA TABLES CDN ===== -->
   <link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.bootstrap5.min.css">
-  <!-- ========== Bootstrap 5.3 CSS  ========== -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
   <style>
     .sidebar-content-item:nth-child(4) {
       background-color: var(--dashboard-primary);
     }
-
     .sidebar-collapse-acc:nth-child(1) {
       background-color: var(--dashboard-primary);
     }
-
     .truncate-text {
       max-width: 200px;
-      /* Adjust as needed */
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-
     .bg-primary {
       background: #607BEC;
     }
@@ -132,10 +136,10 @@ if (isset($_POST['modal-delete-button'])) {
 
 <body>
   <main class="container-lg p-0 overflow-hidden">
-    <div class="me-3 mt-3 p-0 ms-md-2 ms-0 w-auto w-md-auto d-flex justify-content-end  ">
+    <div class="me-3 mt-3 p-0 ms-md-2 ms-0 w-auto w-md-auto d-flex justify-content-end">
       <a href="archive-accounts.php" class="btn db-bg-primary db-text-sec" id="add-movie-btn">Archive Accounts</a>
     </div>
-    <!-- ========== SIGN UP ACCOUNTS SECTION ========== -->
+    <!-- ========== SIGN UP ACCOUNTS SECTION (APPROVED/DENIED) ========== -->
     <section class="signup-accounts-section text-left p-3">
       <div class="card bg-dark">
         <div class="card-body">
@@ -148,34 +152,49 @@ if (isset($_POST['modal-delete-button'])) {
           </div>
 
           <div class="table-responsive mt-2">
-            <table class="table table-hover display" id="table-signup-acc">
+            <table class="table table-hover display"  id="table-signup-acc">
               <thead>
                 <tr>
                   <th class="db-text-primary text-align-left" scope="col">#</th>
+                  <th class="db-text-primary" scope="col">First Name</th>
+                  <th class="db-text-primary" scope="col">Last Name</th>
+                  <th class="db-text-primary" scope="col">Mobile</th>
                   <th class="db-text-primary" scope="col">Email</th>
-                  <th class="db-text-primary" scope="col">Cash Tendered</th>
-                  <th class="db-text-primary" scope="col">Reference No.</th>
-                  <th class="db-text-primary" scope="col">Date Created</th>
+                  <th class="db-text-primary text-start" scope="col">Cash Tendered</th>
+                  <th class="db-text-primary text-start" scope="col">Reference No.</th>
+                  <th class="db-text-primary text-start" scope="col">Date Created</th>
                   <th class="db-text-primary" scope="col">Status</th>
-                  <th class="db-text-primary" scope="col">Approve/Deny</th>
                   <th class="db-text-primary" scope="col">Delete</th>
                 </tr>
               </thead>
               <tbody>
                 <?php
-                $result = mysqli_query($con, "SELECT s.signup_id, s.signup_email, p.payment_amount, p.reference_no, p.date_created, p.status 
-                FROM tbl_signup_acc AS s 
-                JOIN tbl_payment AS p ON s.signup_id = p.signup_id 
-                WHERE s.is_archived=0");
+                $result = mysqli_query($con, "
+                  SELECT 
+                    s.signup_id AS id,
+                    s.first_name,
+                    s.last_name,
+                    s.mobile_number,
+                    s.signup_email,
+                    p.payment_amount,
+                    p.reference_no,
+                    p.date_created,
+                    p.status
+                  FROM tbl_signup_acc AS s
+                  JOIN tbl_payment AS p ON s.signup_id = p.signup_id
+                  WHERE s.is_archived=0
+                ");
                 while ($row = mysqli_fetch_assoc($result)) {
-                  $signup_id = $row['signup_id'];
-                  $signup_email = $row['signup_email'];
+                  $id = $row['id'];
                   $status = $row['status'];
                   ?>
                   <tr>
-                    <th class="db-text-primary text-align-left" scope="row"><?php echo $signup_id ?></th>
-                    <td><?php echo htmlspecialchars($signup_email) ?></td>
-                    <td class="text-center"><?php echo $row['payment_amount'] ?></td>
+                    <th class="db-text-primary text-align-left" scope="row"><?php echo $id ?></th>
+                    <td><?php echo htmlspecialchars($row['first_name']) ?></td>
+                    <td><?php echo htmlspecialchars($row['last_name']) ?></td>
+                    <td><?php echo htmlspecialchars($row['mobile_number']) ?></td>
+                    <td><?php echo htmlspecialchars($row['signup_email']) ?></td>
+                    <td class="text-center"><?php echo htmlspecialchars($row['payment_amount']) ?></td>
                     <td class="text-center"><?php echo htmlspecialchars($row['reference_no']) ?></td>
                     <td><?php echo $row['date_created'] ?></td>
                     <td>
@@ -192,24 +211,70 @@ if (isset($_POST['modal-delete-button'])) {
                       ?>
                     </td>
                     <td>
-                      <?php if ($status === 'pending'): ?>
-                        <form method="post" style="display:inline;">
-                          <input type="hidden" name="approve_id" value="<?php echo $signup_id; ?>">
-                          <button type="submit" class="btn btn-success btn-sm">Approve</button>
-                        </form>
-                        <form method="post" style="display:inline;">
-                          <input type="hidden" name="deny_id" value="<?php echo $signup_id; ?>">
-                          <button type="submit" class="btn btn-danger btn-sm">Deny</button>
-                        </form>
-                      <?php else: ?>
-                        <span>-</span>
-                      <?php endif; ?>
-                    </td>
-                    <td>
-                      <button class="btn text-white p-0 border-0 delete-btn" data-delete-id="<?php echo $signup_id ?>"
+                      <button class="btn text-white p-0 border-0 delete-btn" data-delete-id="<?php echo $id ?>"
                         data-bs-toggle="modal" data-bs-target="#signupDeleteModal">
                         <i class="ps-3 fa-solid fa-delete-left text-danger ps-2"></i>
                       </button>
+                    </td>
+                  </tr>
+                <?php } ?>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== PENDING SIGN UP ACCOUNTS SECTION ========== -->
+    <section class="signup-accounts-section text-left p-3">
+      <div class="card bg-dark ">
+        <div class="card-body">
+
+          <div class="table-task-top db-text-sec">
+            <div class="py-2 ps-3">
+              <p class="m-0 fs-20">Pending Signup Accounts</p>
+              <p class="m-0 fs-14" style="transform: translateY(-2px)">Accounts awaiting admin approval</p>
+            </div>
+          </div>
+
+          <div class="table-responsive mt-2">
+            <table class="table table-hover display" id="table-signup-pending">
+              <thead>
+                <tr>
+                  <th class="db-text-primary text-align-left" scope="col">#</th>
+                  <th class="db-text-primary" scope="col">First Name</th>
+                  <th class="db-text-primary" scope="col">Last Name</th>
+                  <th class="db-text-primary" scope="col">Mobile</th>
+                  <th class="db-text-primary" scope="col">Email</th>
+                  <th class="db-text-primary" scope="col">Reference No.</th>
+                  <th class="db-text-primary" scope="col">Date Created</th>
+                  <th class="db-text-primary" scope="col">Approve/Deny</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php
+                $pending_result = mysqli_query($con, "SELECT * FROM tbl_signup_pending");
+                while ($row = mysqli_fetch_assoc($pending_result)) {
+                  $pending_id = $row['pending_id'];
+                  ?>
+                  <tr>
+                    <th class="db-text-primary text-align-left" scope="row"><?php echo $pending_id ?></th>
+                    <td><?php echo htmlspecialchars($row['first_name']) ?></td>
+                    <td><?php echo htmlspecialchars($row['last_name']) ?></td>
+                    <td><?php echo htmlspecialchars($row['mobile_number']) ?></td>
+                    <td><?php echo htmlspecialchars($row['signup_email']) ?></td>
+                    <td><?php echo htmlspecialchars($row['reference_no']) ?></td>
+                    <td><?php echo $row['date_created'] ?></td>
+                    <td>
+                      <form method="post" style="display:inline;">
+                        <input type="hidden" name="approve_id" value="<?php echo $pending_id; ?>">
+                        <button type="submit" class="btn btn-success btn-sm">Approve</button>
+                      </form>
+                      <form method="post" style="display:inline;">
+                        <input type="hidden" name="deny_id" value="<?php echo $pending_id; ?>">
+                        <button type="submit" class="btn btn-danger btn-sm">Deny</button>
+                      </form>
                     </td>
                   </tr>
                 <?php } ?>
@@ -229,45 +294,4 @@ if (isset($_POST['modal-delete-button'])) {
       <div class="modal-content">
         <div class="modal-header d-flex justify-content-between">
           <h1 class="modal-title fs-5 db-text-sec" id="staticBackdropLabel">Archive Signup Account</h1>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <form action="" method="post">
-          <input type="hidden" name="delete-id" id="delete-id">
-          <div class="modal-body">
-            <h3 class="db-text-sec text-center m-0 py-4">Are you sure you want to Delete this account?</h3>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            <button type="submit" name="modal-delete-button" class="btn btn-danger">Archive</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!--  ========== DATA TABLES CDN  ========== -->
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
-  <script src="https://cdn.datatables.net/2.2.2/js/dataTables.bootstrap5.min.js"></script>
-
-  <script>
-    $(document).ready(function () {
-      $('.delete-btn').on('click', function () {
-        var id = $(this).data('delete-id');
-        $('#delete-id').val(id);
-      });
-    });
-  </script>
-  <script>
-    new DataTable('#table-signup-acc', {
-      pagingType: 'simple_numbers',
-      responsive: true,
-      language: {
-        search: '_INPUT_',
-        searchPlaceholder: 'Search...'
-      }
-    });
-  </script>
-</body>
-
-</html>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss

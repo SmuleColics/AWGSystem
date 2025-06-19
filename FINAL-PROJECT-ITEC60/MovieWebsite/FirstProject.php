@@ -18,6 +18,39 @@ include 'CineVault-header.php';
   <link rel="stylesheet" href="FirstProject.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .genre-btn-modal.selected {
+      background: #607BEC !important;
+      color: #fff !important;
+      border-color: #607BEC !important;
+    }
+
+    .genre-btn-modal.shake {
+      animation: shake 0.3s;
+    }
+
+    @keyframes shake {
+      0% {
+        transform: translateX(0);
+      }
+
+      25% {
+        transform: translateX(-5px);
+      }
+
+      50% {
+        transform: translateX(5px);
+      }
+
+      75% {
+        transform: translateX(-5px);
+      }
+
+      100% {
+        transform: translateX(0);
+      }
+    }
+  </style>
 
 <body class="bg-dark">
 
@@ -1205,41 +1238,48 @@ include 'CineVault-header.php';
     <?php
     $recommended_items = [];
     $show_based_on_genre = false;
-    $genre_for_recommend = '';
+    $genres_for_recommend = [];
 
-    if (isset($_COOKIE['recommended_genre']) && $_COOKIE['recommended_genre'] !== '') {
-      $genre_for_recommend = mysqli_real_escape_string($con, $_COOKIE['recommended_genre']);
+    if (isset($_COOKIE['preferred_genres']) && $_COOKIE['preferred_genres'] !== '') {
+      $genres_for_recommend = array_map('trim', explode(',', $_COOKIE['preferred_genres']));
       $show_based_on_genre = true;
-      $recommend_query = mysqli_query(
-        $con,
-        "SELECT ms.*, g1.genre_name AS genre_1, g2.genre_name AS genre_2, g3.genre_name AS genre_3
-      FROM tbl_movie_series ms
-      LEFT JOIN tbl_movie_series_genre g1 ON ms.genre_id1 = g1.genre_id
-      LEFT JOIN tbl_movie_series_genre g2 ON ms.genre_id2 = g2.genre_id
-      LEFT JOIN tbl_movie_series_genre g3 ON ms.genre_id3 = g3.genre_id
-      WHERE (g1.genre_name = '$genre_for_recommend'
-          OR g2.genre_name = '$genre_for_recommend'
-          OR g3.genre_name = '$genre_for_recommend')
-        AND ms.poster NOT LIKE '%HomeCarousel%'
-        AND ms.poster NOT LIKE '%MovieCarousel%'
-        AND ms.poster NOT LIKE '%SeriesCarousel%'
-        AND ms.poster NOT LIKE '%HomeWallpaper%'
-      ORDER BY RAND() LIMIT 8"
-      );
 
-    } else {
+      // Build WHERE clause for multiple genres
+      $genre_conditions = [];
+      foreach ($genres_for_recommend as $genre) {
+        $genre = mysqli_real_escape_string($con, $genre);
+        $genre_conditions[] = "(g1.genre_name = '$genre' OR g2.genre_name = '$genre' OR g3.genre_name = '$genre')";
+      }
+      $where_genres = implode(' OR ', $genre_conditions);
+
       $recommend_query = mysqli_query(
         $con,
         "SELECT ms.*, g1.genre_name AS genre_1, g2.genre_name AS genre_2, g3.genre_name AS genre_3
-      FROM tbl_movie_series ms
-      LEFT JOIN tbl_movie_series_genre g1 ON ms.genre_id1 = g1.genre_id
-      LEFT JOIN tbl_movie_series_genre g2 ON ms.genre_id2 = g2.genre_id
-      LEFT JOIN tbl_movie_series_genre g3 ON ms.genre_id3 = g3.genre_id
-      WHERE ms.poster NOT LIKE '%HomeCarousel%'
-        AND ms.poster NOT LIKE '%MovieCarousel%'
-        AND ms.poster NOT LIKE '%SeriesCarousel%'
-        AND ms.poster NOT LIKE '%HomeWallpaper%'
-      ORDER BY RAND() LIMIT 8"
+        FROM tbl_movie_series ms
+        LEFT JOIN tbl_movie_series_genre g1 ON ms.genre_id1 = g1.genre_id
+        LEFT JOIN tbl_movie_series_genre g2 ON ms.genre_id2 = g2.genre_id
+        LEFT JOIN tbl_movie_series_genre g3 ON ms.genre_id3 = g3.genre_id
+        WHERE ($where_genres)
+          AND ms.poster NOT LIKE '%HomeCarousel%'
+          AND ms.poster NOT LIKE '%MovieCarousel%'
+          AND ms.poster NOT LIKE '%SeriesCarousel%'
+          AND ms.poster NOT LIKE '%HomeWallpaper%'
+        ORDER BY RAND() LIMIT 8"
+      );
+    } else {
+      // Fallback: random picks
+      $recommend_query = mysqli_query(
+        $con,
+        "SELECT ms.*, g1.genre_name AS genre_1, g2.genre_name AS genre_2, g3.genre_name AS genre_3
+        FROM tbl_movie_series ms
+        LEFT JOIN tbl_movie_series_genre g1 ON ms.genre_id1 = g1.genre_id
+        LEFT JOIN tbl_movie_series_genre g2 ON ms.genre_id2 = g2.genre_id
+        LEFT JOIN tbl_movie_series_genre g3 ON ms.genre_id3 = g3.genre_id
+        WHERE ms.poster NOT LIKE '%HomeCarousel%'
+          AND ms.poster NOT LIKE '%MovieCarousel%'
+          AND ms.poster NOT LIKE '%SeriesCarousel%'
+          AND ms.poster NOT LIKE '%HomeWallpaper%'
+        ORDER BY RAND() LIMIT 8"
       );
     }
     while ($row = mysqli_fetch_assoc($recommend_query)) {
@@ -1251,9 +1291,9 @@ include 'CineVault-header.php';
       <div class="popular-container mt-4">
         <div class="popular-top mb-4">
           <p class="action-movies-text text-white fs-24 fw-bold">
-            Recommended for
-            You<?php if ($show_based_on_genre)
-              echo " <span class='fs-6 ms-1 text-primary'>(Based on $genre_for_recommend)</span>"; ?>
+            Recommended for You
+            <?php if ($show_based_on_genre)
+              echo "<span class='fs-6 ms-1 text-primary'>(Based on " . htmlspecialchars(implode(', ', $genres_for_recommend)) . ")</span>"; ?>
           </p>
         </div>
         <div class="position-relative" style="width: 100%;">
@@ -1489,6 +1529,55 @@ include 'CineVault-header.php';
   </main>
   <!-- END OF THE MAIN CONTENT -->
 
+  <?php
+
+  // Fetch genres
+  $genres = [];
+  $result = mysqli_query($con, "SELECT genre_id, genre_name FROM tbl_movie_series_genre ORDER BY genre_name ASC");
+  while ($row = mysqli_fetch_assoc($result)) {
+    $genres[] = $row;
+  }
+  ?>
+
+  <!-- Genre Selection Modal -->
+  <div class="modal fade" id="genreModal" tabindex="-1" aria-labelledby="genreModalLabel" aria-hidden="true"
+    data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content bg-dark text-white">
+        <div class="modal-header">
+          <h5 class="modal-title" id="genreModalLabel">Choose 3 genres you like</h5>
+        </div>
+        <form id="genre-form" method="post">
+          <div class="modal-body my-3">
+            <div class="d-flex flex-wrap justify-content-center gap-2 gap-md-3">
+              <?php
+              $btn_styles = ['btn-outline-primary', 'btn-outline-light'];
+              $i = 0;
+              foreach ($genres as $genre):
+                $style = $btn_styles[$i % 2];
+                $genre_name = htmlspecialchars($genre['genre_name']);
+                $genre_id = (int) $genre['genre_id'];
+                ?>
+                <button type="button" class="btn <?php echo $style; ?> rounded-5 category-btn genre-btn-modal"
+                  data-genre-id="<?php echo $genre_id; ?>" data-genre-name="<?php echo $genre_name; ?>">
+                  <?php echo $genre_name; ?>
+                </button>
+                <?php
+                $i++;
+              endforeach;
+              ?>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-primary" id="submit-btn" disabled>Continue</button>
+          </div>
+          <!-- Hidden checkboxes for form submission -->
+          <div id="selected-genres"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <footer>
     <div class="footer text-white d-flex justify-content-between mx-5 align-items-center">
       <p class="footer-long-text">This site does not store any files on it's server, It only links to the media which is
@@ -1499,7 +1588,62 @@ include 'CineVault-header.php';
 
 </body>
 
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    function getCookie(name) {
+      let match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+      return match ? match[2] : null;
+    }
 
+    if (!getCookie('preferred_genres')) {
+      var genreModal = new bootstrap.Modal(document.getElementById('genreModal'));
+      genreModal.show();
+    }
+
+    const genreBtns = document.querySelectorAll('.genre-btn-modal');
+    const selectedGenresDiv = document.getElementById('selected-genres');
+    let selectedGenres = [];
+
+    genreBtns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const genreName = btn.getAttribute('data-genre-name');
+        if (btn.classList.contains('selected')) {
+          btn.classList.remove('selected');
+          selectedGenres = selectedGenres.filter(g => g !== genreName);
+        } else {
+          if (selectedGenres.length >= 3) {
+            // Optionally show a message or shake effect
+            btn.classList.add('shake');
+            setTimeout(() => btn.classList.remove('shake'), 300);
+            return;
+          }
+          btn.classList.add('selected');
+          selectedGenres.push(genreName);
+        }
+        // Update hidden checkboxes for form submission
+        selectedGenresDiv.innerHTML = '';
+        selectedGenres.forEach(function (genre) {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = 'genres[]';
+          input.value = genre;
+          selectedGenresDiv.appendChild(input);
+        });
+        document.getElementById('submit-btn').disabled = selectedGenres.length !== 3;
+      });
+    });
+
+    document.getElementById('genre-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (selectedGenres.length !== 3) {
+        alert('Please select exactly 3 genres.');
+        return;
+      }
+      document.cookie = "preferred_genres=" + selectedGenres.join(',') + "; path=/; max-age=" + (60 * 60 * 24 * 30);
+      location.reload();
+    });
+  });
+</script>
 <script src="video-player.js"></script>
 <script src="poster-slide.js"></script>
 

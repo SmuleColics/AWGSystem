@@ -36,8 +36,8 @@ $sql = mysqli_query($con, "
   WHERE p.status = 'approved' AND s.is_archived = 0
 ");
 while ($row_day = mysqli_fetch_assoc($sql)) {
-    $day_index = date('w', strtotime($row_day['paydate']));
-    $users_quantity[$day_index]++;
+  $day_index = date('w', strtotime($row_day['paydate']));
+  $users_quantity[$day_index]++;
 }
 $labels = array("Sun", "Mon", "Tues", "Wed", "Thurs", "Fri", "Sat");
 
@@ -45,7 +45,7 @@ $labels = array("Sun", "Mon", "Tues", "Wed", "Thurs", "Fri", "Sat");
 $genres = [];
 $genreResult = mysqli_query($con, "SELECT genre_id, genre_name FROM tbl_movie_series_genre ORDER BY genre_name");
 while ($rowg = mysqli_fetch_assoc($genreResult)) {
-    $genres[$rowg['genre_id']] = $rowg['genre_name'];
+  $genres[$rowg['genre_id']] = $rowg['genre_name'];
 }
 $bar_labels = array_values($genres);
 
@@ -54,14 +54,14 @@ $pie_labels = [];
 $pie_data = [];
 $pie_colors = [];
 $genre_color_map = [
-    "Action"    => "rgb(96, 123, 236)",  // Base color
-    "Comedy"    => "rgb(106, 133, 246)", // Slightly brighter
-    "Drama"     => "rgb(86, 113, 226)",  // Slightly darker
-    "Thriller"  => "rgb(91, 118, 231)",  // Slight variation
-    "Romance"   => "rgb(101, 128, 241)", // Softened tone
-    "Sci-Fi"    => "rgb(111, 138, 251)", // Lighter and cooler
-    "Horror"    => "rgb(76, 103, 216)",  // Darker, moodier shade
-    "Adventure" => "rgb(116, 143, 236)", // Bright and vibrant
+  "Action" => "rgb(96, 123, 236)",  // Base color
+  "Comedy" => "rgb(106, 133, 246)", // Slightly brighter
+  "Drama" => "rgb(86, 113, 226)",  // Slightly darker
+  "Thriller" => "rgb(91, 118, 231)",  // Slight variation
+  "Romance" => "rgb(101, 128, 241)", // Softened tone
+  "Sci-Fi" => "rgb(111, 138, 251)", // Lighter and cooler
+  "Horror" => "rgb(76, 103, 216)",  // Darker, moodier shade
+  "Adventure" => "rgb(116, 143, 236)", // Bright and vibrant
 ];
 
 // Sum views for each genre (for all movies, using genre1/2/3)
@@ -72,32 +72,33 @@ $viewGenreQuery = mysqli_query($con, "
   WHERE category = 'Movie'
 ");
 while ($m = mysqli_fetch_assoc($viewGenreQuery)) {
-    foreach (['genre_id1','genre_id2','genre_id3'] as $gid) {
-        $genre_id = $m[$gid];
-        if ($genre_id && isset($genres[$genre_id])) {
-            if (!isset($view_genre_counts[$genre_id])) $view_genre_counts[$genre_id] = 0;
-            $view_genre_counts[$genre_id] += (int)$m['views'];
-        }
+  foreach (['genre_id1', 'genre_id2', 'genre_id3'] as $gid) {
+    $genre_id = $m[$gid];
+    if ($genre_id && isset($genres[$genre_id])) {
+      if (!isset($view_genre_counts[$genre_id]))
+        $view_genre_counts[$genre_id] = 0;
+      $view_genre_counts[$genre_id] += (int) $m['views'];
     }
+  }
 }
 arsort($view_genre_counts);
-foreach (array_slice($view_genre_counts,0,5,true) as $gid=>$cnt) {
-    $pie_labels[] = $genres[$gid];
-    $pie_data[] = $cnt;
-    $pie_colors[] = $genre_color_map[$genres[$gid]] ?? "rgb(".rand(50,200).",".rand(100,220).",".rand(180,255).")";
+foreach (array_slice($view_genre_counts, 0, 5, true) as $gid => $cnt) {
+  $pie_labels[] = $genres[$gid];
+  $pie_data[] = $cnt;
+  $pie_colors[] = $genre_color_map[$genres[$gid]] ?? "rgb(" . rand(50, 200) . "," . rand(100, 220) . "," . rand(180, 255) . ")";
 }
 if (empty($pie_labels)) {
-    $pie_labels = ['Action', 'Comedy', 'Drama'];
-    $pie_data = [5, 10, 8];
-    $pie_colors = ['rgb(96, 126, 188)','rgb(120, 170, 250)','rgb(80, 140, 220)'];
+  $pie_labels = ['Action', 'Comedy', 'Drama'];
+  $pie_data = [5, 10, 8];
+  $pie_colors = ['rgb(96, 126, 188)', 'rgb(120, 170, 250)', 'rgb(80, 140, 220)'];
 }
 
 // BAR CHART: Number of movies and series per genre (all genres shown)
 $bar_movie_data = [];
 $bar_series_data = [];
-foreach ($genres as $gid=>$gname) {
-    $bar_movie_data[$gname] = 0;
-    $bar_series_data[$gname] = 0;
+foreach ($genres as $gid => $gname) {
+  $bar_movie_data[$gname] = 0;
+  $bar_series_data[$gname] = 0;
 }
 
 // Count number of movies per genre (any of the 3 genre columns)
@@ -107,12 +108,12 @@ $movieGenreQuery = mysqli_query($con, "
   WHERE category = 'Movie'
 ");
 while ($m = mysqli_fetch_assoc($movieGenreQuery)) {
-    foreach (['genre_id1','genre_id2','genre_id3'] as $gid) {
-        $genre_id = $m[$gid];
-        if ($genre_id && isset($genres[$genre_id])) {
-            $bar_movie_data[$genres[$genre_id]]++;
-        }
+  foreach (['genre_id1', 'genre_id2', 'genre_id3'] as $gid) {
+    $genre_id = $m[$gid];
+    if ($genre_id && isset($genres[$genre_id])) {
+      $bar_movie_data[$genres[$genre_id]]++;
     }
+  }
 }
 
 // Count number of series per genre (any of the 3 genre columns)
@@ -122,24 +123,24 @@ $seriesGenreQuery = mysqli_query($con, "
   WHERE category = 'Series'
 ");
 while ($m = mysqli_fetch_assoc($seriesGenreQuery)) {
-    foreach (['genre_id1','genre_id2','genre_id3'] as $gid) {
-        $genre_id = $m[$gid];
-        if ($genre_id && isset($genres[$genre_id])) {
-            $bar_series_data[$genres[$genre_id]]++;
-        }
+  foreach (['genre_id1', 'genre_id2', 'genre_id3'] as $gid) {
+    $genre_id = $m[$gid];
+    if ($genre_id && isset($genres[$genre_id])) {
+      $bar_series_data[$genres[$genre_id]]++;
     }
+  }
 }
 $bar_colors = [];
 foreach (array_keys($bar_movie_data) as $gname) {
-    $bar_colors[] = $genre_color_map[$gname] ?? "rgb(".rand(60,180).",".rand(120,180).",".rand(180,255).")";
+  $bar_colors[] = $genre_color_map[$gname] ?? "rgb(" . rand(60, 180) . "," . rand(120, 180) . "," . rand(180, 255) . ")";
 }
 
 // BAR CHART: Combine views of movies and series per genre
 $bar_views_movie_data = [];
 $bar_views_series_data = [];
-foreach ($genres as $gid=>$gname) {
-    $bar_views_movie_data[$gname] = 0;
-    $bar_views_series_data[$gname] = 0;
+foreach ($genres as $gid => $gname) {
+  $bar_views_movie_data[$gname] = 0;
+  $bar_views_series_data[$gname] = 0;
 }
 
 // Movie views per genre
@@ -149,12 +150,12 @@ $movieViewsQuery = mysqli_query($con, "
   WHERE category = 'Movie'
 ");
 while ($m = mysqli_fetch_assoc($movieViewsQuery)) {
-    foreach (['genre_id1','genre_id2','genre_id3'] as $gid) {
-        $genre_id = $m[$gid];
-        if ($genre_id && isset($genres[$genre_id])) {
-            $bar_views_movie_data[$genres[$genre_id]] += (int)$m['views'];
-        }
+  foreach (['genre_id1', 'genre_id2', 'genre_id3'] as $gid) {
+    $genre_id = $m[$gid];
+    if ($genre_id && isset($genres[$genre_id])) {
+      $bar_views_movie_data[$genres[$genre_id]] += (int) $m['views'];
     }
+  }
 }
 // Series views per genre
 $seriesViewsQuery = mysqli_query($con, "
@@ -163,12 +164,12 @@ $seriesViewsQuery = mysqli_query($con, "
   WHERE category = 'Series'
 ");
 while ($m = mysqli_fetch_assoc($seriesViewsQuery)) {
-    foreach (['genre_id1','genre_id2','genre_id3'] as $gid) {
-        $genre_id = $m[$gid];
-        if ($genre_id && isset($genres[$genre_id])) {
-            $bar_views_series_data[$genres[$genre_id]] += (int)$m['views'];
-        }
+  foreach (['genre_id1', 'genre_id2', 'genre_id3'] as $gid) {
+    $genre_id = $m[$gid];
+    if ($genre_id && isset($genres[$genre_id])) {
+      $bar_views_series_data[$genres[$genre_id]] += (int) $m['views'];
     }
+  }
 }
 ?>
 
@@ -192,6 +193,9 @@ while ($m = mysqli_fetch_assoc($seriesViewsQuery)) {
 
 <body>
   <main class="container-lg p-0 overflow-hidden">
+    <div class="me-3 mt-3 p-0 ms-md-2 ms-0 w-auto w-md-auto d-flex justify-content-end">
+      <a class="btn db-bg-primary db-text-sec" href="../libs/generate-payment-report.php" target="_blank"><i class="fa-solid fa-download"></i> Generate Report</a>
+    </div>
     <!-- CARD SECTION -->
     <section class="card-section p-3">
       <div class="row g-3">
@@ -232,7 +236,9 @@ while ($m = mysqli_fetch_assoc($seriesViewsQuery)) {
                 </div>
                 <div class="card-top-right w-100 text-end mt-3 db-text-sec">
                   <h6 class="card-subtitle fs-14 mb-1">Revenue</h6>
-                  <h5 class="card-title fs-24">₱<?php echo isset($revenue[0]) && $revenue[0] !== null ? number_format($revenue[0], 2) : '0.00'; ?></h5>
+                  <h5 class="card-title fs-24">
+                    ₱<?php echo isset($revenue[0]) && $revenue[0] !== null ? number_format($revenue[0], 2) : '0.00'; ?>
+                  </h5>
                 </div>
               </div>
               <div class="card-divider my-3"></div>
@@ -255,7 +261,8 @@ while ($m = mysqli_fetch_assoc($seriesViewsQuery)) {
                 </div>
                 <div class="card-top-right w-100 text-end mt-3 db-text-sec">
                   <h6 class="card-subtitle fs-14 mb-1">Movies</h6>
-                  <h5 class="card-title fs-24"><?php echo isset($movie[0]) && $movie[0] !== null ? $movie[0] : 0; ?></h5>
+                  <h5 class="card-title fs-24"><?php echo isset($movie[0]) && $movie[0] !== null ? $movie[0] : 0; ?>
+                  </h5>
                 </div>
               </div>
               <div class="card-divider my-3"></div>
@@ -278,7 +285,8 @@ while ($m = mysqli_fetch_assoc($seriesViewsQuery)) {
                 </div>
                 <div class="card-top-right w-100 text-end mt-3 db-text-sec">
                   <h6 class="card-subtitle fs-14 mb-1">Series</h6>
-                  <h5 class="card-title fs-24"><?php echo isset($series[0]) && $series[0] !== null ? $series[0] : 0; ?></h5>
+                  <h5 class="card-title fs-24"><?php echo isset($series[0]) && $series[0] !== null ? $series[0] : 0; ?>
+                  </h5>
                 </div>
               </div>
               <div class="card-divider my-3"></div>
@@ -363,7 +371,8 @@ while ($m = mysqli_fetch_assoc($seriesViewsQuery)) {
             <div class="card-body">
               <div class="card-chart-top db-text-sec">
                 <h6 class="card-subtitle fs-18">Total Views per Genre (Movies & Series)</h6>
-                <h5 class="card-title text-start fs-14 db-text-secondary">Sum of all views for movies and series per genre</h5>
+                <h5 class="card-title text-start fs-14 db-text-secondary">Sum of all views for movies and series per
+                  genre</h5>
               </div>
               <div class="card-divider my-3"></div>
               <div class="card-chart-bottom db-text-secondary d-flex align-items-center gap-2 fs-14">
@@ -432,7 +441,7 @@ while ($m = mysqli_fetch_assoc($seriesViewsQuery)) {
         responsive: true,
         plugins: {
           tooltip: { enabled: true },
-          legend: { labels: { color: 'white' }},
+          legend: { labels: { color: 'white' } },
           title: {
             display: true,
             text: 'Most Viewed Movie Genres',
@@ -523,4 +532,5 @@ while ($m = mysqli_fetch_assoc($seriesViewsQuery)) {
     });
   </script>
 </body>
+
 </html>

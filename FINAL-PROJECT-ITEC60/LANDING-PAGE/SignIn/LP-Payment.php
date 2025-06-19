@@ -5,34 +5,33 @@ include 'db-con.php';
 $reference_error = "";
 $valid_reference = true;
 
-if (isset($_POST['confirm'])) {
-  $reference_no = mysqli_real_escape_string($con, $_POST['reference-no']);
+if (isset($_POST['confirm']) && isset($_SESSION['pending_id'])) {
+    $reference_no = mysqli_real_escape_string($con, $_POST['reference-no']);
+    $pending_id = $_SESSION['pending_id'];
 
-  $check_query = mysqli_query($con, "SELECT reference_no FROM tbl_payment WHERE reference_no = '$reference_no' LIMIT 1");
+    // Check for duplicate reference number in both pending and payment tables
+    $check_query = mysqli_query($con, "SELECT reference_no FROM tbl_payment WHERE reference_no = '$reference_no' LIMIT 1");
+    $check_pending = mysqli_query($con, "SELECT reference_no FROM tbl_signup_pending WHERE reference_no = '$reference_no' LIMIT 1");
 
-  if (mysqli_num_rows($check_query) > 0) {
-    $reference_error = "This reference number is already registered. Please double check it.";
-    $valid_reference = false;
-  }
+    if (mysqli_num_rows($check_query) > 0 || mysqli_num_rows($check_pending) > 0) {
+        $reference_error = "This reference number is already registered. Please double check it.";
+        $valid_reference = false;
+    }
 
-  if (isset($_SESSION['signup_id']) && $valid_reference) {
-    $signup_id = $_SESSION['signup_id'];
+    if ($valid_reference) {
+        // Save reference number to pending table
+        mysqli_query($con, "UPDATE tbl_signup_pending SET reference_no='$reference_no' WHERE pending_id=$pending_id");
 
-    $stmt = $con->prepare("INSERT INTO tbl_payment(signup_id, reference_no, status) VALUES (?, ?, 'pending')");
-    $stmt->bind_param("is", $signup_id, $reference_no);
-    $stmt->execute();
-    $stmt->close();
+        // Optionally, unset session to prevent resubmission
+        session_unset();
+        session_destroy();
 
-    // Optionally, unset session to prevent resubmission
-    session_unset();
-    session_destroy();
-
-    echo "<script>
-      alert('Please wait for your payment to be verified by the admin.');
-      window.location.href='../LandingPageMovie.php';
-    </script>";
-    exit;
-  }
+        echo "<script>
+            alert('Please wait for your payment to be verified by the admin.');
+            window.location.href='../LandingPageMovie.php';
+        </script>";
+        exit;
+    }
 }
 ?>
 

@@ -95,12 +95,13 @@ if (isset($_POST['admin-signin-btn'])) {
               <p class="mb-2 mt-1 text-danger text-start" style="font-size: 14px;"><?php echo $pass_error ?></p>
             <?php endif; ?>
           </div>
-
-          <div class="d-grid mb-4">
+          
+          <div class="d-grid">
             <input class="btn btn-primary fs-20" type="submit" name="admin-signin-btn" value="Sign In">
           </div>
-
-          <p class="text-start" style="padding-left: 28px;">
+          <div class="mb-4">
+            <a href="../LANDING-PAGE/SignIn/forgot-pass.php" class="text-white text-decoration-none" href="#" >Forgot Your Password?</a></div>
+          <p class="text-start text-white" style="padding-left: 28px;">
             <span class="box-text">New to CineVault?</span>
             <a href="admin-signup.php" class="text-decoration-none signup-now text-primary">Sign up now.</a>
           </p>
