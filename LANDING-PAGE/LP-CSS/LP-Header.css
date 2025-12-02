@@ -1,0 +1,42 @@
+body {
+  padding-top: 56px;
+}
+
+.awegreen-logo {
+  width: 40px;
+}
+
+ul li a {
+  font-size: 14px;
+}
+
+.nav-link:hover {
+  color: #16A249 !important;
+}
+
+.active {
+  color: #16A249;
+}
+
+.login-btn:hover {
+  background-color: #20c25b !important;
+}
+
+.navbar-collapse {
+  margin: 16px 0 !important;
+}
+
+.navbar-nav .nav-link.green-text {
+  color:  #16A249 !important;
+}
+
+.navbar-nav .nav-link {
+  color: #717A74;
+  transition: color 0.3s;
+}
+
+@media (min-width: 768px) { /* md breakpoint */
+  .navbar-collapse {
+    margin: 0 !important;
+  }
+}

@@ -1,0 +1,166 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap');
+
+:root {
+  --light-text: #717A74;
+  --semi-light: #ebf0ed;
+  --awegreen-color: #16A249;
+  --light-hover: #f2f2f2;
+  --light-bg: #f4f5f54C;
+}
+
+body {
+  font-family: 'Roboto', sans-serif !important;
+  margin-top: 55px !important;
+}
+
+/* Logos */
+.awegreen-logo {
+  width: 40px;
+}
+
+/* Profile pictures */
+.dashboard-pfp,
+.dashboard-dropdown-pfp {
+  width: 36px;
+  /* unify sizes */
+}
+
+/* Bell badge */
+.badge-bell {
+  top: 0;
+  right: -2px;
+  cursor: pointer;
+}
+
+/* Bell button */
+#button-bell {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: transparent;
+  /* default transparent */
+  color: #fff !important;
+  /* default white icon */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+/* Bell hover */
+#bell-container:hover #button-bell {
+  background-color: #fff !important;
+  /* green background on hover */
+}
+
+#bell-container:hover #button-bell .fa-bell {
+  color: #16A249 !important;
+  /* keep bell white on hover */
+}
+
+/* Dropdown text */
+.notif-text:hover {
+  cursor: default;
+}
+
+/* Profile icon container */
+.header-user {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.header-user .fa-user {
+  color: #16A249;
+  font-size: 18px;
+  position: relative;
+  top: -2px;
+}
+
+.green-text {
+  color: #16A249 !important;
+}
+
+/* Profile hover */
+.header-user:hover {
+  color: #20c25b !important;
+  background-color: #ebf0ed !important;
+}
+
+.view-profile-text {
+  margin-top: 4px;
+  margin-bottom: -6px;
+}
+
+/* Profile dropdown */
+.dropdown-item:hover {
+  background-color: #f2f2f2 !important;
+}
+
+.dropdown-item:active {
+  background-color: var(--awegreen-color) !important;
+}
+
+/* Nav links */
+.nav-link {
+  color: var(--semi-light) !important;
+  transition: color 0.3s;
+  font-size: 14px;
+}
+
+.nav-link:hover {
+  color: #fff !important;
+}
+
+.navbar-nav .nav-link.active {
+  color: #16A249;
+}
+
+/* Navbar adjustments */
+.navbar-collapse {
+  margin: 16px 0 !important;
+}
+
+.navbar-toggler {
+  border-color: #fff !important;
+}
+
+.navbar-toggler-icon {
+  background-image: url("data:image/svg+xml;charset=utf8,%3Csvg viewBox='0 0 30 30' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath stroke='white' stroke-width='3' stroke-linecap='round' stroke-miterlimit='10' d='M4 7h22M4 15h22M4 23h22'/%3E%3C/svg%3E") !important;
+}
+
+.offcanvas,
+.offcanvas-header,
+.offcanvas-body {
+  background-color: #16A249;
+}
+
+
+.offcanvas {
+
+  width: 250px !important;
+}
+
+
+.header-user {
+  width: 32px !important;
+  height: 32px !important;
+}
+
+@media (min-width: 768px) {
+  .navbar-collapse {
+    margin: 0 !important;
+  }
+
+  .header-user {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+
+}

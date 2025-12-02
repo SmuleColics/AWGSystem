@@ -1,0 +1,25 @@
+/* Animation Keyframes */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(40px);}
+  to {   opacity: 1; transform: none;}
+}
+
+@keyframes fadeInLeft {
+  from { opacity: 0; transform: translateX(-60px);}
+  to   { opacity: 1; transform: none;}
+}
+
+@keyframes fadeInRight {
+  from { opacity: 0; transform: translateX(60px);}
+  to   { opacity: 1; transform: none;}
+}
+
+/* Initial states */
+.animate-on-scroll        { opacity: 0; transform: translateY(40px); transition: opacity 0.6s, transform 0.6s;}
+.animate-left-on-scroll   { opacity: 0; transform: translateX(-60px); transition: opacity 0.6s, transform 0.6s;}
+.animate-right-on-scroll  { opacity: 0; transform: translateX(60px);  transition: opacity 0.6s, transform 0.6s;}
+
+/* Animated states */
+.animate-on-scroll.animated        { animation: fadeInUp 0.6s cubic-bezier(.75,-0.57,0,1.73) forwards;}
+.animate-left-on-scroll.animated   { animation: fadeInLeft 0.6s cubic-bezier(.75,-0.57,0,1.73) forwards;}
+.animate-right-on-scroll.animated  { animation: fadeInRight 0.6s cubic-bezier(.75,-0.57,0,1.73) forwards;}
