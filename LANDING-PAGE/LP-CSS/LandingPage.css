@@ -1,0 +1,257 @@
+/* ========== START OF HERO SECTION ==========  */
+.main-bg {
+  object-fit: cover;
+  height: 595px;
+  width: 100%;         /* Ensure it is full width */
+  filter: brightness(0.75); /* Alternative to opacity, preserves text clarity */
+  display: block;
+}
+
+.hero-sec-container {
+  background: rgba(0,0,0,0.52); /* less dark for elegance */
+  backdrop-filter: blur(3px);    /* "glass" effect for modern feel */
+  padding: 3rem 1.5rem;          /* space on all devices */
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18); /* soft shadow */
+}
+
+.hero-sec-container h1,
+.hero-sec-container p,
+.hero-sec-container .btn {
+  opacity: 0;
+  animation: fadeInHero 0.8s cubic-bezier(.62,.01,.48,1.06) forwards;
+}
+
+.hero-sec-container h1 { animation-delay: 0.1s; }
+.hero-sec-container p   { animation-delay: 0.2s; }
+.hero-sec-container .btn { animation-delay: 0.3s; }
+
+@keyframes fadeInHero {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: none; }
+}
+
+.hero-sec-container h1 {
+  font-size: 2.5rem;
+  text-shadow: 
+    0 0 5px white, 
+    0 0 8px white;
+}
+
+.hero-sec-container p {
+  font-size: 18px;
+}
+
+ /* ========== START OF ABOUT US SECTION ==========  */
+
+.about-stats {
+  font-size: 1.625rem;
+}
+
+.about-img-con img {
+  height: 180px;
+  width: 400px !important;
+}
+
+.manlift-img {
+  object-position: mid;
+}
+
+.awe-history {
+  font-size: 20px;
+}
+
+.img-container {
+  margin-top: 24px;
+}
+
+ /* ========== START OF PROJECTS SECTION ==========  */
+.services-icon-container {
+  width: 56px;
+  height: 56px;
+}
+
+.services-container {
+  gap: 24px;
+}
+.services-con {
+  transition: box-shadow 0.22s, transform 0.22s;
+}
+
+.services-con:hover {
+  box-shadow: 0 8px 32px #13a14436;
+  transform: translateY(-10px) scale(1.03);
+}
+
+.about-img-con img, .about-img, .manlift-img {
+  transition: 
+    transform 0.4s cubic-bezier(.22,1,.36,1),
+    box-shadow 0.3s,
+    filter 0.32s;
+  cursor: pointer;
+}
+
+.about-img-con img:hover,
+.about-img:hover,
+.manlift-img:hover {
+  transform: scale(1.07);
+  box-shadow: 0 6px 26px #16A24955;
+  filter: brightness(0.95) contrast(1.07);
+  z-index: 1;
+}
+
+.view-details-btn:hover {
+  background-color: #ebf0ed;
+  padding: 4px 8px !important;
+  color: #20c25b;
+}
+
+ /* ========== START OF PROJECTS SECTION ==========  */
+.projects-container {
+  gap: 28px;
+}
+
+.projects-card {
+  min-height: 430px !important;
+}
+
+.card-img-top {
+  overflow: hidden;
+  height: 250px;
+  object-fit: cover;
+  transition: transform 0.4s cubic-bezier(.22,1,.36,1);
+}
+
+.hikvision-container {
+  overflow: hidden; /* Ensures image stays clipped */
+  border-radius: 1rem; /* Or use .rounded-3 for Bootstrap's value */
+}
+
+.request-quotation-btn:hover {
+  background-color: #ebf0ed;
+  color: #20c25b;
+}
+
+/* Zoom effect on hover of container or image */
+
+.card-img-top:hover, .hikvision-container:hover .hikvision-logo, .hikvsion-logo:hover {
+  transform: scale(1.08);
+}
+ /* ========== START OF CONTACT SECTION ==========  */
+.hikvision-logo {
+  height: 250px;
+  object-fit: cover;
+  transition: transform 0.4s cubic-bezier(.22,1,.36,1);
+}
+
+.contact-img {
+  height: 180px;
+  object-fit: cover;
+}
+
+
+ /* ========== START OF MULTIPLE CSS ==========  */
+ /* SECTION TITLES */
+.lp-title-con h2 {
+  font-size: 30px;
+  margin-bottom: 0;
+}
+
+.lp-title-con p {
+  font-size: 18px;
+}
+
+/* SECTION PADDING AND COLORS */
+.lp-about-sec, .lp-services-sec, .lp-choose-sec, .lp-projects-sec, .lp-contact-sec, .footer {
+  padding: 5rem 0;
+}
+
+.section-container {
+  margin: 0 2rem;
+}
+
+.request-btn {
+  font-weight: 400;
+}
+
+.awegreen-logo-footer {
+  width: 32px;
+}
+
+.btn-started:hover, .btn-send:hover {
+  background-color: #20c25b !important;
+}
+
+@media (min-width: 768px) { /* md breakpoint */
+  .hero-sec-container h1 {
+    font-size: 3.25rem;
+    width: 75%;
+  }
+  .hero-sec-container p {
+    font-size: 20px; 
+    width: 75%;
+  }
+  .section-container {
+    margin: 0 3rem;
+  }
+  .img-container {
+    margin-top: 0;
+  }
+  .awe-history {
+    font-size: 24px;
+  }
+  .about-stats {
+    font-size: 1.875rem; /*30px*/
+  }
+  .services-container, .projects-container {
+    gap: 0;
+  }
+  .view-details {
+    white-space: wrap;
+  }
+}
+
+@media (min-width: 992px) { /* lg breakpoint */
+  .hero-sec-container h1 {
+    font-size: 3.75rem; 
+    width: 75%; 
+  }
+  .hero-sec-container p {
+    width: 50%;
+  }
+  .hero-sec-container button {
+    width: 120px;
+    height: 38px;
+  }
+  .section-container {
+    margin: 0 4rem;
+  }
+  .lp-title-con h2 {
+    font-size: 33px;
+    margin-bottom: 0;
+  }
+
+  .lp-title-con p {
+    font-size: 20px;
+  }
+  .view-details {
+    white-space: nowrap;
+  }
+}
+
+@media (min-width: 1200px) { /* lg breakpoint */
+  .hero-sec-container h1 {
+    width: 60%; 
+  }
+  .hero-sec-container button {
+    width: 140px;
+    height: 44px;
+  }
+  .section-container {
+    margin: 0 5rem;
+  }
+  .lp-title-con h2 {
+    font-size: 36px;
+    margin-bottom: 0;
+  }
+
+}
