@@ -21,7 +21,11 @@ include 'admin-header.php';
 
 <body class="bg-light">
 
+<<<<<<< HEAD
   <div class="container-xxl px-4 py-5">
+=======
+  <div class="container-xxl px-4 py-5 min-vh-100">
+>>>>>>> newbranch
 
     <!-- BACK BUTTON -->
     <a href="admin-projects.php " class="btn btn-outline-secondary mb-4">
@@ -259,7 +263,11 @@ include 'admin-header.php';
     </div>
   </div>
 
+<<<<<<< HEAD
   <!-- ========== DELETE UPDATE MODAL ========== -->
+=======
+  <!-- ========== ARE YOU SURE YOU WANT TO DELETE MODAL ========== -->
+>>>>>>> newbranch
   <div class="modal fade" id="deleteUpdateModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
     aria-labelledby="staticBackdropLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">

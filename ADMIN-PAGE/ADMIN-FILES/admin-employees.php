@@ -25,7 +25,11 @@ include 'admin-header.php';
 
 <body>
   <!-- START OF MAIN  -->
+<<<<<<< HEAD
   <main id="main" class="container-xxl text-dark px-4">
+=======
+  <main id="main" class="container-xxl text-dark px-4 min-vh-100">
+>>>>>>> newbranch
     <div class="admin-top-inventory d-flex justify-content-between align-items-center">
       <div>
         <h1 class="fs-36 mobile-fs-32">Employee Management</h1>
@@ -74,9 +78,15 @@ include 'admin-header.php';
           <div class="employee-container d-flex flex-wrap gap-4 justify-content-center">
             <div class="employee-con p-4 border rounded-3">
               <div class="w-100 flex mb-2">
+<<<<<<< HEAD
                   <div class="employee-pfp">
                     <span class="pfp">A</span>
                   </div>
+=======
+                <div class="employee-pfp">
+                  <span class="pfp">A</span>
+                </div>
+>>>>>>> newbranch
               </div>
               <h2 class="fs-18 text-center mb-1">Admin</h2>
               <p class="light-text fs-12 text-center mb-1">admin</p>
@@ -91,9 +101,15 @@ include 'admin-header.php';
             </div>
             <div class="employee-con p-4 border rounded-3">
               <div class="w-100 flex mb-2">
+<<<<<<< HEAD
                   <div class="employee-pfp">
                     <span class="pfp">A</span>
                   </div>
+=======
+                <div class="employee-pfp">
+                  <span class="pfp">A</span>
+                </div>
+>>>>>>> newbranch
               </div>
               <h2 class="fs-18 text-center mb-1">Admin</h2>
               <p class="light-text fs-12 text-center mb-1">admin</p>
@@ -108,9 +124,15 @@ include 'admin-header.php';
             </div>
             <div class="employee-con p-4 border rounded-3">
               <div class="w-100 flex mb-2">
+<<<<<<< HEAD
                   <div class="employee-pfp">
                     <span class="pfp">A</span>
                   </div>
+=======
+                <div class="employee-pfp">
+                  <span class="pfp">A</span>
+                </div>
+>>>>>>> newbranch
               </div>
               <h2 class="fs-18 text-center mb-1">Admin</h2>
               <p class="light-text fs-12 text-center mb-1">admin</p>
@@ -125,9 +147,15 @@ include 'admin-header.php';
             </div>
             <div class="employee-con p-4 border rounded-3 mb-3">
               <div class="w-100 flex mb-2">
+<<<<<<< HEAD
                   <div class="employee-pfp">
                     <span class="pfp">A</span>
                   </div>
+=======
+                <div class="employee-pfp">
+                  <span class="pfp">A</span>
+                </div>
+>>>>>>> newbranch
               </div>
               <h2 class="fs-18 text-center mb-1">Admin</h2>
               <p class="light-text fs-12 text-center mb-1">admin</p>
@@ -147,10 +175,119 @@ include 'admin-header.php';
 
   </main>
   <!-- END OF MAIN -->
+<<<<<<< HEAD
 
   
 
 
+=======
+  <!-- ADD EMPLOYEE MODAL -->
+  <div class="modal fade" id="addEmployeeModal" tabindex="-1" aria-labelledby="addEmployeeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+
+        <div class="modal-header">
+          <h5 class="modal-title" id="addEmployeeModalLabel">Add New Employee</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <form id="addEmployeeForm">
+          <div class="modal-body">
+
+            <!-- LOGIN INFORMATION -->
+            <h6 class="mb-3">Login Information</h6>
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <label class="form-label">Email Address</label>
+                <input type="email" class="form-control" placeholder="employee@example.com" required>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Password</label>
+                <div class="input-group">
+                  <input type="password" class="form-control" id="empPassword" placeholder="Enter password" required>
+                  <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                    <i class="fa-solid fa-eye" id="passwordIcon"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <hr>
+
+            <!-- PERSONAL INFORMATION -->
+            <h6 class="mb-3">Personal Information</h6>
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <label class="form-label">Full Name</label>
+                <input type="text" class="form-control" placeholder="Juan Dela Cruz" required>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Phone Number</label>
+                <input type="text" class="form-control" placeholder="09XXXXXXXXX">
+              </div>
+            </div>
+
+            <hr>
+
+            <!-- EMPLOYMENT DETAILS -->
+            <h6 class="mb-3">Employment Details</h6>
+            <div class="row g-3 mb-3">
+
+              <div class="col-md-6">
+                <label class="form-label">Position</label>
+                <select class="form-select" required>
+                  <option selected disabled>Select Position</option>
+                  <option value="Driver">Driver</option>
+                  <option value="Technician">Technician</option>
+                  <option value="Driver/Technician">Driver / Technician</option>
+                  <option value="Admin/Secretary">Admin / Secretary</option>
+                  <option value="Admin">Admin</option>
+                </select>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Date Hired</label>
+                <input type="date" class="form-control" required>
+              </div>
+
+            </div>
+
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-green text-white">Add Employee</button>
+          </div>
+
+        </form>
+
+      </div>
+    </div>
+  </div>
+
+
+</body>
+
+<script>
+    // Toggle Password Visibility
+    document.getElementById("togglePassword").addEventListener("click", function () {
+      const passwordField = document.getElementById("empPassword");
+      const passwordIcon = document.getElementById("passwordIcon");
+
+      if (passwordField.type === "password") {
+        passwordField.type = "text";
+        passwordIcon.classList.remove("fa-eye");
+        passwordIcon.classList.add("fa-eye-slash");
+      } else {
+        passwordField.type = "password";
+        passwordIcon.classList.remove("fa-eye-slash");
+        passwordIcon.classList.add("fa-eye");
+      }
+    });
+  </script>
+>>>>>>> newbranch
 
 
 

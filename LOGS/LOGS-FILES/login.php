@@ -4,8 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login</title>
+<<<<<<< HEAD
     <link rel="icon" href="../../INCLUDES/LP-IMAGES/awegreen-logo.png" type="image/png"
     <! --==========START OF BOOTSTRAP LINK==========-->
+=======
+    <link rel="icon" href="../../INCLUDES/LP-IMAGES/awegreen-logo.png" type="image/png"/>
+    <!-- ==========START OF BOOTSTRAP LINK ========== -->
+>>>>>>> newbranch
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
     <! --==========END OF BOOTSTRAP LINK==========-->
@@ -39,7 +44,11 @@
               <a href="../../ADMIN-PAGE/ADMIN-FILES/admin-dashboard.php" class="btn green-bg text-white login-btn">Login</a>
             </div>
             <div class="mb-4 text-center">
+<<<<<<< HEAD
               <a href="#" class="text-decoration-none text-dark forgot-pass">Forgot password?</a>
+=======
+              <a href="forgot-pass.php" class="text-decoration-none text-dark forgot-pass">Forgot password?</a>
+>>>>>>> newbranch
             </div>
             <div class="divider mb-4"></div>
             <div class="d-flex justify-content-center gap-2 fs-14">

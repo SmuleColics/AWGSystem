@@ -52,6 +52,7 @@ include 'user-header.php';
                 <input id="email" type="email" name="email" class="form-control" value="" placeholder="jamesmacalintal@gmail.com" required>
               </div>
 
+<<<<<<< HEAD
               <div class="mt-3">
                 <label for="assess-type" class="form-label">Assessment Type *</label>
                 <select id="assess-type" name="serviceType" class="form-select" required>
@@ -61,6 +62,36 @@ include 'user-header.php';
                   <option value="renovation">Renovation Assessment</option>
                   <option value="other">Other</option>
                 </select>
+=======
+              <div class="row">
+                <div class="mt-3 col-md-6">
+                  <label for="assess-type" class="form-label">Assessment Type *</label>
+                  <select id="assess-type" name="serviceType" class="form-select" required>
+                    <option value="">Select assessment type</option>
+                    <option value="cctv">CCTV Installation Assessment</option>
+                    <option value="solar">Solar Panel Installation Assessment</option>
+                    <option value="renovation">Renovation Assessment</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <!-- PAYMENT METHOD  -->
+                <div class="mt-3 col-md-6">
+                <label class="form-label">Payment Method *</label>
+                
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="paymentMethod" id="pay-cash" value="cash" required checked>
+                  <label class="form-check-label" for="pay-cash">
+                    Cash (Pay on Site)
+                  </label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="paymentMethod" id="pay-gcash" value="gcash" required>
+                  <label class="form-check-label" for="pay-gcash">
+                    GCash
+                  </label>
+                </div>
+
+>>>>>>> newbranch
               </div>
 
               <div class="row g-3 mt-1">
@@ -109,10 +140,19 @@ include 'user-header.php';
                 </div>
                 <div class="mt-4 col-md-6">
                   <label class="form-label">Estimated Budget (Optional)</label>
+<<<<<<< HEAD
                 <input type="number" name="estimatedBudget" class="form-control" placeholder="Enter budget in PHP">
                 </div>
 
               </div>
+=======
+                  <input type="number" name="estimatedBudget" class="form-control" placeholder="Enter budget in PHP">
+                </div>
+
+              </div>
+              
+
+>>>>>>> newbranch
 
 
               <div class="mt-3">
