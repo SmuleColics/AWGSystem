@@ -1,0 +1,284 @@
+.admin-top-text {
+  padding-top: 24px !important;
+  padding-bottom: 2px !important;
+}
+
+#main {
+  background-color: #ebf0ed !important;
+  overflow: hidden !important;
+}
+.admin-top-desc {
+  color: #4d4d4d !important;
+}
+.dashboard-one, .inventory-category  {
+  background-color: #fff !important;
+}
+
+.dashboard-icon-con {
+  width: 86px !important;
+  height: 86px !important; 
+  border-radius: 50%;      
+}
+
+.dashboard-icon {
+  font-size: 48px;
+}
+
+
+/* INVENTORY PAGE CSS EDITS */
+
+.admin-top-inventory {
+  padding-top: 42px !important;
+  padding-bottom: 16px !important;
+}
+
+.table tr th {
+  margin: 10px 10px !important;
+}
+
+.add-item-btn, .addItem-btn-modal {
+  background-color: #16A249 !important;
+}
+
+.add-item-btn:hover, .addItem-btn-modal:hover {
+  background-color: #20c25b !important;
+}
+
+table thead tr,
+table tbody tr {
+  background-color: #fff !important;
+}
+
+.status-badge {
+  padding: 4px 14px;
+  border-radius: 30px;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+/* Colors */
+.status-instock {
+  color: #16A249;
+  background-color: #E6F7ED;
+  border: 1px solid #B6E7D0;
+}
+
+.status-lowstock {
+  color: #D98E00;
+  background-color: #FFF4DB;
+  border: 1px solid #FFE3A3;
+}
+
+.status-outstock {
+  color: #C82333;
+  background-color: #FEE2E2;
+  border: 1px solid #F5A5A5;
+}
+
+.status-delivered {
+  color: #0D6EFD;
+  background-color: #E7F1FF;
+  border: 1px solid #BFD8FF;
+}
+
+.sidebar-content-item:nth-child(2) {
+  position: relative;
+  left: 3px;
+}
+
+/* UNIVERSAL BADGE STYLE */
+.badge-pill {
+  padding: 4px 14px;
+  border-radius: 30px;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+/* GREEN (Low priority + Completed status) */
+.priority-low,
+.taskstatus-completed {
+  color: #16A249;
+  background-color: #E6F7ED;
+  border: 1px solid #B6E7D0;
+}
+
+/* ORANGE (Medium priority + Pending status) */
+.priority-medium,
+.taskstatus-pending {
+  color: #D98E00;
+  background-color: #FFF4DB;
+  border: 1px solid #FFE3A3;
+}
+
+/* RED (High priority only — unique) */
+.priority-high {
+  color: #C82333;
+  background-color: #FEE2E2;
+  border: 1px solid #F5A5A5;
+}
+
+/* BLUE (In-progress only — unique) */
+.taskstatus-inprogress {
+  color: #0D6EFD;
+  background-color: #E7F1FF;
+  border: 1px solid #BFD8FF;
+}
+
+.tasks-actions .btn {
+  width: 78px !important; 
+}
+
+
+.light-green-bg {
+  background-color: #E6F7ED;
+}
+
+.warning-text-bg {
+  background-color: #FFF4DB;
+}
+
+.red-text-bg {
+  background-color: #FEE2E2;
+}
+
+.modal-info {
+  flex: 0 0 50%; 
+  max-width: 50%; 
+  padding-right: 1rem; 
+  box-sizing: border-box; 
+  margin-bottom:1rem;
+}
+
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+
+.form-check-input:checked {
+  background-color: #16A249 !important; /* Green fill */
+  border-color: #16A249 !important;     /* Green border */
+}
+
+.employee-pfp {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background-color: #ebf0ed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.employee-con {
+  width: 300px;
+}
+
+.project-con {
+  width: 310px;
+}
+
+.project-cont {
+  width: 360px !important;
+}
+
+/* sa user */
+/* .project-cont {
+  width: 350px;
+} */
+
+.btn-outline-secondary:hover {
+  background-color: #E6F7ED !important;
+  border: 1px solid #B6E7D0 !important;
+  color: #16A249 !important;
+}
+
+.progress-bar {
+  background-color: #16A249 !important;
+}
+
+.assessment-actions .btn {
+  width: 192px !important;
+}
+
+  .hover-underline:hover {
+    text-decoration: underline !important;
+  }
+
+
+
+/* Make the container scrollable on mobile */
+.quotation-items-list {
+  overflow-x: auto;
+}
+
+.quotation-row {
+  display: flex;
+  flex-wrap: nowrap;  /* Prevent wrapping */
+  min-width: 650px;   /* Forces horizontal scroll */
+  align-items: center;
+}
+
+@media print {
+  /* Hide everything outside the modal */
+  body > *:not(.modal) {
+    display: none !important;
+  }
+
+  .modal-body .row > [class*="col-"] {
+    width: 100% !important;
+    float: none !important;
+    display: block !important;
+  }
+
+  /* Make the modal full page */
+  .modal {
+    position: relative !important;
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  .modal-dialog {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .modal-content {
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    background: white !important;
+    width: 100% !important;
+    min-height: 100vh !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  .modal-header,
+  .modal-body,
+  .modal-footer {
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  .modal-header, .modal-footer {
+    display: none !important;
+  }
+
+  /* Remove page margins */
+  @page {
+    margin: 0;
+  }
+
+  /* Remove scrollbars */
+  ::-webkit-scrollbar {
+    display: none !important;
+  }
+}
+

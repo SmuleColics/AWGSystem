@@ -27,11 +27,7 @@ include 'admin-header.php';
 <body>
 
   <!-- START OF MAIN  -->
-<<<<<<< HEAD
-  <main id="main" class="container-xxl text-dark px-4">
-=======
   <main id="main" class="container-xxl text-dark px-4 min-vh-100">
->>>>>>> newbranch
     <div class="admin-top-inventory d-flex justify-content-between align-items-center">
       <div>
         <h1 class="fs-36 mobile-fs-32">Inventory</h1>
@@ -216,21 +212,6 @@ include 'admin-header.php';
                 <input type="text" class="form-control" placeholder="Hikvision GMA" required>
               </div>
 
-<<<<<<< HEAD
-              <!-- ✅ WARRANTY FIELD ADDED -->
-              <div class="col-3">
-                <label class="form-label">Warranty Duration</label>
-                <input type="number" class="form-control" placeholder="0" required>
-              </div>
-
-              <div class="col-3 d-flex align-items-end">
-                <select class="form-select" required>
-                  <option value="days">Days</option>
-                  <option value="months">Months</option>
-                  <option value="years">Years</option>
-                </select>
-              </div>
-=======
               <!-- WARRANTY SECTION -->
               <div class="col-6">
                 <label class="form-label fw-semibold">Warranty Duration</label>
@@ -254,7 +235,6 @@ include 'admin-header.php';
                 </div>
               </div>
 
->>>>>>> newbranch
 
             </div>
 

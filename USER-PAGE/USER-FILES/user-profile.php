@@ -61,11 +61,6 @@ function getInitials($name)
     <div class="mx-auto" style="max-width: 700px;">
 
       <!-- Header -->
-<<<<<<< HEAD
-      <div class="mb-4">
-        <h1 class="fs-36 mobile-fs-32">My Profile</h1>
-        <p class="text-muted">Manage your personal details and account information</p>
-=======
       <div class="mb-4 d-flex align-items-center justify-content-between gap-3">
         <div>
           <h1 class="fs-36 mobile-fs-32">My Profile</h1>
@@ -75,7 +70,6 @@ function getInitials($name)
           <a href="user-change-pass.php" class="btn btn-light border d-flex align-items-center">
             <i class="fas fa-key me-1 d-none d-md-block"></i> Change Password</a>
         </div>
->>>>>>> newbranch
       </div>
 
       <!-- Profile Card -->

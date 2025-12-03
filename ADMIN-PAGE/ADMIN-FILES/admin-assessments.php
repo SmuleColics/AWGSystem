@@ -26,21 +26,13 @@ include 'admin-header.php';
 
 <body>
   <!-- START OF MAIN  -->
-<<<<<<< HEAD
-  <main id="main" class="container-xxl text-dark px-4">
-    <div class="admin-top-inventory d-flex justify-content-between align-items-center">
-=======
   <main id="main" class="container-xxl text-dark px-4 min-vh-100">
     <div class="admin-top-inventory d-flex justify-content-between align-items-center gap-4">
 
->>>>>>> newbranch
       <div>
         <h1 class="fs-36 mobile-fs-32">Assessments Request</h1>
         <p class="admin-top-desc">Manage customer assessment requests and create quotations</p>
       </div>
-<<<<<<< HEAD
-      
-=======
       <div class="d-flex gap-2 flex-column flex-md-row">
         <a href="#" class="btn btn-green d-flex align-items-center ">
           <i class="fas fa-check-circle me-1 d-none d-md-block"></i>
@@ -53,7 +45,6 @@ include 'admin-header.php';
       </div>
 
 
->>>>>>> newbranch
     </div>
 
     <div class="row g-3 mb-4">
@@ -62,11 +53,8 @@ include 'admin-header.php';
         <div class="assessment-container rounded-3 bg-white">
           <div class="assessment-top p-4">
             <h2 class="fs-24 mobile-fs-22 mb-0">All Assessments Requests</h2>
-<<<<<<< HEAD
-=======
 
 
->>>>>>> newbranch
           </div>
           <div class="px-4 pb-4 d-flex flex-column gap-4">
             <div class="assessment-con d-flex flex-md-row flex-column border p-3 rounded-3 gap-4">
@@ -103,13 +91,10 @@ include 'admin-header.php';
                       <span class="light-text">Location: </span>
                       Makati City, Metro Manila
                     </p>
-<<<<<<< HEAD
-=======
                     <p class="fs-14 mb-0">
                       <span class="light-text">Notes: </span><BR />
                       Need security camera installation for office building
                     </p>
->>>>>>> newbranch
                   </div>
                   <div class="col-6">
                     <p class="fs-14 mb-2">
@@ -124,16 +109,6 @@ include 'admin-header.php';
                       <span class="light-text">Estimated Budget: </span>
                       $20,000
                     </p>
-<<<<<<< HEAD
-                    
-                  </div>
-                </div>
-                
-                <p class="fs-14 mb-0">
-                  <span class="light-text">Notes: </span><BR />
-                  Need security camera installation for office building
-                </p>
-=======
                     <p class="fs-14 mb-2">
                       <span class="light-text">Payment Method: </span>
                       Cash (on Site)
@@ -143,7 +118,6 @@ include 'admin-header.php';
                 </div>
 
 
->>>>>>> newbranch
               </div>
               <div class="assessment-actions d-flex flex-column gap-2">
                 <div class="btn btn-green flex">
@@ -208,11 +182,7 @@ include 'admin-header.php';
                     </p>
                   </div>
                 </div>
-<<<<<<< HEAD
-                
-=======
 
->>>>>>> newbranch
                 <p class="fs-14 mb-0">
                   <span class="light-text">Notes: </span><BR />
                   Need security camera installation for office building
@@ -256,11 +226,7 @@ include 'admin-header.php';
                   ?>
 
                   <span class="<?= $taskStatusClass ?>">Quotation <?= $taskStatus ?></span>
-<<<<<<< HEAD
-                  <span class="<?= $userApprovalClass ?>">Client <?= $userStatus ?></span>
-=======
                   <!-- <span class="<?= $userApprovalClass ?>">Client <?= $userStatus ?></span> -->
->>>>>>> newbranch
 
                 </div>
                 <div class="row mt-1">
@@ -291,17 +257,10 @@ include 'admin-header.php';
                       <span class="light-text">Estimated Budget: </span>
                       $20,000
                     </p>
-<<<<<<< HEAD
-                    
-                  </div>
-                </div>
-                
-=======
 
                   </div>
                 </div>
 
->>>>>>> newbranch
                 <p class="fs-14 mb-0">
                   <span class="light-text">Notes: </span><BR />
                   Need security camera installation for office building
@@ -310,11 +269,7 @@ include 'admin-header.php';
               <div class="assessment-actions d-flex flex-column gap-2">
                 <a href="admin-quotations.php" class="btn btn-green flex">
                   <i class="fas fa-check-circle me-1"></i>
-<<<<<<< HEAD
-                  View Quotation 
-=======
                   View Quotation
->>>>>>> newbranch
                 </a>
               </div>
             </div>

@@ -26,11 +26,7 @@ include 'admin-header.php';
 
 <body>
   <!-- START OF MAIN  -->
-<<<<<<< HEAD
-  <main id="main" class="container-xxl text-dark px-4">
-=======
   <main id="main" class="container-xxl text-dark px-4 min-vh-100">
->>>>>>> newbranch
     <div class="admin-top-inventory d-flex justify-content-between align-items-center">
       <div>
         <h1 class="fs-36 mobile-fs-32">Employee Attendance</h1>

@@ -28,11 +28,7 @@ include 'admin-header.php';
   <!-- START OF MAIN  -->
   <main id="main" class="container-xxl text-dark px-4">
     <!-- BACK BUTTON -->
-<<<<<<< HEAD
-    <a href="admin-assessments.php " class="btn btn-outline-secondary mb-4" style="margin-top: 42px;">
-=======
     <a href="admin-assessments.php " class="btn btn-outline-secondary mb-2" style="margin-top: 42px;">
->>>>>>> newbranch
       <i class="fa fa-arrow-left me-2"></i> Back
     </a>
 
@@ -47,11 +43,7 @@ include 'admin-header.php';
     <div class="row g-3 mb-4">
 
       <div class="col-12">
-<<<<<<< HEAD
-        <div class="assessment-details rounded-3 bg-white mb-4">
-=======
         <!-- <div class="assessment-details rounded-3 bg-white mb-4">
->>>>>>> newbranch
 
           <div class="p-4 d-flex flex-column gap-4">
 
@@ -94,16 +86,9 @@ include 'admin-header.php';
             </div>
 
           </div>
-<<<<<<< HEAD
-        </div>
-
-        <!-- BAKA GAWIN TONG ADD PROJECT MODAL -->
-        <!-- <div class="project-details rounded-3 bg-white mb-3">
-=======
         </div> -->
 
         <div class="project-details rounded-3 bg-white mb-3">
->>>>>>> newbranch
 
           <div class="p-4 d-flex flex-column gap-4">
 
@@ -129,14 +114,9 @@ include 'admin-header.php';
                 </div>
                 <div class="row mt-3">
                   <div class="col-4">
-<<<<<<< HEAD
-                    <label for="budget" class="form-label">Budget (PHP)</label>
-                    <input id="budget" type="number" class="form-control" placeholder="0.00">
-=======
                     <label for="estimated-cost" class="form-label">Estimated Cost:</label>
                     <!-- AUTO FILL KAPAG NA COMPUTE YUNG QUOTATION -->
                     <input id="estimated-cost" type="number" class="form-control" placeholder="0.00" readonly>
->>>>>>> newbranch
                   </div>
                   <div class="col-4">
                     <label for="startDate" class="form-label">Start Date</label>
@@ -155,11 +135,7 @@ include 'admin-header.php';
             </div>
 
           </div>
-<<<<<<< HEAD
-        </div> -->
-=======
         </div>
->>>>>>> newbranch
 
         <div class="added-items rounded-3 bg-white mb-3">
 
@@ -214,11 +190,7 @@ include 'admin-header.php';
                     <a><i class="fas fa-edit"></i></a>
                   </div>
                   <div class="col-1 flex">
-<<<<<<< HEAD
-                    <a><i class="fas fa-trash text-danger"></i></a>
-=======
                     <a data-bs-toggle="modal" data-bs-target="#deleteItemModal"><i class="fas fa-trash text-danger"></i></a>
->>>>>>> newbranch
                   </div>
                 </div>
 
@@ -236,11 +208,7 @@ include 'admin-header.php';
                     <a><i class="fas fa-edit"></i></a>
                   </div>
                   <div class="col-1 flex">
-<<<<<<< HEAD
-                    <a><i class="fas fa-trash text-danger"></i></a>
-=======
                     <a data-bs-toggle="modal" data-bs-target="#deleteItemModal"><i class="fas fa-trash text-danger"></i></a>
->>>>>>> newbranch
                   </div>
                 </div>
 
@@ -253,12 +221,8 @@ include 'admin-header.php';
               </div>
             </div>
             <div class="d-flex align-items-center justify-content-end">
-<<<<<<< HEAD
-              <div class="btn btn-green">Confirm</div>
-=======
               <div class="btn btn-green">
                 Create Quotation</div>
->>>>>>> newbranch
             </div>
           </div>
 
@@ -279,39 +243,22 @@ include 'admin-header.php';
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
 
-<<<<<<< HEAD
-        <div class="modal-body">
-
-          <div class="row g-3">
-            <div class="col-6">
-=======
         <div class="modal-body overflow-x-auto">
 
           <div class="row g-3">
 
             <!-- Item Name -->
             <div class="col-5">
->>>>>>> newbranch
               <label class="form-label">Item Name</label>
               <input type="text" class="form-control" placeholder="4mp CCTV Camera">
             </div>
 
-<<<<<<< HEAD
-            <div class="col-3">
-=======
             <!-- Quantity -->
             <div class="col-2">
->>>>>>> newbranch
               <label class="form-label">Quantity</label>
               <input type="number" class="form-control" placeholder="1">
             </div>
 
-<<<<<<< HEAD
-            <div class="col-3">
-              <label class="form-label">Unit Price (PHP)</label>
-              <input type="number" class="form-control" placeholder="0.00">
-            </div>
-=======
             <!-- Unit Type  -->
             <div class="col-3">
               <label class="form-label">Unit Type</label>
@@ -332,7 +279,6 @@ include 'admin-header.php';
               <input type="number" class="form-control" placeholder="₱100">
             </div>
 
->>>>>>> newbranch
           </div>
 
         </div>
@@ -346,16 +292,10 @@ include 'admin-header.php';
     </div>
   </div>
 
-<<<<<<< HEAD
-  <!-- ADD LABOR MODAL -->
-  <div class="modal fade" id="addLaborModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-=======
 
   <!-- ADD LABOR MODAL -->
   <div class="modal fade" id="addLaborModal" tabindex="-1">
     <div class="modal-dialog ">
->>>>>>> newbranch
       <div class="modal-content">
 
         <div class="modal-header">
@@ -388,8 +328,6 @@ include 'admin-header.php';
     </div>
   </div>
 
-<<<<<<< HEAD
-=======
   <!-- ========== ARE YOU SURE YOU WANT TO DELETE MODAL ========== -->
   <div class="modal fade" id="deleteItemModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
     aria-labelledby="staticBackdropLabel" aria-hidden="true">
@@ -412,7 +350,6 @@ include 'admin-header.php';
       </div>
     </div>
   </div>
->>>>>>> newbranch
 
 </body>
 

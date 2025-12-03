@@ -25,11 +25,7 @@ include 'admin-header.php';
 
 <body>
   <!-- START OF MAIN  -->
-<<<<<<< HEAD
-  <main id="main" class="container-xxl text-dark px-4">
-=======
   <main id="main" class="container-xxl text-dark px-4 min-vh-100">
->>>>>>> newbranch
     <div class="admin-top-inventory d-flex justify-content-between align-items-center">
       <div>
         <h1 class="fs-36 mobile-fs-32">Employee Management</h1>
@@ -78,15 +74,9 @@ include 'admin-header.php';
           <div class="employee-container d-flex flex-wrap gap-4 justify-content-center">
             <div class="employee-con p-4 border rounded-3">
               <div class="w-100 flex mb-2">
-<<<<<<< HEAD
-                  <div class="employee-pfp">
-                    <span class="pfp">A</span>
-                  </div>
-=======
                 <div class="employee-pfp">
                   <span class="pfp">A</span>
                 </div>
->>>>>>> newbranch
               </div>
               <h2 class="fs-18 text-center mb-1">Admin</h2>
               <p class="light-text fs-12 text-center mb-1">admin</p>
@@ -101,15 +91,9 @@ include 'admin-header.php';
             </div>
             <div class="employee-con p-4 border rounded-3">
               <div class="w-100 flex mb-2">
-<<<<<<< HEAD
-                  <div class="employee-pfp">
-                    <span class="pfp">A</span>
-                  </div>
-=======
                 <div class="employee-pfp">
                   <span class="pfp">A</span>
                 </div>
->>>>>>> newbranch
               </div>
               <h2 class="fs-18 text-center mb-1">Admin</h2>
               <p class="light-text fs-12 text-center mb-1">admin</p>
@@ -124,15 +108,9 @@ include 'admin-header.php';
             </div>
             <div class="employee-con p-4 border rounded-3">
               <div class="w-100 flex mb-2">
-<<<<<<< HEAD
-                  <div class="employee-pfp">
-                    <span class="pfp">A</span>
-                  </div>
-=======
                 <div class="employee-pfp">
                   <span class="pfp">A</span>
                 </div>
->>>>>>> newbranch
               </div>
               <h2 class="fs-18 text-center mb-1">Admin</h2>
               <p class="light-text fs-12 text-center mb-1">admin</p>
@@ -147,15 +125,9 @@ include 'admin-header.php';
             </div>
             <div class="employee-con p-4 border rounded-3 mb-3">
               <div class="w-100 flex mb-2">
-<<<<<<< HEAD
-                  <div class="employee-pfp">
-                    <span class="pfp">A</span>
-                  </div>
-=======
                 <div class="employee-pfp">
                   <span class="pfp">A</span>
                 </div>
->>>>>>> newbranch
               </div>
               <h2 class="fs-18 text-center mb-1">Admin</h2>
               <p class="light-text fs-12 text-center mb-1">admin</p>
@@ -175,12 +147,6 @@ include 'admin-header.php';
 
   </main>
   <!-- END OF MAIN -->
-<<<<<<< HEAD
-
-  
-
-
-=======
   <!-- ADD EMPLOYEE MODAL -->
   <div class="modal fade" id="addEmployeeModal" tabindex="-1" aria-labelledby="addEmployeeModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -287,7 +253,6 @@ include 'admin-header.php';
       }
     });
   </script>
->>>>>>> newbranch
 
 
 

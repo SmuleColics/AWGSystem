@@ -1,9 +1,5 @@
 <?php
-<<<<<<< HEAD
-  include 'admin-header.php';
-=======
 include 'admin-header.php';
->>>>>>> newbranch
 ?>
 
 <!DOCTYPE html>
@@ -18,25 +14,19 @@ include 'admin-header.php';
 <body>
 
   <main id="main" class="container-xxl px-4 py-5" style=" background-color: #ebf0ed ">
-<<<<<<< HEAD
-=======
     <a href="admin-employees.php " class="btn btn-outline-secondary mb-2">
       <i class="fa fa-arrow-left me-2"></i> Back
     </a>
 
->>>>>>> newbranch
     <div class="admin-top-inventory d-flex justify-content-between align-items-center">
       <div>
         <h1 class="fs-36 mobile-fs-32">My Profile</h1>
         <p class="admin-top-desc">Manage your personal information</p>
       </div>
-<<<<<<< HEAD
-=======
       <div>
         <a href="admin-change-pass.php" class="btn btn-light border d-flex align-items-center">
           <i class="fas fa-key me-1 d-none d-md-block"></i> Change Password</a>
       </div>
->>>>>>> newbranch
     </div>
 
     <div class="card shadow-sm">
