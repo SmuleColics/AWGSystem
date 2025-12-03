@@ -28,7 +28,7 @@ include 'admin-header.php';
   <!-- START OF MAIN  -->
   <main id="main" class="container-xxl text-dark px-4">
     <!-- BACK BUTTON -->
-    <a href="admin-assessments.php " class="btn btn-outline-secondary mb-4" style="margin-top: 42px;">
+    <a href="admin-assessments.php " class="btn btn-outline-secondary mb-2" style="margin-top: 42px;">
       <i class="fa fa-arrow-left me-2"></i> Back
     </a>
 
@@ -43,7 +43,7 @@ include 'admin-header.php';
     <div class="row g-3 mb-4">
 
       <div class="col-12">
-        <div class="assessment-details rounded-3 bg-white mb-4">
+        <!-- <div class="assessment-details rounded-3 bg-white mb-4">
 
           <div class="p-4 d-flex flex-column gap-4">
 
@@ -86,10 +86,9 @@ include 'admin-header.php';
             </div>
 
           </div>
-        </div>
+        </div> -->
 
-        <!-- BAKA GAWIN TONG ADD PROJECT MODAL -->
-        <!-- <div class="project-details rounded-3 bg-white mb-3">
+        <div class="project-details rounded-3 bg-white mb-3">
 
           <div class="p-4 d-flex flex-column gap-4">
 
@@ -115,8 +114,9 @@ include 'admin-header.php';
                 </div>
                 <div class="row mt-3">
                   <div class="col-4">
-                    <label for="budget" class="form-label">Budget (PHP)</label>
-                    <input id="budget" type="number" class="form-control" placeholder="0.00">
+                    <label for="estimated-cost" class="form-label">Estimated Cost:</label>
+                    <!-- AUTO FILL KAPAG NA COMPUTE YUNG QUOTATION -->
+                    <input id="estimated-cost" type="number" class="form-control" placeholder="0.00" readonly>
                   </div>
                   <div class="col-4">
                     <label for="startDate" class="form-label">Start Date</label>
@@ -135,7 +135,7 @@ include 'admin-header.php';
             </div>
 
           </div>
-        </div> -->
+        </div>
 
         <div class="added-items rounded-3 bg-white mb-3">
 
@@ -190,7 +190,7 @@ include 'admin-header.php';
                     <a><i class="fas fa-edit"></i></a>
                   </div>
                   <div class="col-1 flex">
-                    <a><i class="fas fa-trash text-danger"></i></a>
+                    <a data-bs-toggle="modal" data-bs-target="#deleteItemModal"><i class="fas fa-trash text-danger"></i></a>
                   </div>
                 </div>
 
@@ -208,7 +208,7 @@ include 'admin-header.php';
                     <a><i class="fas fa-edit"></i></a>
                   </div>
                   <div class="col-1 flex">
-                    <a><i class="fas fa-trash text-danger"></i></a>
+                    <a data-bs-toggle="modal" data-bs-target="#deleteItemModal"><i class="fas fa-trash text-danger"></i></a>
                   </div>
                 </div>
 
@@ -221,7 +221,8 @@ include 'admin-header.php';
               </div>
             </div>
             <div class="d-flex align-items-center justify-content-end">
-              <div class="btn btn-green">Confirm</div>
+              <div class="btn btn-green">
+                Create Quotation</div>
             </div>
           </div>
 
@@ -242,23 +243,42 @@ include 'admin-header.php';
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
 
-        <div class="modal-body">
+        <div class="modal-body overflow-x-auto">
 
           <div class="row g-3">
-            <div class="col-6">
+
+            <!-- Item Name -->
+            <div class="col-5">
               <label class="form-label">Item Name</label>
               <input type="text" class="form-control" placeholder="4mp CCTV Camera">
             </div>
 
-            <div class="col-3">
+            <!-- Quantity -->
+            <div class="col-2">
               <label class="form-label">Quantity</label>
               <input type="number" class="form-control" placeholder="1">
             </div>
 
+            <!-- Unit Type  -->
             <div class="col-3">
-              <label class="form-label">Unit Price (PHP)</label>
-              <input type="number" class="form-control" placeholder="0.00">
+              <label class="form-label">Unit Type</label>
+              <select class="form-select">
+                <option selected disabled>Select unit</option>
+                <option value="piece">Piece</option>
+                <option value="roll">Roll</option>
+                <option value="unit">Unit</option>
+                <option value="box">Box</option>
+                <option value="pack">Pack</option>
+                <option value="set">Set</option>
+              </select>
             </div>
+
+            <!-- Unit Price -->
+            <div class="col-2">
+              <label class="form-label text-nowrap">Unit Price</label>
+              <input type="number" class="form-control" placeholder="₱100">
+            </div>
+
           </div>
 
         </div>
@@ -272,9 +292,10 @@ include 'admin-header.php';
     </div>
   </div>
 
+
   <!-- ADD LABOR MODAL -->
   <div class="modal fade" id="addLaborModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog ">
       <div class="modal-content">
 
         <div class="modal-header">
@@ -307,6 +328,28 @@ include 'admin-header.php';
     </div>
   </div>
 
+  <!-- ========== ARE YOU SURE YOU WANT TO DELETE MODAL ========== -->
+  <div class="modal fade" id="deleteItemModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+    aria-labelledby="staticBackdropLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header d-flex justify-content-between">
+          <h1 class="modal-title fs-5 db-text-sec" id="staticBackdropLabel">Delete Quotation Item</h1>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form action="" method="post">
+          <input type="hidden" name="delete-id" id="delete-id">
+          <div class="modal-body">
+            <h3 class="fs-24 text-center m-0 py-4">Are you sure you want to Delete this item?</h3>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="submit" name="modal-restore-button" class="btn btn-danger">Delete</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 
 </body>
 

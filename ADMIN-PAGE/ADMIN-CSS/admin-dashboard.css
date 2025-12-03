@@ -202,10 +202,13 @@ table tbody tr {
 }
 
 .assessment-actions .btn {
-    width: 192px !important;
+  width: 192px !important;
+}
+
+  .hover-underline:hover {
+    text-decoration: underline !important;
   }
 
-/* Make each quotation row one straight line */
 
 
 /* Make the container scrollable on mobile */

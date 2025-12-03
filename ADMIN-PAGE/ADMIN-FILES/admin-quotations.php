@@ -25,7 +25,12 @@ include 'admin-header.php';
 <body>
   <!-- START OF MAIN  -->
   <main id="main" class="container-xxl text-dark px-4">
-    <div class="admin-top-inventory d-flex justify-content-between align-items-center">
+  <!-- BACK BUTTON -->
+    <a href="admin-assessments.php " class="btn btn-outline-secondary mb-4" style="margin-top: 42px;">
+      <i class="fa fa-arrow-left me-2"></i> Back
+    </a>  
+  
+  <div class="d-flex justify-content-between align-items-center">
       <div>
         <h1 class="fs-36">Quotation Proposal</h1>
         <p class="admin-top-desc">View the detailed breakdown of the quotation for this project.</p>

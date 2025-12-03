@@ -25,9 +25,9 @@ include 'admin-header.php';
   </style>
 </head>
 
-<body>
+<body >
   <!-- START OF MAIN  -->
-  <main id="main" class="container-xxl text-dark px-4">
+  <main id="main" class="container-xxl text-dark px-4 min-vh-100">
     <div class="admin-top-inventory d-flex justify-content-between align-items-center">
       <div>
         <h1 class="fs-36 mobile-fs-32">Tasks</h1>

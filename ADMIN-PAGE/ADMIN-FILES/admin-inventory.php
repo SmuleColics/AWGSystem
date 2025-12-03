@@ -27,7 +27,7 @@ include 'admin-header.php';
 <body>
 
   <!-- START OF MAIN  -->
-  <main id="main" class="container-xxl text-dark px-4">
+  <main id="main" class="container-xxl text-dark px-4 min-vh-100">
     <div class="admin-top-inventory d-flex justify-content-between align-items-center">
       <div>
         <h1 class="fs-36 mobile-fs-32">Inventory</h1>
@@ -212,19 +212,29 @@ include 'admin-header.php';
                 <input type="text" class="form-control" placeholder="Hikvision GMA" required>
               </div>
 
-              <!-- ✅ WARRANTY FIELD ADDED -->
-              <div class="col-3">
-                <label class="form-label">Warranty Duration</label>
-                <input type="number" class="form-control" placeholder="0" required>
+              <!-- WARRANTY SECTION -->
+              <div class="col-6">
+                <label class="form-label fw-semibold">Warranty Duration</label>
+                <div class="row g-2">
+
+                  <div class="col-md-4">
+                    <input type="number" class="form-control" placeholder="0">
+                    <small class="text-muted">Years</small>
+                  </div>
+
+                  <div class="col-md-4">
+                    <input type="number" class="form-control" placeholder="0">
+                    <small class="text-muted">Months</small>
+                  </div>
+
+                  <div class="col-md-4">
+                    <input type="number" class="form-control" placeholder="0">
+                    <small class="text-muted">Days</small>
+                  </div>
+
+                </div>
               </div>
 
-              <div class="col-3 d-flex align-items-end">
-                <select class="form-select" required>
-                  <option value="days">Days</option>
-                  <option value="months">Months</option>
-                  <option value="years">Years</option>
-                </select>
-              </div>
 
             </div>
 

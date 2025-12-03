@@ -86,7 +86,7 @@
             </button>
             <ul class="dropdown-menu  mt-1 profile-dropdown" style="transform: translateX(-130px);">
               <li class="dropdown-profile-top d-flex mb-1 ">
-                <a class="dropdown-item d-flex align-items-center" href="#">
+                <a class="dropdown-item d-flex align-items-center" href="my-profile.php">
                   <div class="green-bg rounded-circle flex ms-1"
                     style="padding: 9px; transform: translateX(-9px);">
                     <i class="fa-solid fa-user text-white fs-18" style="position: relative; top: -2px;"></i>

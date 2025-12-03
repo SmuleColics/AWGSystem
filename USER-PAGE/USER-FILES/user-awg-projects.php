@@ -12,7 +12,7 @@ include 'user-header.php';
   <link rel="stylesheet" href="../../ADMIN-PAGE/ADMIN-CSS/admin-dashboard.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <style>
-    .nav-assessment {
+    .nav-projects {
       color: #fff !important;
     }
   </style>

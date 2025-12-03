@@ -26,7 +26,7 @@ include 'admin-header.php';
 
 <body>
   <!-- START OF MAIN  -->
-  <main id="main" class="container-xxl text-dark px-4 mt-5">
+  <main id="main" class="container-xxl text-dark px-4 mt-5 min-vh-100">
     <div class="admin-top-text my-3">
       <h1 class="fs-36">Admin Dashboard</h1>
       <p class="admin-top-desc">Monitor stock levels, manage products, and stay updated on inventory status</p>
