@@ -14,8 +14,14 @@ include 'admin-header.php';
 
 <body>
   <!-- START OF MAIN  -->
-  <main id="main" class="container-xxl text-dark px-4">
-    <div class="admin-top-inventory d-flex justify-content-between align-items-center">
+  <main id="main" class="container-xxl text-dark px-4 py-5 min-vh-100">
+
+    <!-- BACK BUTTON -->
+    <a href="admin-manage-accounts.php" class="btn btn-outline-secondary mb-2">
+      <i class="fa fa-arrow-left me-2"></i> Back
+    </a>
+
+    <div class="d-flex justify-content-between align-items-center">
       <div>
         <h1 class="fs-36 mobile-fs-32">Archived Accounts</h1>
         <p class="admin-top-desc">View and manage archived user accounts</p>

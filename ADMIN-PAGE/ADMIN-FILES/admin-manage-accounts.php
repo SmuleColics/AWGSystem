@@ -11,12 +11,12 @@ include 'admin-header.php';
   <title>Manage Accounts</title>
   <link rel="stylesheet" href="../ADMIN-CSS/admin-dashboard.css" />
   <style>
-    .sidebar-content-item:nth-child(10) {
+    .sidebar-content-item:nth-child(7) {
       background-color: #f2f2f2 !important;
     }
 
-    .sidebar-content-item:nth-child(10) .sidebar-anchor,
-    .sidebar-content-item:nth-child(10) .sidebar-anchor span {
+    .sidebar-content-item:nth-child(7) .sidebar-anchor,
+    .sidebar-content-item:nth-child(7) .sidebar-anchor span {
       color: #16A249 !important;
     }
   </style>
@@ -24,7 +24,7 @@ include 'admin-header.php';
 
 <body>
   <!-- START OF MAIN  -->
-  <main id="main" class="container-xxl text-dark px-4 min-vh-100">
+  <main id="main" class="container-xxl text-dark px-4 min-vh-70">
     <div class="admin-top-inventory d-flex justify-content-between align-items-center">
       <div>
         <h1 class="fs-36 mobile-fs-32">Manage Accounts</h1>
@@ -100,7 +100,7 @@ include 'admin-header.php';
                 <tr class="bg-white">
                   <th scope="row">John Doe</th>
                   <td>john.doe@email.com</td>
-                  <td>10/15/2025</td>
+                  <td>7/15/2025</td>
 
                   <?php
                   $status = "Active";

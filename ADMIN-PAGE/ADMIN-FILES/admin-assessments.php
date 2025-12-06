@@ -34,13 +34,13 @@ include 'admin-header.php';
         <p class="admin-top-desc">Manage customer assessment requests and create quotations</p>
       </div>
       <div class="d-flex gap-2 flex-column flex-md-row">
-        <a href="#" class="btn btn-green d-flex align-items-center ">
-          <i class="fas fa-check-circle me-1 d-none d-md-block"></i>
-          Accepted <span class="d-none d-md-block ms-1">Assessments</span>
-        </a>
         <a hre="#" class="btn btn-danger border d-flex align-items-center ">
           <i class="fas fa-times-circle me-1 d-none d-md-block"></i>
           Rejected <span class="d-none d-md-block ms-1">Assessments</span>
+        </a>
+        <a href="#" class="btn btn-green d-flex align-items-center ">
+          <i class="fas fa-check-circle me-1 d-none d-md-block"></i>
+          Accepted <span class="d-none d-md-block ms-1">Assessments</span>
         </a>
       </div>
 

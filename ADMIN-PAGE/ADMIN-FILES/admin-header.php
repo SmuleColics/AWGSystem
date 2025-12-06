@@ -1,15 +1,18 @@
+<?php 
+include '../../INCLUDES/db-con.php';
+
+?>
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CineVault Admin</title>
+  <title>A We Green Admin</title>
   <!-- ========== CSS LINK ========== -->
   <link rel="stylesheet" href="../../INCLUDES/general-CSS.css">
   <link rel="stylesheet" href="../ADMIN-CSS/admin-header.css">
   <link rel="stylesheet" href="../ADMIN-CSS/admin-responsiveness.css">
-
 
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet" />
@@ -180,7 +183,7 @@
                 </div>
               </a>
             </li>
-            <li class="sidebar-content-item sidebar-collapse d-flex align-items-center justify-content-between mb-1">
+            <!-- <li class="sidebar-content-item sidebar-collapse d-flex align-items-center justify-content-between mb-1">
               <a href="admin-attendance.php" class="sidebar-anchor">
                 <div class="d-flex align-items-center">
                   <span class="aside-icon material-symbols-outlined">
@@ -199,8 +202,8 @@
                   <span class="sidebar-text ms-2">Payroll</span>
                 </div>
               </a>
-            </li>
-            <li class="sidebar-content-item sidebar-collapse d-flex align-items-center justify-content-between mb-1">
+            </li> -->
+            <!-- <li class="sidebar-content-item sidebar-collapse d-flex align-items-center justify-content-between mb-1">
               <a href="admin-messages.php" class="sidebar-anchor">
                 <div class="d-flex align-items-center">
                   <span class="aside-icon material-symbols-outlined">
@@ -209,7 +212,7 @@
                   <span class="sidebar-text ms-2">Messages</span>
                 </div>
               </a>
-            </li>
+            </li> -->
 
 
             <li class="sidebar-content-item sidebar-collapse d-flex align-items-center justify-content-between mb-1">
@@ -292,7 +295,7 @@
             </div>
           </a>
         </li>
-        <li class="sidebar-content-item sidebar-collapse d-flex align-items-center justify-content-between mb-1">
+        <!-- <li class="sidebar-content-item sidebar-collapse d-flex align-items-center justify-content-between mb-1">
           <a href="admin-attendance.php" class="sidebar-anchor">
             <div class="d-flex align-items-center">
               <span class="aside-icon material-symbols-outlined">
@@ -301,8 +304,8 @@
               <span class="sidebar-text ms-2">Attendance</span>
             </div>
           </a>
-        </li>
-        <li class="sidebar-content-item sidebar-collapse d-flex align-items-center justify-content-between mb-1">
+        </li> -->
+        <!-- <li class="sidebar-content-item sidebar-collapse d-flex align-items-center justify-content-between mb-1">
           <a href="admin-payroll.php" class="sidebar-anchor">
             <div class="d-flex align-items-center">
               <span class="aside-icon material-symbols-outlined">
@@ -311,8 +314,8 @@
               <span class="sidebar-text ms-2">Payroll</span>
             </div>
           </a>
-        </li>
-        <li class="sidebar-content-item sidebar-collapse d-flex align-items-center justify-content-between mb-1">
+        </li> -->
+        <!-- <li class="sidebar-content-item sidebar-collapse d-flex align-items-center justify-content-between mb-1">
           <a href="admin-messages.php" class="sidebar-anchor">
             <div class="d-flex align-items-center">
               <span class="aside-icon material-symbols-outlined">
@@ -321,7 +324,7 @@
               <span class="sidebar-text ms-2">Messages</span>
             </div>
           </a>
-        </li>
+        </li> -->
 
 
         <li class="sidebar-content-item sidebar-collapse d-flex align-items-center justify-content-between mb-1">

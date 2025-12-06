@@ -25,12 +25,12 @@ include 'admin-header.php';
 <body>
   <!-- START OF MAIN  -->
   <main id="main" class="container-xxl text-dark px-4">
-  <!-- BACK BUTTON -->
+    <!-- BACK BUTTON -->
     <a href="admin-assessments.php " class="btn btn-outline-secondary mb-4" style="margin-top: 42px;">
       <i class="fa fa-arrow-left me-2"></i> Back
-    </a>  
-  
-  <div class="d-flex justify-content-between align-items-center">
+    </a>
+
+    <div class="d-flex justify-content-between align-items-center">
       <div>
         <h1 class="fs-36">Quotation Proposal</h1>
         <p class="admin-top-desc">View the detailed breakdown of the quotation for this project.</p>
@@ -41,7 +41,7 @@ include 'admin-header.php';
     <div class="row g-3 mb-4">
 
       <div class="col-12">
-        <div class="assessment-details rounded-3 bg-white mb-4">
+        <!-- <div class="assessment-details rounded-3 bg-white mb-4">
 
           <div class="p-4 d-flex flex-column gap-4">
 
@@ -84,6 +84,56 @@ include 'admin-header.php';
             </div>
 
           </div>
+        </div> -->
+        <div class="project-details rounded-3 bg-white mb-3">
+          <div class="p-4 d-flex flex-column gap-4">
+
+            <div class="assessment-con d-flex flex-md-row flex-column border p-3 rounded-3 gap-4">
+              <div class="w-100">
+                <div class="assessment-top">
+                  <h2 class="fs-24 mb-0">Project Details</h2>
+                  <p class="lightt-text fs-14">Detailed project information</p>
+                </div>
+
+                <div class="row mt-1">
+                  <div class="col-6">
+                    <label class="form-label">Project Name</label>
+                    <p class="fw-semibold mb-0">CCTV Installation for Office</p>
+                  </div>
+
+                  <div class="col-6">
+                    <label class="form-label">Category</label>
+                    <p class="fw-semibold mb-0">CCTV Project</p>
+                  </div>
+                </div>
+
+                <div class="row mt-3">
+                  <div class="col-4">
+                    <label class="form-label">Estimated Cost</label>
+                    <p class="fw-semibold mb-0">₱150,000.00</p>
+                  </div>
+
+                  <div class="col-4">
+                    <label class="form-label">Start Date</label>
+                    <p class="fw-semibold mb-0">2025-02-15</p>
+                  </div>
+
+                  <div class="col-4">
+                    <label class="form-label">End Date</label>
+                    <p class="fw-semibold mb-0">2025-03-01</p>
+                  </div>
+                </div>
+
+                <div class="my-3">
+                  <label class="form-label">Notes</label>
+                  <p class="mb-0">
+                    Installation includes 12 CCTV cameras, wiring, and DVR setup.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+          </div>
         </div>
 
         <div class="added-items rounded-3 bg-white mb-3">
@@ -92,10 +142,10 @@ include 'admin-header.php';
 
             <div class="assessment-con border p-3 rounded-3 gap-4">
               <div class="w-100">
-                  <div>
-                    <h2 class="fs-24 mb-0">Quotation</h2>
-                    <p class="light-text fs-14">Review the quotation items</p>
-                  </div>
+                <div>
+                  <h2 class="fs-24 mb-0">Quotation</h2>
+                  <p class="light-text fs-14">Review the quotation items</p>
+                </div>
               </div>
               <div class="row mt-3 border rounded-3 p-2 mx-0">
                 <div class="col-6">

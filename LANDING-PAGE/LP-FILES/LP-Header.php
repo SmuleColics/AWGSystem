@@ -41,7 +41,7 @@
             <a class="nav-link fs-14 fw-semibold" href="#projects">Projects</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link fs-14 fw-semibold" href="#contact-us">Contact</a>
+            <a class="nav-link fs-14 fw-semibold" href="#choose-us">Choose Us</a>
           </li>
         </ul>
         <a href="../../LOGS/LOGS-FILES/login.php" class="btn green-bg text-white fs-14 login-btn" type="button">Login</a>

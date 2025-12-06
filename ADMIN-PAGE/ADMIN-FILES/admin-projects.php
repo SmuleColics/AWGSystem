@@ -11,13 +11,13 @@ include 'admin-header.php';
   <title>Admin Dashboard</title>
   <link rel="stylesheet" href="../ADMIN-CSS/admin-dashboard.css" />
   <style>
-    .sidebar-content-item:nth-child(9) {
+    .sidebar-content-item:nth-child(6) {
       background-color: #f2f2f2 !important;
     }
 
-    .sidebar-content-item:nth-child(9) .sidebar-anchor,
-    .sidebar-content-item:nth-child(9) .sidebar-anchor span {
-      color: #16A249 !important;
+    .sidebar-content-item:nth-child(6) .sidebar-anchor,
+    .sidebar-content-item:nth-child(6) .sidebar-anchor span {
+      color: #16A246 !important;
 
     }
   </style>

@@ -11,12 +11,12 @@ include 'admin-header.php';
   <title>Admin Dashboard</title>
   <link rel="stylesheet" href="../ADMIN-CSS/admin-dashboard.css" />
   <style>
-    .sidebar-content-item:nth-child(8) {
+    .sidebar-content-item:nth-child(5) {
       background-color: #f2f2f2 !important;
     }
 
-    .sidebar-content-item:nth-child(8) .sidebar-anchor,
-    .sidebar-content-item:nth-child(8) .sidebar-anchor span {
+    .sidebar-content-item:nth-child(5) .sidebar-anchor,
+    .sidebar-content-item:nth-child(5) .sidebar-anchor span {
       color: #16A249 !important;
 
     }
@@ -165,13 +165,13 @@ include 'admin-header.php';
             <div class="row g-3 mb-4">
               <div class="col-md-6">
                 <label class="form-label">Email Address</label>
-                <input type="email" class="form-control" placeholder="employee@example.com" required>
+                <input type="email" class="form-control" placeholder="awegreen@gmail.com" required>
               </div>
 
               <div class="col-md-6">
                 <label class="form-label">Password</label>
                 <div class="input-group">
-                  <input type="password" class="form-control" id="empPassword" placeholder="Enter password" required>
+                  <input type="password" class="form-control" id="empPassword" placeholder="********" required>
                   <button class="btn btn-outline-secondary" type="button" id="togglePassword">
                     <i class="fa-solid fa-eye" id="passwordIcon"></i>
                   </button>
@@ -201,7 +201,7 @@ include 'admin-header.php';
             <h6 class="mb-3">Employment Details</h6>
             <div class="row g-3 mb-3">
 
-              <div class="col-md-6">
+              <div class="col-md-4">
                 <label class="form-label">Position</label>
                 <select class="form-select" required>
                   <option selected disabled>Select Position</option>
@@ -213,7 +213,12 @@ include 'admin-header.php';
                 </select>
               </div>
 
-              <div class="col-md-6">
+              <div class="col-md-4">
+                <label class="form-label">Daily Salary: </label>
+                <input type="number" class="form-control" placeholder="₱600" required>
+              </div>
+
+              <div class="col-md-4">
                 <label class="form-label">Date Hired</label>
                 <input type="date" class="form-control" required>
               </div>
