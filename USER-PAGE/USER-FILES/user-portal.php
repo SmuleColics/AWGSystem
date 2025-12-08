@@ -1,7 +1,13 @@
-<!-- Bootstrap-based Project Details Page (No React, No Tailwind, Pure HTML/CSS/Bootstrap) -->
-
 <?php
 include 'user-header.php';
+
+// $user_id = $_SESSION['user_id'] ?? null;
+// $first_name = $_SESSION['first_name'] ?? 'Guest';
+// $email = $_SESSION['email'] ?? null;
+
+// echo("User ID: " . $user_id . "<br>");
+// echo("First Name: " . $first_name . "<br>");
+// echo("Email: " . $email . "<br>");
 ?>
 
 <!DOCTYPE html>

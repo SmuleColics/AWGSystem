@@ -18,6 +18,17 @@ include 'admin-header.php';
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js"></script>
 </head>
+  <style>
+     .sidebar-content-item:nth-child(6) {
+      background-color: #f2f2f2 !important;
+    }
+
+    .sidebar-content-item:nth-child(6) .sidebar-anchor,
+    .sidebar-content-item:nth-child(6) .sidebar-anchor span {
+      color: #16A246 !important;
+
+    }
+  </style>
 
 <body class="bg-light">
 
@@ -25,7 +36,7 @@ include 'admin-header.php';
 
     <!-- BACK BUTTON -->
     <a href="admin-projects.php " class="btn btn-outline-secondary mb-4">
-      <i class="fa fa-arrow-left me-2"></i> Back
+      <i class="fa fa-arrow-left me-2"></i> Back to Projects
     </a>
 
     <div class="row g-4">
@@ -158,58 +169,147 @@ include 'admin-header.php';
 
       </div>
 
-      <!-- RIGHT SIDE — ASSESSMENT DETAILS -->
+      <!-- RIGHT SIDE — PAYMENT DETAILS -->
       <div class="col-lg-4">
         <div class="card shadow-sm position-sticky" style="top: 90px;">
           <div class="card-header bg-white">
-            <h5 class="fw-semibold mb-0">Assessment Details</h5>
+            <h5 class="fw-semibold mb-0">Payment Details</h5>
           </div>
-          <div class="card-body">
+          <div class="card-body" style="height: 286px; overflow-y: auto;"">
 
-            <!-- CLIENT INFO -->
-            <div class="p-3 border rounded mb-3 bg-light">
-              <div class="fw-semibold mb-1">Client Information</div>
-              <p class="light-text small mb-1"><strong>Name:</strong> John Doe</p>
-              <p class="light-text small mb-1"><strong>Email:</strong> johndoe@gmail.com</p>
-              <p class="light-text small mb-0"><strong>Phone:</strong> 09171234567</p>
-            </div>
+            <!-- TOTAL COST -->
+            <div class=" p-3 border rounded mb-3 bg-light">
+            <div class="fw-semibold mb-1">Project Cost</div>
+            <p class="light-text small mb-0">
+              Total Amount: <strong>₱150,000</strong>
+            </p>
+          </div>
 
-            <!-- SERVICE INFO -->
-            <div class="p-3 border rounded mb-3 bg-light">
-              <div class="fw-semibold mb-1">Service Details</div>
-              <p class="light-text small mb-1"><strong>Service:</strong> CCTV Assessment</p>
-              <p class="light-text small mb-1"><strong>Date:</strong> November 25, 2025</p>
-              <p class="light-text small mb-1"><strong>Preferred Time:</strong> Morning</p>
-              <p class="light-text small mb-0"><strong>Location:</strong> Makati City, Metro Manila</p>
-            </div>
+          <!-- AMOUNT PAID -->
+          <div class="p-3 border rounded mb-3 bg-light">
+            <div class="fw-semibold mb-1">Payment Status</div>
+            <p class="light-text small mb-1"><strong>Paid:</strong> ₱80,000 - 1/10/2025 (Gcash)</p>
+            
+          </div>
 
-            <!-- BUDGET -->
-            <div class="p-3 border rounded mb-3 bg-light">
-              <div class="fw-semibold mb-1">Assessment Budget</div>
-              <p class="light-text small mb-0">Estimated Budget: <strong>₱20,000</strong></p>
-            </div>
+          <!-- NOTES -->
+          <div class="p-3 border rounded mb-4 bg-light">
+            <p class="light-text small mb-0 text-danger">
+              <strong>Remaining Balance:</strong> ₱70,000
+            </p>
+          </div>
 
-            <!-- NOTES -->
-            <div class="p-3 border rounded mb-3 bg-light">
-              <div class="fw-semibold mb-1">Additional Notes</div>
-              <p class="light-text small mb-0">
-                Need security camera installation for office building.
-              </p>
-            </div>
-
-            <!-- ACTION BUTTONS -->
-            <div class="d-grid">
-              <button class="btn btn-green w-100 me-2">
-                <i class="fas fa-check-circle me-1"></i> View Quotation Details
-              </button>
-            </div>
-
+        </div>
+        <div class="card-footer">
+          <div class="d-grid">
+            <button class="btn btn-green w-100 mb-2" data-bs-toggle="modal" data-bs-target="#processPaymentModal">
+              <i class="fas fa-wallet me-1"></i> Process Payment
+            </button>
+            <a href="#" class="btn btn-green w-100 mb-2">
+              <i class="fas fa-clipboard-list me-1"></i> View Assessment
+            </a>
+            <a href="#" class="btn btn-green w-100 mb-2">
+              <i class="fas fa-file-invoice me-1"></i> View Quotation
+            </a>
           </div>
         </div>
+
       </div>
 
     </div>
+
+
   </div>
+  </div>
+
+  <!-- Process Payment Modal -->
+  <div class="modal fade" id="processPaymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+      <div class="modal-content">
+
+        <div class="modal-header">
+          <h5 class="modal-title">Process Payment</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+
+          <!-- PAYMENT SUMMARY -->
+          <div class="p-3 rounded bg-light mb-3">
+            <div class="d-flex justify-content-between mb-1">
+              <span class="light-text small">Total Amount</span>
+              <span class="fw-semibold">₱150,000</span>
+            </div>
+            <div class="d-flex justify-content-between mb-1">
+              <span class="light-text small">Already Paid</span>
+              <span class="fw-semibold">₱80,000</span>
+
+            </div>
+            <div class="d-flex justify-content-between">
+              <span class="light-text small">Remaining Balance</span>
+              <span class="fw-bold text-danger">₱70,000</span>
+            </div>
+          </div>
+
+          <!-- AMOUNT INPUT -->
+          <label class="form-label fw-semibold">Enter Payment Amount</label>
+          <input type="number" class="form-control mb-3" placeholder="e.g., 5000">
+
+          <label class="form-label fw-semibold">Payment Method</label>
+          <div class="mb-3">
+
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="radio" name="paymentMethod" value="cash" id="cashRadio">
+              <label class="form-check-label" for="cashRadio">Cash</label>
+            </div>
+
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="radio" name="paymentMethod" value="gcash" id="gcashRadio">
+              <label class="form-check-label" for="gcashRadio">GCash</label>
+            </div>
+
+          </div>
+
+          <div id="gcashSection" class="d-none">
+            <label class="form-label">GCash Number</label>
+            <input type="text" class="form-control mb-2" placeholder="09XX XXX XXXX">
+
+            <label class="form-label">Reference Number</label>
+            <input type="text" class="form-control mb-2" placeholder="Enter GCash reference number">
+          </div>
+
+          <div id="cashSection" class="alert alert-secondary small d-none">
+            Payment will be recorded as cash.
+          </div>
+
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-green">Confirm Payment</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // show/hide method fields
+    document.querySelectorAll("input[name='paymentMethod']").forEach(radio => {
+      radio.addEventListener("change", function() {
+
+        document.getElementById("gcashSection").classList.add("d-none");
+        document.getElementById("cashSection").classList.add("d-none");
+
+        if (this.value === "gcash") {
+          document.getElementById("gcashSection").classList.remove("d-none");
+        } else if (this.value === "cash") {
+          document.getElementById("cashSection").classList.remove("d-none");
+        }
+      });
+    });
+  </script>
+
 
 
   <!-- ADD UPDATE + EDIT STATUS MODAL -->
@@ -258,6 +358,7 @@ include 'admin-header.php';
       </div>
     </div>
   </div>
+
 
   <!-- ========== ARE YOU SURE YOU WANT TO DELETE MODAL ========== -->
   <div class="modal fade" id="deleteUpdateModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"

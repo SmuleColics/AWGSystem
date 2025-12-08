@@ -60,7 +60,7 @@
           <!-- Back to Login -->
           <div class="mb-4 text-center">
             <a href="login.php" class="text-decoration-none text-dark forgot-pass">
-              Back to Login
+              <i class="fa-solid fa-arrow-left"></i> Back to Login
             </a>
           </div>
 

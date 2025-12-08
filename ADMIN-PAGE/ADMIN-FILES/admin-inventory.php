@@ -441,7 +441,7 @@ if ($result) {
               </div>
 
               <div class="col-md-4">
-                <label class="form-label">Price</label>
+                <label class="form-label">Price (₱)</label>
                 <input type="number" name="price" class="form-control" placeholder="1500" value="<?= $_POST['price'] ?? '' ?>">
                 <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['price']) ? 'block' : 'none' ?>">
                   <?= $errors['price'] ?? 'This field is required' ?>
@@ -449,7 +449,7 @@ if ($result) {
               </div>
 
               <div class="col-md-4">
-                <label class="form-label">Selling Price</label>
+                <label class="form-label">Selling Price (₱)</label>
                 <input type="number" name="selling_price" class="form-control" placeholder="2000" value="<?= $_POST['selling_price'] ?? '' ?>">
                 <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['selling_price']) ? 'block' : 'none' ?>">
                   <?= $errors['selling_price'] ?? 'This field is required' ?>
@@ -559,12 +559,12 @@ if ($result) {
               </div>
 
               <div class="col-md-4">
-                <label class="form-label">Price</label>
+                <label class="form-label">Price (₱)</label>
                 <input type="number" name="price" id="editPrice" class="form-control" placeholder="1500">
               </div>
 
               <div class="col-md-4">
-                <label class="form-label">Selling Price</label>
+                <label class="form-label">Selling Price (₱)</label>
                 <input type="number" name="selling_price" id="editSellingPrice" class="form-control" placeholder="2000">
               </div>
 
@@ -666,12 +666,12 @@ if ($result) {
               </div>
 
               <div class="col-md-4">
-                <label class="form-label">Price</label>
+                <label class="form-label">Price (₱)</label>
                 <input type="text" class="form-control" id="viewPrice" readonly>
               </div>
 
               <div class="col-md-4">
-                <label class="form-label">Selling Price</label>
+                <label class="form-label">Selling Price (₱)</label>
                 <input type="text" class="form-control" id="viewSellingPrice" readonly>
               </div>
 

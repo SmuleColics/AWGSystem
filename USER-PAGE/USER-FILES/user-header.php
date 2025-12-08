@@ -1,3 +1,14 @@
+<?php 
+  session_start();
+  include '../../INCLUDES/db-con.php';
+  $user_id = $_SESSION['user_id'] ?? null;
+  $first_name = $_SESSION['first_name'] ?? 'Guest';
+  $email = $_SESSION['email'] ?? null;
+
+  // echo("User ID: " . $user_id . "<br>");
+  // echo("First Name: " . $first_name . "<br>");
+  // echo("Email: " . $email . "<br>");
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -39,9 +50,9 @@
           <li class="nav-item ">
             <a class="nav-link nav-projects fs-14 fw-semibold" href="user-awg-projects.php">Projects</a>
           </li>
-          <li class="nav-item ">
+          <!-- <li class="nav-item ">
             <a class="nav-link nav-contact fs-14 fw-semibold" href="user-contact-support.php">Contact</a>
-          </li>
+          </li> -->
         </ul>
       </div>
 

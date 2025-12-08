@@ -89,9 +89,9 @@
     </div>
   </div>
 
-  <div class="mt-4 text-center fs-14 semi-light-text">
+  <!-- <div class="mt-4 text-center fs-14 semi-light-text">
     <p>By continuing, you agree to our Terms of Service and Privacy Policy</p>
-  </div>
+  </div> -->
 
 </body>
 </html>
