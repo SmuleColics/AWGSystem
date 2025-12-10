@@ -1,14 +1,33 @@
 <?php
 ob_start();
 include 'admin-header.php';
+include '../../INCLUDES/log-activity.php';
 
 // Handle RESTORE (unarchive)
 if (isset($_POST['modal-restore-button'])) {
   $restore_id = (int)$_POST['restore_id'];
 
+  $get_name_sql = "SELECT item_name FROM inventory_items WHERE item_id = $restore_id";
+  $result = mysqli_query($conn, $get_name_sql);
+  $item_data = mysqli_fetch_assoc($result);
+  $item_name = $item_data['item_name'] ?? 'Unknown Item';
+
   // Restore the item by setting is_archived = 0
   $sql = "UPDATE inventory_items SET is_archived = 0 WHERE item_id = $restore_id";
   if (mysqli_query($conn, $sql)) {
+    
+    // LOG ACTIVITY
+    log_activity(
+      $conn,
+      $employee_id,
+      $employee_full_name,
+      'RESTORE',
+      'INVENTORY',
+      $restore_id,
+      $item_name,
+      "Restored inventory item: $item_name back to active inventory"
+    );
+
     echo "<script>alert('Item restored successfully!'); window.location='" . $_SERVER['PHP_SELF'] . "';</script>";
     exit;
   } else {

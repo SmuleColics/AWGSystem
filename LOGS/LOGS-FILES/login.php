@@ -1,5 +1,6 @@
 <?php
 include "../../INCLUDES/db-con.php";
+include "../../INCLUDES/log-activity.php"; // Include logging function
 session_start();
 
 $errors = [];
@@ -8,11 +9,10 @@ $email = $password = "";
 // HANDLE FORM SUBMISSION
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-  // INPUTS
   $email = trim($_POST['email'] ?? '');
   $password = trim($_POST['password'] ?? '');
 
-  // ========== VALIDATION ==========
+  // VALIDATION
   if (empty($email)) {
     $errors['email'] = "Email is required";
   } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -23,7 +23,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $errors['password'] = "Password is required";
   }
 
-  // ========== CHECK USER OR EMPLOYEE ==========
+  // CHECK USER OR EMPLOYEE
   if (empty($errors)) {
     $emailEsc = mysqli_real_escape_string($conn, $email);
     
@@ -42,7 +42,21 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $_SESSION['last_name'] = $employee['last_name'];
         $_SESSION['email'] = $employee['email'];
         $_SESSION['position'] = $employee['position'];
-        $_SESSION['user_type'] = 'employee'; // Important for access control
+        $_SESSION['user_type'] = 'employee';
+
+        $employee_full_name = $employee['first_name'] . ' ' . $employee['last_name'];
+
+        // LOG LOGIN ACTIVITY
+        log_activity(
+          $conn, 
+          $employee['employee_id'], 
+          $employee_full_name, 
+          'LOGIN', 
+          'SYSTEM', 
+          null, 
+          null, 
+          'Employee logged in as ' . $employee['position']
+        );
 
         echo "<script>
           alert('Welcome back, " . htmlspecialchars($employee['first_name']) . "!');
@@ -68,7 +82,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
           $_SESSION['first_name'] = $user['first_name'];
           $_SESSION['last_name'] = $user['last_name'];
           $_SESSION['email'] = $user['email'];
-          $_SESSION['user_type'] = 'user'; // Important for access control
+          $_SESSION['user_type'] = 'user';
 
           echo "<script>
             alert('Welcome back, " . htmlspecialchars($user['first_name']) . "!');
@@ -94,7 +108,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login</title>
   <link rel="icon" href="../../INCLUDES/LP-IMAGES/awegreen-logo.png" type="image/png" />
-  <!-- Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
   

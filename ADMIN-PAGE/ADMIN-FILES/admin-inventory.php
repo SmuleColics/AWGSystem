@@ -4,10 +4,14 @@ include 'admin-header.php'; // Includes authentication and sets $is_admin variab
 
 $errors = [];
 $success = false;
+include '../../INCLUDES/log-activity.php';
+
+$errors = [];
+$success = false;
 
 // ========== ONLY ADMINS CAN ADD ITEMS ========== //
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
-  
+
   // Check if user is admin
   if (!$is_admin) {
     echo "<script>alert('You do not have permission to add items.'); window.location='" . $_SERVER['PHP_SELF'] . "';</script>";
@@ -25,6 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
   $warranty_years = intval($_POST['warranty_years'] ?? 0);
   $warranty_months = intval($_POST['warranty_months'] ?? 0);
   $warranty_days = intval($_POST['warranty_days'] ?? 0);
+
 
   if (empty($item_name)) {
     $errors['item_name'] = 'Item name is required';
@@ -59,21 +64,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
   }
 
   if (empty($errors)) {
-    $item_name = mysqli_real_escape_string($conn, $item_name);
-    $category = mysqli_real_escape_string($conn, $category);
-    $status = mysqli_real_escape_string($conn, $status);
-    $location = mysqli_real_escape_string($conn, $location);
-    $supplier = mysqli_real_escape_string($conn, $supplier);
+    $item_name_esc = mysqli_real_escape_string($conn, $item_name);
+    $category_esc = mysqli_real_escape_string($conn, $category);
+    $status_esc = mysqli_real_escape_string($conn, $status);
+    $location_esc = mysqli_real_escape_string($conn, $location);
+    $supplier_esc = mysqli_real_escape_string($conn, $supplier);
 
     $sql = "INSERT INTO inventory_items (item_name, category, quantity, price, selling_price, status, location, supplier, warranty_years, warranty_months, warranty_days, is_archived) 
-                VALUES ('$item_name', '$category', $quantity, $price, $selling_price, '$status', '$location', '$supplier', $warranty_years, $warranty_months, $warranty_days, 0)";
+            VALUES ('$item_name_esc', '$category_esc', $quantity, $price, $selling_price, '$status_esc', '$location_esc', '$supplier_esc', $warranty_years, $warranty_months, $warranty_days, 0)";
 
     if (mysqli_query($conn, $sql)) {
-      $success = true;
+      $new_item_id = mysqli_insert_id($conn);
+
+      // LOG ACTIVITY
+      log_activity(
+        $conn,
+        $employee_id,
+        $employee_full_name,
+        'CREATE',
+        'INVENTORY',
+        $new_item_id,
+        $item_name,
+        "Created new inventory item: $item_name ($category) - Qty: $quantity"
+      );
+
       echo "<script>
-                alert('Item added successfully!');
-                window.location = '" . $_SERVER['PHP_SELF'] . "?success=1';
-              </script>";
+        alert('Item added successfully!');
+        window.location = '" . $_SERVER['PHP_SELF'] . "?success=1';
+      </script>";
       exit;
     } else {
       $errors['database'] = 'Database error: ' . mysqli_error($conn);
@@ -83,13 +101,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
 
 // ========== ONLY ADMINS CAN EDIT ITEMS ========== //
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_item'])) {
-  
+
   // Check if user is admin
   if (!$is_admin) {
     echo "<script>alert('You do not have permission to edit items.'); window.location='" . $_SERVER['PHP_SELF'] . "';</script>";
     exit;
   }
-  
+
   $item_id = intval($_POST['item_id']);
   $item_name = trim($_POST['item_name'] ?? '');
   $category = trim($_POST['category'] ?? '');
@@ -136,33 +154,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_item'])) {
     $errors['supplier'] = 'Supplier is required';
   }
 
-  // If no errors, update the database
   if (empty($errors)) {
-    $item_name = mysqli_real_escape_string($conn, $item_name);
-    $category = mysqli_real_escape_string($conn, $category);
-    $status = mysqli_real_escape_string($conn, $status);
-    $location = mysqli_real_escape_string($conn, $location);
-    $supplier = mysqli_real_escape_string($conn, $supplier);
+    $item_name_esc = mysqli_real_escape_string($conn, $item_name);
+    $category_esc = mysqli_real_escape_string($conn, $category);
+    $status_esc = mysqli_real_escape_string($conn, $status);
+    $location_esc = mysqli_real_escape_string($conn, $location);
+    $supplier_esc = mysqli_real_escape_string($conn, $supplier);
 
     $sql = "UPDATE inventory_items SET 
-                item_name = '$item_name',
-                category = '$category',
-                quantity = $quantity,
-                price = $price,
-                selling_price = $selling_price,
-                status = '$status',
-                location = '$location',
-                supplier = '$supplier',
-                warranty_years = $warranty_years,
-                warranty_months = $warranty_months,
-                warranty_days = $warranty_days
-            WHERE item_id = $item_id";
+            item_name = '$item_name_esc',
+            category = '$category_esc',
+            quantity = $quantity,
+            price = $price,
+            selling_price = $selling_price,
+            status = '$status_esc',
+            location = '$location_esc',
+            supplier = '$supplier_esc',
+            warranty_years = $warranty_years,
+            warranty_months = $warranty_months,
+            warranty_days = $warranty_days
+        WHERE item_id = $item_id";
 
     if (mysqli_query($conn, $sql)) {
+
+      // LOG ACTIVITY
+      log_activity(
+        $conn,
+        $employee_id,
+        $employee_full_name,
+        'UPDATE',
+        'INVENTORY',
+        $item_id,
+        $item_name,
+        "Updated inventory item: $item_name - Status: $status, Qty: $quantity"
+      );
+
       echo "<script>
-                alert('Item updated successfully!');
-                window.location = '" . $_SERVER['PHP_SELF'] . "?success=1';
-              </script>";
+        alert('Item updated successfully!');
+        window.location = '" . $_SERVER['PHP_SELF'] . "?success=1';
+      </script>";
       exit;
     } else {
       $errors['database'] = 'Database error: ' . mysqli_error($conn);
@@ -172,7 +202,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_item'])) {
 
 // ========== ONLY ADMINS CAN ARCHIVE ITEMS ========== //
 if (isset($_POST['modal-archive-button'])) {
-  
+
   // Check if user is admin
   if (!$is_admin) {
     echo "<script>alert('You do not have permission to archive items.'); window.location='" . $_SERVER['PHP_SELF'] . "';</script>";
@@ -181,9 +211,28 @@ if (isset($_POST['modal-archive-button'])) {
 
   $archive_id = (int)$_POST['archive_id'];
 
+  // Get item name before archiving
+  $get_name_sql = "SELECT item_name FROM inventory_items WHERE item_id = $archive_id";
+  $result = mysqli_query($conn, $get_name_sql);
+  $item_data = mysqli_fetch_assoc($result);
+  $item_name = $item_data['item_name'] ?? 'Unknown Item';
+
   // Archive the item by setting is_archived = 1
   $sql = "UPDATE inventory_items SET is_archived = 1 WHERE item_id = $archive_id";
   if (mysqli_query($conn, $sql)) {
+
+    // LOG ACTIVITY
+    log_activity(
+      $conn,
+      $employee_id,
+      $employee_full_name,
+      'ARCHIVE',
+      'INVENTORY',
+      $archive_id,
+      $item_name,
+      "Archived inventory item: $item_name"
+    );
+
     echo "<script>alert('Item archived successfully!'); window.location='" . $_SERVER['PHP_SELF'] . "';</script>";
     exit;
   } else {
@@ -270,15 +319,15 @@ if ($result) {
       </div>
 
       <?php if ($is_admin): ?>
-      <div class="d-flex flex-column flex-md-row gap-2">
-        <button class="btn green-bg text-white add-item-btn d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addItemModal">
-          <i class="fa-solid fa-plus me-1"></i> Add <span class=" d-none d-md-block ms-1">Item</span>
-        </button>
-        <a href="admin-archive-items.php" class="btn btn-danger text-white d-flex align-items-center">
-          <i class="fa-solid fa-box-archive me-1"></i>  Archived <span class="d-none d-md-block ms-1">Items</span>
-        </a>
+        <div class="d-flex flex-column flex-md-row gap-2">
+          <button class="btn green-bg text-white add-item-btn d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addItemModal">
+            <i class="fa-solid fa-plus me-1"></i> Add <span class=" d-none d-md-block ms-1">Item</span>
+          </button>
+          <a href="admin-archive-items.php" class="btn btn-danger text-white d-flex align-items-center">
+            <i class="fa-solid fa-box-archive me-1"></i> Archived <span class="d-none d-md-block ms-1">Items</span>
+          </a>
         <?php endif; ?>
-      </div>
+        </div>
     </div>
 
     <div class="row g-3 mb-2">
@@ -388,26 +437,26 @@ if ($result) {
                         data-bs-target="#viewItemModal"
                         style="cursor:pointer"></i>
                       <?php if ($is_admin): ?>
-                      <i class="fa-solid fa-pencil text-primary mx-2 fs-18 edit-item"
-                        data-id="<?= $item['item_id'] ?>"
-                        data-name="<?= htmlspecialchars($item['item_name']) ?>"
-                        data-category="<?= htmlspecialchars($item['category']) ?>"
-                        data-status="<?= htmlspecialchars($item['status']) ?>"
-                        data-location="<?= htmlspecialchars($item['location']) ?>"
-                        data-quantity="<?= $item['quantity'] ?>"
-                        data-price="<?= $item['price'] ?>"
-                        data-selling="<?= $item['selling_price'] ?>"
-                        data-supplier="<?= htmlspecialchars($item['supplier']) ?>"
-                        data-warranty-years="<?= $item['warranty_years'] ?>"
-                        data-warranty-months="<?= $item['warranty_months'] ?>"
-                        data-warranty-days="<?= $item['warranty_days'] ?>"
-                        data-bs-toggle="modal"
-                        data-bs-target="#editItemModal"
-                        style="cursor:pointer"></i>
-                      <i class="fa-solid fa-box-archive text-danger archive-item fs-18"
-                        data-id="<?= $item['item_id'] ?>"
-                        style="cursor:pointer" data-bs-toggle="modal" data-bs-target="#archiveItemModal"></i>
-                        <?php endif; ?>
+                        <i class="fa-solid fa-pencil text-primary mx-2 fs-18 edit-item"
+                          data-id="<?= $item['item_id'] ?>"
+                          data-name="<?= htmlspecialchars($item['item_name']) ?>"
+                          data-category="<?= htmlspecialchars($item['category']) ?>"
+                          data-status="<?= htmlspecialchars($item['status']) ?>"
+                          data-location="<?= htmlspecialchars($item['location']) ?>"
+                          data-quantity="<?= $item['quantity'] ?>"
+                          data-price="<?= $item['price'] ?>"
+                          data-selling="<?= $item['selling_price'] ?>"
+                          data-supplier="<?= htmlspecialchars($item['supplier']) ?>"
+                          data-warranty-years="<?= $item['warranty_years'] ?>"
+                          data-warranty-months="<?= $item['warranty_months'] ?>"
+                          data-warranty-days="<?= $item['warranty_days'] ?>"
+                          data-bs-toggle="modal"
+                          data-bs-target="#editItemModal"
+                          style="cursor:pointer"></i>
+                        <i class="fa-solid fa-box-archive text-danger archive-item fs-18"
+                          data-id="<?= $item['item_id'] ?>"
+                          style="cursor:pointer" data-bs-toggle="modal" data-bs-target="#archiveItemModal"></i>
+                      <?php endif; ?>
                     </td>
                   </tr>
                 <?php endforeach; ?>
@@ -424,233 +473,233 @@ if ($result) {
   <!-- END OF MAIN -->
 
   <?php if ($is_admin): ?>
-  <!-- ADD ITEM MODAL -->
-  <div class="modal fade" id="addItemModal" tabindex="-1" aria-labelledby="addItemModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
+    <!-- ADD ITEM MODAL -->
+    <div class="modal fade" id="addItemModal" tabindex="-1" aria-labelledby="addItemModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
 
-        <div class="modal-header">
-          <h5 class="modal-title" id="addItemModalLabel">Add New Inventory Item</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
+          <div class="modal-header">
+            <h5 class="modal-title" id="addItemModalLabel">Add New Inventory Item</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
 
-        <div class="modal-body">
-          <form id="addItemForm" method="POST" action="">
+          <div class="modal-body">
+            <form id="addItemForm" method="POST" action="">
 
-            <div class="row g-3">
+              <div class="row g-3">
 
-              <div class="col-md-6">
-                <label class="form-label">Item Name</label>
-                <input type="text" name="item_name" class="form-control" placeholder="4MP CCTV Camera" value="<?= $_POST['item_name'] ?? '' ?>">
-                <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['item_name']) ? 'block' : 'none' ?>">
-                  <?= $errors['item_name'] ?? 'This field is required' ?>
-                </p>
-              </div>
-
-              <div class="col-md-6">
-                <label class="form-label">Category</label>
-                <select name="category" class="form-select">
-                  <option value="CCTV Project" <?= (isset($_POST['category']) && $_POST['category'] == 'CCTV Project') ? 'selected' : '' ?>>CCTV Project</option>
-                  <option value="Solar Project" <?= (isset($_POST['category']) && $_POST['category'] == 'Solar Project') ? 'selected' : '' ?>>Solar Project</option>
-                  <option value="Room Renovation" <?= (isset($_POST['category']) && $_POST['category'] == 'Room Renovation') ? 'selected' : '' ?>>Room Renovation</option>
-                </select>
-                <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['category']) ? 'block' : 'none' ?>">
-                  <?= $errors['category'] ?? 'This field is required' ?>
-                </p>
-              </div>
-
-              <div class="col-md-4">
-                <label class="form-label">Quantity</label>
-                <input type="number" name="quantity" class="form-control" placeholder="10" value="<?= $_POST['quantity'] ?? '' ?>">
-                <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['quantity']) ? 'block' : 'none' ?>">
-                  <?= $errors['quantity'] ?? 'This field is required' ?>
-                </p>
-              </div>
-
-              <div class="col-md-4">
-                <label class="form-label">Price (₱)</label>
-                <input type="number" name="price" class="form-control" placeholder="1500" value="<?= $_POST['price'] ?? '' ?>">
-                <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['price']) ? 'block' : 'none' ?>">
-                  <?= $errors['price'] ?? 'This field is required' ?>
-                </p>
-              </div>
-
-              <div class="col-md-4">
-                <label class="form-label">Selling Price (₱)</label>
-                <input type="number" name="selling_price" class="form-control" placeholder="2000" value="<?= $_POST['selling_price'] ?? '' ?>">
-                <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['selling_price']) ? 'block' : 'none' ?>">
-                  <?= $errors['selling_price'] ?? 'This field is required' ?>
-                </p>
-              </div>
-
-              <div class="col-md-6">
-                <label class="form-label">Status</label>
-                <select name="status" class="form-select">
-                  <option value="In Stock" <?= (isset($_POST['status']) && $_POST['status'] == 'In Stock') ? 'selected' : '' ?>>In Stock</option>
-                  <option value="Low Stock" <?= (isset($_POST['status']) && $_POST['status'] == 'Low Stock') ? 'selected' : '' ?>>Low Stock</option>
-                  <option value="Out of Stock" <?= (isset($_POST['status']) && $_POST['status'] == 'Out of Stock') ? 'selected' : '' ?>>Out of Stock</option>
-                  <option value="To Be Delivered" <?= (isset($_POST['status']) && $_POST['status'] == 'To Be Delivered') ? 'selected' : '' ?>>To Be Delivered</option>
-                </select>
-                <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['status']) ? 'block' : 'none' ?>">
-                  <?= $errors['status'] ?? 'This field is required' ?>
-                </p>
-              </div>
-
-              <div class="col-md-6">
-                <label class="form-label">Location</label>
-                <input type="text" name="location" class="form-control" placeholder="Storage Room A" value="<?= $_POST['location'] ?? '' ?>">
-                <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['location']) ? 'block' : 'none' ?>">
-                  <?= $errors['location'] ?? 'This field is required' ?>
-                </p>
-              </div>
-
-              <div class="col-6">
-                <label class="form-label">Supplier</label>
-                <input type="text" name="supplier" class="form-control" placeholder="Hikvision GMA" value="<?= $_POST['supplier'] ?? '' ?>">
-                <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['supplier']) ? 'block' : 'none' ?>">
-                  <?= $errors['supplier'] ?? 'This field is required' ?>
-                </p>
-              </div>
-
-              <!-- WARRANTY SECTION -->
-              <div class="col-6">
-                <label class="form-label fw-semibold">Warranty Duration</label>
-                <div class="row g-2">
-
-                  <div class="col-md-4">
-                    <input type="number" name="warranty_years" class="form-control" placeholder="0" value="<?= $_POST['warranty_years'] ?? 0 ?>">
-                    <small class="text-muted">Years</small>
-                  </div>
-
-                  <div class="col-md-4">
-                    <input type="number" name="warranty_months" class="form-control" placeholder="0" value="<?= $_POST['warranty_months'] ?? 0 ?>">
-                    <small class="text-muted">Months</small>
-                  </div>
-
-                  <div class="col-md-4">
-                    <input type="number" name="warranty_days" class="form-control" placeholder="0" value="<?= $_POST['warranty_days'] ?? 0 ?>">
-                    <small class="text-muted">Days</small>
-                  </div>
-
+                <div class="col-md-6">
+                  <label class="form-label">Item Name</label>
+                  <input type="text" name="item_name" class="form-control" placeholder="4MP CCTV Camera" value="<?= $_POST['item_name'] ?? '' ?>">
+                  <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['item_name']) ? 'block' : 'none' ?>">
+                    <?= $errors['item_name'] ?? 'This field is required' ?>
+                  </p>
                 </div>
+
+                <div class="col-md-6">
+                  <label class="form-label">Category</label>
+                  <select name="category" class="form-select">
+                    <option value="CCTV Project" <?= (isset($_POST['category']) && $_POST['category'] == 'CCTV Project') ? 'selected' : '' ?>>CCTV Project</option>
+                    <option value="Solar Project" <?= (isset($_POST['category']) && $_POST['category'] == 'Solar Project') ? 'selected' : '' ?>>Solar Project</option>
+                    <option value="Room Renovation" <?= (isset($_POST['category']) && $_POST['category'] == 'Room Renovation') ? 'selected' : '' ?>>Room Renovation</option>
+                  </select>
+                  <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['category']) ? 'block' : 'none' ?>">
+                    <?= $errors['category'] ?? 'This field is required' ?>
+                  </p>
+                </div>
+
+                <div class="col-md-4">
+                  <label class="form-label">Quantity</label>
+                  <input type="number" name="quantity" class="form-control" placeholder="10" value="<?= $_POST['quantity'] ?? '' ?>">
+                  <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['quantity']) ? 'block' : 'none' ?>">
+                    <?= $errors['quantity'] ?? 'This field is required' ?>
+                  </p>
+                </div>
+
+                <div class="col-md-4">
+                  <label class="form-label">Price (₱)</label>
+                  <input type="number" name="price" class="form-control" placeholder="1500" value="<?= $_POST['price'] ?? '' ?>">
+                  <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['price']) ? 'block' : 'none' ?>">
+                    <?= $errors['price'] ?? 'This field is required' ?>
+                  </p>
+                </div>
+
+                <div class="col-md-4">
+                  <label class="form-label">Selling Price (₱)</label>
+                  <input type="number" name="selling_price" class="form-control" placeholder="2000" value="<?= $_POST['selling_price'] ?? '' ?>">
+                  <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['selling_price']) ? 'block' : 'none' ?>">
+                    <?= $errors['selling_price'] ?? 'This field is required' ?>
+                  </p>
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label">Status</label>
+                  <select name="status" class="form-select">
+                    <option value="In Stock" <?= (isset($_POST['status']) && $_POST['status'] == 'In Stock') ? 'selected' : '' ?>>In Stock</option>
+                    <option value="Low Stock" <?= (isset($_POST['status']) && $_POST['status'] == 'Low Stock') ? 'selected' : '' ?>>Low Stock</option>
+                    <option value="Out of Stock" <?= (isset($_POST['status']) && $_POST['status'] == 'Out of Stock') ? 'selected' : '' ?>>Out of Stock</option>
+                    <option value="To Be Delivered" <?= (isset($_POST['status']) && $_POST['status'] == 'To Be Delivered') ? 'selected' : '' ?>>To Be Delivered</option>
+                  </select>
+                  <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['status']) ? 'block' : 'none' ?>">
+                    <?= $errors['status'] ?? 'This field is required' ?>
+                  </p>
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label">Location</label>
+                  <input type="text" name="location" class="form-control" placeholder="Storage Room A" value="<?= $_POST['location'] ?? '' ?>">
+                  <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['location']) ? 'block' : 'none' ?>">
+                    <?= $errors['location'] ?? 'This field is required' ?>
+                  </p>
+                </div>
+
+                <div class="col-6">
+                  <label class="form-label">Supplier</label>
+                  <input type="text" name="supplier" class="form-control" placeholder="Hikvision GMA" value="<?= $_POST['supplier'] ?? '' ?>">
+                  <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['supplier']) ? 'block' : 'none' ?>">
+                    <?= $errors['supplier'] ?? 'This field is required' ?>
+                  </p>
+                </div>
+
+                <!-- WARRANTY SECTION -->
+                <div class="col-6">
+                  <label class="form-label fw-semibold">Warranty Duration</label>
+                  <div class="row g-2">
+
+                    <div class="col-md-4">
+                      <input type="number" name="warranty_years" class="form-control" placeholder="0" value="<?= $_POST['warranty_years'] ?? 0 ?>">
+                      <small class="text-muted">Years</small>
+                    </div>
+
+                    <div class="col-md-4">
+                      <input type="number" name="warranty_months" class="form-control" placeholder="0" value="<?= $_POST['warranty_months'] ?? 0 ?>">
+                      <small class="text-muted">Months</small>
+                    </div>
+
+                    <div class="col-md-4">
+                      <input type="number" name="warranty_days" class="form-control" placeholder="0" value="<?= $_POST['warranty_days'] ?? 0 ?>">
+                      <small class="text-muted">Days</small>
+                    </div>
+
+                  </div>
+                </div>
+
+
               </div>
 
+              <div class="modal-footer mt-3">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" name="add_item" class="btn btn-green addItem-btn-modal text-white">Add Item</button>
+              </div>
 
-            </div>
+            </form>
+          </div>
 
-            <div class="modal-footer mt-3">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="submit" name="add_item" class="btn btn-green addItem-btn-modal text-white">Add Item</button>
-            </div>
-
-          </form>
         </div>
-
       </div>
     </div>
-  </div>
 
-  <!-- EDIT ITEM MODAL -->
-  <div class="modal fade" id="editItemModal" tabindex="-1" aria-labelledby="editItemModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
+    <!-- EDIT ITEM MODAL -->
+    <div class="modal fade" id="editItemModal" tabindex="-1" aria-labelledby="editItemModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
 
-        <div class="modal-header">
-          <h5 class="modal-title" id="editItemModalLabel">Edit Inventory Item</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
+          <div class="modal-header">
+            <h5 class="modal-title" id="editItemModalLabel">Edit Inventory Item</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
 
-        <div class="modal-body">
-          <form id="editItemForm" method="POST" action="">
-            <input type="hidden" name="item_id" id="editItemId">
+          <div class="modal-body">
+            <form id="editItemForm" method="POST" action="">
+              <input type="hidden" name="item_id" id="editItemId">
 
-            <div class="row g-3">
+              <div class="row g-3">
 
-              <div class="col-md-6">
-                <label class="form-label">Item Name</label>
-                <input type="text" name="item_name" id="editItemName" class="form-control" placeholder="4MP CCTV Camera">
-              </div>
-
-              <div class="col-md-6">
-                <label class="form-label">Category</label>
-                <select name="category" id="editCategory" class="form-select">
-                  <option value="CCTV Project">CCTV Project</option>
-                  <option value="Solar Project">Solar Project</option>
-                  <option value="Room Renovation">Room Renovation</option>
-                </select>
-              </div>
-
-              <div class="col-md-4">
-                <label class="form-label">Quantity</label>
-                <input type="number" name="quantity" id="editQuantity" class="form-control" placeholder="10">
-              </div>
-
-              <div class="col-md-4">
-                <label class="form-label">Price (₱)</label>
-                <input type="number" name="price" id="editPrice" class="form-control" placeholder="1500">
-              </div>
-
-              <div class="col-md-4">
-                <label class="form-label">Selling Price (₱)</label>
-                <input type="number" name="selling_price" id="editSellingPrice" class="form-control" placeholder="2000">
-              </div>
-
-              <div class="col-md-6">
-                <label class="form-label">Status</label>
-                <select name="status" id="editStatus" class="form-select">
-                  <option value="In Stock">In Stock</option>
-                  <option value="Low Stock">Low Stock</option>
-                  <option value="Out of Stock">Out of Stock</option>
-                  <option value="To Be Delivered">To Be Delivered</option>
-                </select>
-              </div>
-
-              <div class="col-md-6">
-                <label class="form-label">Location</label>
-                <input type="text" name="location" id="editLocation" class="form-control" placeholder="Storage Room A">
-              </div>
-
-              <div class="col-6">
-                <label class="form-label">Supplier</label>
-                <input type="text" name="supplier" id="editSupplier" class="form-control" placeholder="Hikvision GMA">
-              </div>
-
-              <!-- WARRANTY SECTION -->
-              <div class="col-6">
-                <label class="form-label fw-semibold">Warranty Duration</label>
-                <div class="row g-2">
-
-                  <div class="col-md-4">
-                    <input type="number" name="warranty_years" id="editWarrantyYears" class="form-control" placeholder="0">
-                    <small class="text-muted">Years</small>
-                  </div>
-
-                  <div class="col-md-4">
-                    <input type="number" name="warranty_months" id="editWarrantyMonths" class="form-control" placeholder="0">
-                    <small class="text-muted">Months</small>
-                  </div>
-
-                  <div class="col-md-4">
-                    <input type="number" name="warranty_days" id="editWarrantyDays" class="form-control" placeholder="0">
-                    <small class="text-muted">Days</small>
-                  </div>
-
+                <div class="col-md-6">
+                  <label class="form-label">Item Name</label>
+                  <input type="text" name="item_name" id="editItemName" class="form-control" placeholder="4MP CCTV Camera">
                 </div>
+
+                <div class="col-md-6">
+                  <label class="form-label">Category</label>
+                  <select name="category" id="editCategory" class="form-select">
+                    <option value="CCTV Project">CCTV Project</option>
+                    <option value="Solar Project">Solar Project</option>
+                    <option value="Room Renovation">Room Renovation</option>
+                  </select>
+                </div>
+
+                <div class="col-md-4">
+                  <label class="form-label">Quantity</label>
+                  <input type="number" name="quantity" id="editQuantity" class="form-control" placeholder="10">
+                </div>
+
+                <div class="col-md-4">
+                  <label class="form-label">Price (₱)</label>
+                  <input type="number" name="price" id="editPrice" class="form-control" placeholder="1500">
+                </div>
+
+                <div class="col-md-4">
+                  <label class="form-label">Selling Price (₱)</label>
+                  <input type="number" name="selling_price" id="editSellingPrice" class="form-control" placeholder="2000">
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label">Status</label>
+                  <select name="status" id="editStatus" class="form-select">
+                    <option value="In Stock">In Stock</option>
+                    <option value="Low Stock">Low Stock</option>
+                    <option value="Out of Stock">Out of Stock</option>
+                    <option value="To Be Delivered">To Be Delivered</option>
+                  </select>
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label">Location</label>
+                  <input type="text" name="location" id="editLocation" class="form-control" placeholder="Storage Room A">
+                </div>
+
+                <div class="col-6">
+                  <label class="form-label">Supplier</label>
+                  <input type="text" name="supplier" id="editSupplier" class="form-control" placeholder="Hikvision GMA">
+                </div>
+
+                <!-- WARRANTY SECTION -->
+                <div class="col-6">
+                  <label class="form-label fw-semibold">Warranty Duration</label>
+                  <div class="row g-2">
+
+                    <div class="col-md-4">
+                      <input type="number" name="warranty_years" id="editWarrantyYears" class="form-control" placeholder="0">
+                      <small class="text-muted">Years</small>
+                    </div>
+
+                    <div class="col-md-4">
+                      <input type="number" name="warranty_months" id="editWarrantyMonths" class="form-control" placeholder="0">
+                      <small class="text-muted">Months</small>
+                    </div>
+
+                    <div class="col-md-4">
+                      <input type="number" name="warranty_days" id="editWarrantyDays" class="form-control" placeholder="0">
+                      <small class="text-muted">Days</small>
+                    </div>
+
+                  </div>
+                </div>
+
               </div>
 
-            </div>
+              <div class="modal-footer mt-3">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" name="edit_item" class="btn btn-green text-white">Update Item</button>
+              </div>
 
-            <div class="modal-footer mt-3">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="submit" name="edit_item" class="btn btn-green text-white">Update Item</button>
-            </div>
+            </form>
+          </div>
 
-          </form>
         </div>
-
       </div>
     </div>
-  </div>
   <?php endif; ?>
 
   <!-- VIEW ITEM MODAL -->

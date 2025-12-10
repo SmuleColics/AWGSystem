@@ -109,6 +109,12 @@ if (!isset($_SESSION['employee_id']) || $_SESSION['user_type'] !== 'employee') {
                 </a>
               </li>
               <li class="mb-1">
+                <a class="dropdown-item d-flex align-items-center" href="admin-activity-logs.php">
+                  <i class="fa-solid fa-clock-rotate-left me-2 fs-22"></i>
+                  <span class="fs-18 d-inline-block">Activity Logs</span>
+                </a>
+              </li>
+              <li class="mb-1">
                 <a class="dropdown-item d-flex align-items-center" href="logout.php">
                   <i class="fa-solid fa-right-from-bracket me-2 fs-22"></i>
                   <span class="fs-18 d-inline-block">Log out</span>

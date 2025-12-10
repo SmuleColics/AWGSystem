@@ -96,6 +96,12 @@ table tbody tr {
   display: inline-block;
 }
 
+.action-create {
+  color: #0F766E !important;
+  background-color: #CCFBF1 !important;
+  border: 1px solid #99F6E4 !important;
+}
+
 /* GREEN (Low priority + Completed status) */
 .priority-low,
 .taskstatus-completed {
