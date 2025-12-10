@@ -1,11 +1,18 @@
 <?php
 ob_start();
-include 'admin-header.php';
+include 'admin-header.php'; // Includes authentication and sets $is_admin variable
 
 $errors = [];
 $success = false;
 
+// ========== ONLY ADMINS CAN ADD ITEMS ========== //
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
+  
+  // Check if user is admin
+  if (!$is_admin) {
+    echo "<script>alert('You do not have permission to add items.'); window.location='" . $_SERVER['PHP_SELF'] . "';</script>";
+    exit;
+  }
 
   $item_name = trim($_POST['item_name'] ?? '');
   $category = trim($_POST['category'] ?? '');
@@ -51,9 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
     $errors['supplier'] = 'Supplier is required';
   }
 
-
   if (empty($errors)) {
-
     $item_name = mysqli_real_escape_string($conn, $item_name);
     $category = mysqli_real_escape_string($conn, $category);
     $status = mysqli_real_escape_string($conn, $status);
@@ -76,7 +81,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
   }
 }
 
+// ========== ONLY ADMINS CAN EDIT ITEMS ========== //
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_item'])) {
+  
+  // Check if user is admin
+  if (!$is_admin) {
+    echo "<script>alert('You do not have permission to edit items.'); window.location='" . $_SERVER['PHP_SELF'] . "';</script>";
+    exit;
+  }
   
   $item_id = intval($_POST['item_id']);
   $item_name = trim($_POST['item_name'] ?? '');
@@ -158,7 +170,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_item'])) {
   }
 }
 
+// ========== ONLY ADMINS CAN ARCHIVE ITEMS ========== //
 if (isset($_POST['modal-archive-button'])) {
+  
+  // Check if user is admin
+  if (!$is_admin) {
+    echo "<script>alert('You do not have permission to archive items.'); window.location='" . $_SERVER['PHP_SELF'] . "';</script>";
+    exit;
+  }
+
   $archive_id = (int)$_POST['archive_id'];
 
   // Archive the item by setting is_archived = 1
@@ -171,6 +191,7 @@ if (isset($_POST['modal-archive-button'])) {
   }
 }
 
+// ========== GET STATISTICS ========== //
 $stats = [
   'total_items' => 0,
   'low_stock' => 0,
@@ -178,7 +199,6 @@ $stats = [
   'in_stock' => 0
 ];
 
-// Get total count of archived items
 $result = mysqli_query($conn, "SELECT COUNT(*) as count FROM inventory_items WHERE is_archived = 0");
 if ($result) {
   $row = mysqli_fetch_assoc($result);
@@ -203,7 +223,7 @@ if ($result) {
   $stats['in_stock'] = $row['count'];
 }
 
-// Get all items (only non-archived)
+// ========== GET ALL ITEMS ========== //
 $items = [];
 $sql = "SELECT * FROM inventory_items WHERE is_archived = 0 ORDER BY created_at DESC";
 $result = mysqli_query($conn, $sql);
@@ -215,6 +235,7 @@ if ($result) {
 }
 
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -247,13 +268,16 @@ if ($result) {
         <h1 class="fs-36 mobile-fs-32">Inventory</h1>
         <p class="admin-top-desc">Track and manage your inventory items</p>
       </div>
+
+      <?php if ($is_admin): ?>
       <div class="d-flex flex-column flex-md-row gap-2">
         <button class="btn green-bg text-white add-item-btn d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addItemModal">
-          <i class="fa-solid fa-plus me-1 d-none d-md-block"></i> Add <span class=" d-none d-md-block ms-1">Item</span>
+          <i class="fa-solid fa-plus me-1"></i> Add <span class=" d-none d-md-block ms-1">Item</span>
         </button>
         <a href="admin-archive-items.php" class="btn btn-danger text-white d-flex align-items-center">
-          <i class="fa-solid fa-box-archive me-1 d-none d-md-block"></i>  Archived <span class="d-none d-md-block ms-1">Items</span>
+          <i class="fa-solid fa-box-archive me-1"></i>  Archived <span class="d-none d-md-block ms-1">Items</span>
         </a>
+        <?php endif; ?>
       </div>
     </div>
 
@@ -363,6 +387,7 @@ if ($result) {
                         data-bs-toggle="modal"
                         data-bs-target="#viewItemModal"
                         style="cursor:pointer"></i>
+                      <?php if ($is_admin): ?>
                       <i class="fa-solid fa-pencil text-primary mx-2 fs-18 edit-item"
                         data-id="<?= $item['item_id'] ?>"
                         data-name="<?= htmlspecialchars($item['item_name']) ?>"
@@ -382,6 +407,7 @@ if ($result) {
                       <i class="fa-solid fa-box-archive text-danger archive-item fs-18"
                         data-id="<?= $item['item_id'] ?>"
                         style="cursor:pointer" data-bs-toggle="modal" data-bs-target="#archiveItemModal"></i>
+                        <?php endif; ?>
                     </td>
                   </tr>
                 <?php endforeach; ?>
@@ -397,6 +423,7 @@ if ($result) {
   </main>
   <!-- END OF MAIN -->
 
+  <?php if ($is_admin): ?>
   <!-- ADD ITEM MODAL -->
   <div class="modal fade" id="addItemModal" tabindex="-1" aria-labelledby="addItemModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -624,6 +651,7 @@ if ($result) {
       </div>
     </div>
   </div>
+  <?php endif; ?>
 
   <!-- VIEW ITEM MODAL -->
   <div class="modal fade" id="viewItemModal" tabindex="-1">
@@ -698,7 +726,7 @@ if ($result) {
     </div>
   </div>
 
-  <!-- ARCHIVE MODAL (replaces DELETE) -->
+  <!-- ARCHIVE MODAL -->
   <div class="modal fade" id="archiveItemModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
     aria-labelledby="archiveItemLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">

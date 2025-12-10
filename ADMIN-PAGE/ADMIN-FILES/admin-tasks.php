@@ -9,6 +9,11 @@ $success = false;
 // Handle form submission for ADD TASK
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_task'])) {
 
+  if (!$is_admin) {
+    echo "<script>alert('You do not have permission to add items.'); window.location='" . $_SERVER['PHP_SELF'] . "';</script>";
+    exit;
+  }
+
   $task_title = trim($_POST['task_title'] ?? '');
   $task_desc = trim($_POST['task_desc'] ?? '');
   $priority = trim($_POST['priority'] ?? '');
@@ -74,6 +79,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_task'])) {
 
 // Handle form submission for EDIT TASK
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_task'])) {
+
+  if (!$is_admin) {
+    echo "<script>alert('You do not have permission to add items.'); window.location='" . $_SERVER['PHP_SELF'] . "';</script>";
+    exit;
+  }
 
   $task_id = intval($_POST['task_id']);
   $task_title = trim($_POST['task_title'] ?? '');
@@ -147,6 +157,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_task'])) {
 
 // Handle ARCHIVE
 if (isset($_POST['modal-archive-button'])) {
+  
+  if (!$is_admin) {
+    echo "<script>alert('You do not have permission to add items.'); window.location='" . $_SERVER['PHP_SELF'] . "';</script>";
+    exit;
+  }
+
   $archive_id = (int)$_POST['archive_id'];
 
   $sql = "UPDATE tasks SET is_archived = 1 WHERE task_id = $archive_id";
@@ -233,14 +249,16 @@ if ($result) {
         <h1 class="fs-36 mobile-fs-32">Tasks</h1>
         <p class="admin-top-desc">Manage and assign tasks to employees</p>
       </div>
+      <?php if ($is_admin): ?>
       <div class="d-flex gap-2 flex-column flex-md-row">
         <button class="btn green-bg text-white add-item-btn d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addTasksModal">
-          <i class="fa-solid fa-plus me-1 d-none d-md-block"></i> Add <span class="d-none d-md-block ms-1">Task</span>
+          <i class="fa-solid fa-plus me-1"></i> Add <span class="d-none d-md-block ms-1">Task</span>
         </button>
         <a href="admin-archive-tasks.php" class="btn btn-danger text-white d-flex align-items-center">
-          <i class="fa-solid fa-box-archive me-1 d-none d-md-block"></i> Archived <span class="d-none d-md-block ms-1">Tasks</span>
+          <i class="fa-solid fa-box-archive me-1"></i> Archived <span class="d-none d-md-block ms-1">Tasks</span>
         </a>
       </div>
+      <?php endif; ?>
     </div>
 
     <!-- STATISTICS -->
@@ -371,12 +389,14 @@ if ($result) {
                       data-bs-target="#editTaskModal">
                       Edit
                     </button>
+                    <?php if ($is_admin): ?>
                     <button class="btn btn-danger border archive-task"
                       data-id="<?= $task['task_id'] ?>"
                       data-bs-toggle="modal"
                       data-bs-target="#archiveTaskModal">
                       Archive
                     </button>
+                    <?php endif; ?>
                   </div>
                 </div>
               <?php endforeach; ?>

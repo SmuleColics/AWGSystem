@@ -24,14 +24,14 @@ include 'admin-header.php';
 
 <body>
   <!-- START OF MAIN  -->
-  <main id="main" class="container-xxl text-dark px-4 min-vh-70">
+  <main id="main" class="container-xxl text-dark px-4 min-vh-100">
     <div class="admin-top-inventory d-flex justify-content-between align-items-center">
       <div>
         <h1 class="fs-36 mobile-fs-32">Manage Accounts</h1>
         <p class="admin-top-desc">View, manage, and archive user accounts</p>
       </div>
       <div>
-        <a href="admin-archive-accounts.php" class="btn btn-warning text-white">
+        <a href="admin-archive-accounts.php" class="btn btn-danger text-white">
           <i class="fa-solid fa-box-archive me-1"></i>  Archived Accounts
         </a>
       </div>
@@ -67,10 +67,10 @@ include 'admin-header.php';
         <div class="p-4 inventory-category rounded d-flex justify-content-between align-items-start">
           <div class="inventory-desc">
             <p class="mb-1 fs-14 light-text">Archived Accounts</p>
-            <p class="mb-0 fs-24 mobile-fs-22 text-warning fw-bold">4</p>
+            <p class="mb-0 fs-24 mobile-fs-22 text-danger fw-bold">4</p>
           </div>
           <div class="inventory-icon">
-            <i class="fas fa-archive fs-20 text-warning"></i>
+            <i class="fas fa-archive fs-20 text-danger"></i>
           </div>
         </div>
       </div>
@@ -118,7 +118,7 @@ include 'admin-header.php';
                       <i class="fa-solid fa-eye me-1"></i> View
                     </button>
 
-                    <button class="btn btn-sm btn-warning text-white">
+                    <button class="btn btn-sm btn-danger text-white">
                       <i class="fa-solid fa-box-archive me-1"></i> Archive
                     </button>
                   </td>

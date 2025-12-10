@@ -33,14 +33,9 @@ include 'admin-header.php';
         <h1 class="fs-36 mobile-fs-32">Assessments Request</h1>
         <p class="admin-top-desc">Manage customer assessment requests and create quotations</p>
       </div>
-      <div class="d-flex gap-2 flex-column flex-md-row">
-        <a hre="#" class="btn btn-danger border d-flex align-items-center ">
-          <i class="fas fa-times-circle me-1 d-none d-md-block"></i>
-          Rejected <span class="d-none d-md-block ms-1">Assessments</span>
-        </a>
-        <a href="#" class="btn btn-green d-flex align-items-center ">
-          <i class="fas fa-check-circle me-1 d-none d-md-block"></i>
-          Accepted <span class="d-none d-md-block ms-1">Assessments</span>
+      <div>
+        <a href="admin-archive-assessment.php" class="btn btn-danger text-white d-flex align-items-center">
+          <i class="fa-solid fa-box-archive me-1"></i> Archived <span class="d-none d-md-block ms-1">Assessments</span>
         </a>
       </div>
 
@@ -51,9 +46,15 @@ include 'admin-header.php';
 
       <div class="col-12">
         <div class="assessment-container rounded-3 bg-white">
-          <div class="assessment-top p-4">
+          <div class="assessment-top p-4 d-flex justify-content-between align-items-center flex-column flex-md-row gap-3">
             <h2 class="fs-24 mobile-fs-22 mb-0">All Assessments Requests</h2>
-
+            <div>
+              <select id="assessmentFilter" class="form-select">
+                <option value="all">Show All</option>
+                <option value="accepted">Accepted</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
 
           </div>
           <div class="px-4 pb-4 d-flex flex-column gap-4">
@@ -109,10 +110,7 @@ include 'admin-header.php';
                       <span class="light-text">Estimated Budget: </span>
                       $20,000
                     </p>
-                    <p class="fs-14 mb-2">
-                      <span class="light-text">Payment Method: </span>
-                      Cash (on Site)
-                    </p>
+                    
 
                   </div>
                 </div>
@@ -120,14 +118,18 @@ include 'admin-header.php';
 
               </div>
               <div class="assessment-actions d-flex flex-column gap-2">
-                <div class="btn btn-green flex">
+                <button class="btn btn-green flex">
                   <i class="fas fa-check-circle me-1"></i>
                   Accept
-                </div>
-                <div class="btn btn-danger border flex ">
+                </button>
+                <button class="btn btn-danger border flex">
                   <i class="fas fa-times-circle me-1"></i>
                   Reject
-                </div>
+                </button>
+                <button class="btn btn-light border flex ">
+                  <i class="fa-solid fa-box-archive me-1"></i>
+                  Archive
+                </button>
               </div>
             </div>
 
@@ -189,14 +191,14 @@ include 'admin-header.php';
                 </p>
               </div>
               <div class="assessment-actions d-flex flex-column gap-2">
-                <a href="admin-quotation-proposal.php" class="btn btn-green flex">
-                  <i class="fas fa-file-invoice me-1"></i>
-                  Create Quotation
-                </a>
-                <a href="admin-quotation-proposal.php" class="btn btn-light border flex ">
+                <a href="admin-quotation-proposal.php" class="btn btn-green border flex ">
                   <i class="fas fa-file-invoice me-1"></i></i>
-                  Manage Quotation
+                  Create/Manage 
                 </a>
+                <button class="btn btn-light border flex ">
+                  <i class="fa-solid fa-box-archive me-1"></i>
+                  Archive
+                </button>
               </div>
             </div>
 
@@ -268,9 +270,13 @@ include 'admin-header.php';
               </div>
               <div class="assessment-actions d-flex flex-column gap-2">
                 <a href="admin-quotations.php" class="btn btn-green flex">
-                  <i class="fas fa-check-circle me-1"></i>
-                  View Quotation
+                <i class="fa-solid fa-eye me-1"></i>
+                  View 
                 </a>
+                <button class="btn btn-light border flex ">
+                  <i class="fa-solid fa-box-archive me-1"></i>
+                  Archive
+                </button>
               </div>
             </div>
           </div>
