@@ -128,7 +128,7 @@ $inventory_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activi
               <th>User Name</th>
               <th>Action</th>
               <th>Module</th>
-              <th>Item</th>
+              <th>Subject</th>
               <th>Description</th>
               <!-- <th>Action</th> -->
             </tr>
@@ -148,6 +148,7 @@ $inventory_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activi
                     <?php
                     $action_class = match ($log['action']) {
                       'LOGIN' => 'badge-pill priority-medium',
+                      'LOGOUT' => 'badge-pill priority-low',
                       'CREATE' => 'badge-pill action-create',
                       'UPDATE' => 'badge-pill taskstatus-inprogress',
                       'ARCHIVE' => 'badge-pill priority-high',

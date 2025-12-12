@@ -2,6 +2,7 @@
 
 session_start();
 include '../../INCLUDES/db-con.php';
+include '../../INCLUDES/log-activity.php';
 
 // Store employee info in variables for easy access
 $employee_id = $_SESSION['employee_id'];
@@ -168,14 +169,14 @@ if (!isset($_SESSION['employee_id']) || $_SESSION['user_type'] !== 'employee') {
                 <span class="sidebar-text ms-2">Assessments</span>
               </a>
             </li>
-            
+
             <?php if ($is_admin): ?>
-            <li class="sidebar-content-item d-flex align-items-center mb-1">
-              <a href="admin-employees.php" class="sidebar-anchor">
-                <span class="aside-icon material-symbols-outlined">people</span>
-                <span class="sidebar-text ms-2">Employees</span>
-              </a>
-            </li>
+              <li class="sidebar-content-item d-flex align-items-center mb-1">
+                <a href="admin-employees.php" class="sidebar-anchor">
+                  <span class="aside-icon material-symbols-outlined">people</span>
+                  <span class="sidebar-text ms-2">Employees</span>
+                </a>
+              </li>
             <?php endif; ?>
 
             <li class="sidebar-content-item d-flex align-items-center mb-1">
@@ -184,14 +185,14 @@ if (!isset($_SESSION['employee_id']) || $_SESSION['user_type'] !== 'employee') {
                 <span class="sidebar-text ms-2">Projects</span>
               </a>
             </li>
-            
+
             <?php if ($is_admin): ?>
-            <li class="sidebar-content-item d-flex align-items-center mb-1">
-              <a href="admin-manage-accounts.php" class="sidebar-anchor">
-                <span class="aside-icon material-symbols-outlined">manage_accounts</span>
-                <span class="sidebar-text ms-2">Users</span>
-              </a>
-            </li>
+              <li class="sidebar-content-item d-flex align-items-center mb-1">
+                <a href="admin-manage-accounts.php" class="sidebar-anchor">
+                  <span class="aside-icon material-symbols-outlined">manage_accounts</span>
+                  <span class="sidebar-text ms-2">Users</span>
+                </a>
+              </li>
             <?php endif; ?>
           </ul>
         </div>
@@ -228,14 +229,14 @@ if (!isset($_SESSION['employee_id']) || $_SESSION['user_type'] !== 'employee') {
             <span class="sidebar-text ms-2">Assessments</span>
           </a>
         </li>
-        
+
         <?php if ($is_admin): ?>
-        <li class="sidebar-content-item d-flex align-items-center mb-1">
-          <a href="admin-employees.php" class="sidebar-anchor">
-            <span class="aside-icon material-symbols-outlined">people</span>
-            <span class="sidebar-text ms-2">Employees</span>
-          </a>
-        </li>
+          <li class="sidebar-content-item d-flex align-items-center mb-1">
+            <a href="admin-employees.php" class="sidebar-anchor">
+              <span class="aside-icon material-symbols-outlined">people</span>
+              <span class="sidebar-text ms-2">Employees</span>
+            </a>
+          </li>
         <?php endif; ?>
 
         <li class="sidebar-content-item d-flex align-items-center mb-1">
@@ -244,14 +245,14 @@ if (!isset($_SESSION['employee_id']) || $_SESSION['user_type'] !== 'employee') {
             <span class="sidebar-text ms-2">Projects</span>
           </a>
         </li>
-        
+
         <?php if ($is_admin): ?>
-        <li class="sidebar-content-item d-flex align-items-center mb-1">
-          <a href="admin-manage-accounts.php" class="sidebar-anchor">
-            <span class="aside-icon material-symbols-outlined">manage_accounts</span>
-            <span class="sidebar-text ms-2">Users</span>
-          </a>
-        </li>
+          <li class="sidebar-content-item d-flex align-items-center mb-1">
+            <a href="admin-manage-accounts.php" class="sidebar-anchor">
+              <span class="aside-icon material-symbols-outlined">manage_accounts</span>
+              <span class="sidebar-text ms-2">Users</span>
+            </a>
+          </li>
         <?php endif; ?>
       </ul>
     </div>
@@ -280,6 +281,11 @@ if (!isset($_SESSION['employee_id']) || $_SESSION['user_type'] !== 'employee') {
     toggleOffcanvas();
     window.addEventListener("resize", toggleOffcanvas);
   });
+
+  window.addEventListener('scroll', function(e) {
+    e.stopImmediatePropagation();
+}, true);
+
 </script>
 
 </html>

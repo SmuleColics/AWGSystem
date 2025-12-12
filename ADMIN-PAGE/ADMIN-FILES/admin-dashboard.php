@@ -24,7 +24,7 @@ include 'admin-header.php';
 
 </head>
 
-<body>
+<body class="pt-0">
   <!-- START OF MAIN  -->
   <main id="main" class="container-xxl text-dark px-4 mt-5 min-vh-100">
     <div class="admin-top-text my-3">

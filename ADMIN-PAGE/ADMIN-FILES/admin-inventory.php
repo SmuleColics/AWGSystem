@@ -4,10 +4,6 @@ include 'admin-header.php'; // Includes authentication and sets $is_admin variab
 
 $errors = [];
 $success = false;
-include '../../INCLUDES/log-activity.php';
-
-$errors = [];
-$success = false;
 
 // ========== ONLY ADMINS CAN ADD ITEMS ========== //
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
@@ -21,6 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
   $item_name = trim($_POST['item_name'] ?? '');
   $category = trim($_POST['category'] ?? '');
   $quantity = trim($_POST['quantity'] ?? '');
+  $quantity_unit = trim($_POST['quantity_unit'] ?? 'piece'); // ADD THIS LINE
   $price = trim($_POST['price'] ?? '');
   $selling_price = trim($_POST['selling_price'] ?? '');
   $status = trim($_POST['status'] ?? '');
@@ -66,12 +63,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
   if (empty($errors)) {
     $item_name_esc = mysqli_real_escape_string($conn, $item_name);
     $category_esc = mysqli_real_escape_string($conn, $category);
+    $quantity_unit_esc = mysqli_real_escape_string($conn, $quantity_unit); // ADD THIS LINE
     $status_esc = mysqli_real_escape_string($conn, $status);
     $location_esc = mysqli_real_escape_string($conn, $location);
     $supplier_esc = mysqli_real_escape_string($conn, $supplier);
 
-    $sql = "INSERT INTO inventory_items (item_name, category, quantity, price, selling_price, status, location, supplier, warranty_years, warranty_months, warranty_days, is_archived) 
-            VALUES ('$item_name_esc', '$category_esc', $quantity, $price, $selling_price, '$status_esc', '$location_esc', '$supplier_esc', $warranty_years, $warranty_months, $warranty_days, 0)";
+    $sql = "INSERT INTO inventory_items (item_name, category, quantity, quantity_unit, price, selling_price, status, location, supplier, warranty_years, warranty_months, warranty_days, is_archived) 
+            VALUES ('$item_name_esc', '$category_esc', $quantity, '$quantity_unit_esc', $price, $selling_price, '$status_esc', '$location_esc', '$supplier_esc', $warranty_years, $warranty_months, $warranty_days, 0)";
 
     if (mysqli_query($conn, $sql)) {
       $new_item_id = mysqli_insert_id($conn);
@@ -85,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
         'INVENTORY',
         $new_item_id,
         $item_name,
-        "Created new inventory item: $item_name ($category) - Qty: $quantity"
+        "Created new inventory item: $item_name ($category) - Qty: $quantity $quantity_unit"
       );
 
       echo "<script>
@@ -112,6 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_item'])) {
   $item_name = trim($_POST['item_name'] ?? '');
   $category = trim($_POST['category'] ?? '');
   $quantity = trim($_POST['quantity'] ?? '');
+  $quantity_unit = trim($_POST['quantity_unit'] ?? 'piece'); // ADD THIS LINE
   $price = trim($_POST['price'] ?? '');
   $selling_price = trim($_POST['selling_price'] ?? '');
   $status = trim($_POST['status'] ?? '');
@@ -157,14 +156,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_item'])) {
   if (empty($errors)) {
     $item_name_esc = mysqli_real_escape_string($conn, $item_name);
     $category_esc = mysqli_real_escape_string($conn, $category);
+    $quantity_unit_esc = mysqli_real_escape_string($conn, $quantity_unit); // ADD THIS LINE
     $status_esc = mysqli_real_escape_string($conn, $status);
     $location_esc = mysqli_real_escape_string($conn, $location);
     $supplier_esc = mysqli_real_escape_string($conn, $supplier);
 
+    // UPDATE SQL TO INCLUDE quantity_unit
     $sql = "UPDATE inventory_items SET 
             item_name = '$item_name_esc',
             category = '$category_esc',
             quantity = $quantity,
+            quantity_unit = '$quantity_unit_esc',
             price = $price,
             selling_price = $selling_price,
             status = '$status_esc',
@@ -177,7 +179,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_item'])) {
 
     if (mysqli_query($conn, $sql)) {
 
-      // LOG ACTIVITY
+      // UPDATE LOG ACTIVITY
       log_activity(
         $conn,
         $employee_id,
@@ -186,7 +188,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_item'])) {
         'INVENTORY',
         $item_id,
         $item_name,
-        "Updated inventory item: $item_name - Status: $status, Qty: $quantity"
+        "Updated inventory item: $item_name - Status: $status, Qty: $quantity $quantity_unit" // UPDATED
       );
 
       echo "<script>
@@ -194,8 +196,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_item'])) {
         window.location = '" . $_SERVER['PHP_SELF'] . "?success=1';
       </script>";
       exit;
-    } else {
-      $errors['database'] = 'Database error: ' . mysqli_error($conn);
     }
   }
 }
@@ -427,6 +427,7 @@ if ($result) {
                         data-status="<?= htmlspecialchars($item['status']) ?>"
                         data-location="<?= htmlspecialchars($item['location']) ?>"
                         data-quantity="<?= $item['quantity'] ?>"
+                        data-quantity-unit="<?= htmlspecialchars($item['quantity_unit']) ?>"
                         data-price="<?= $item['price'] ?>"
                         data-selling="<?= $item['selling_price'] ?>"
                         data-supplier="<?= htmlspecialchars($item['supplier']) ?>"
@@ -444,6 +445,7 @@ if ($result) {
                           data-status="<?= htmlspecialchars($item['status']) ?>"
                           data-location="<?= htmlspecialchars($item['location']) ?>"
                           data-quantity="<?= $item['quantity'] ?>"
+                          data-quantity-unit="<?= htmlspecialchars($item['quantity_unit']) ?>"
                           data-price="<?= $item['price'] ?>"
                           data-selling="<?= $item['selling_price'] ?>"
                           data-supplier="<?= htmlspecialchars($item['supplier']) ?>"
@@ -509,12 +511,45 @@ if ($result) {
                 </div>
 
                 <div class="col-md-4">
-                  <label class="form-label">Quantity</label>
-                  <input type="number" name="quantity" class="form-control" placeholder="10" value="<?= $_POST['quantity'] ?? '' ?>">
-                  <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['quantity']) ? 'block' : 'none' ?>">
-                    <?= $errors['quantity'] ?? 'This field is required' ?>
-                  </p>
+                  <div class="d-flex">
+
+                    <div class="flex-fill" style="width: 130px;">
+                      <label class="form-label">Quantity</label>
+                      <input
+                        type="number"
+                        name="quantity"
+                        class="form-control"
+                        placeholder="10"
+                        value="<?= $_POST['quantity'] ?? '' ?>">
+                      <?php if (isset($errors['quantity'])): ?>
+                        <p class="fs-14 text-danger mb-0 mt-1">
+                          <?= $errors['quantity'] ?>
+                        </p>
+                      <?php endif; ?>
+                    </div>
+
+                    <div class="flex-fill">
+                      <label class="form-label">Unit</label>
+                      <select name="quantity_unit" class="form-select">
+                        <option value="piece" <?= (isset($_POST['quantity_unit']) && $_POST['quantity_unit'] == 'piece') ? 'selected' : '' ?>>Piece</option>
+                        <option value="unit" <?= (isset($_POST['quantity_unit']) && $_POST['quantity_unit'] == 'unit') ? 'selected' : '' ?>>Unit</option>
+                        <option value="set" <?= (isset($_POST['quantity_unit']) && $_POST['quantity_unit'] == 'set') ? 'selected' : '' ?>>Set</option>
+                        <option value="roll" <?= (isset($_POST['quantity_unit']) && $_POST['quantity_unit'] == 'roll') ? 'selected' : '' ?>>Roll</option>
+                        <option value="box" <?= (isset($_POST['quantity_unit']) && $_POST['quantity_unit'] == 'box') ? 'selected' : '' ?>>Box</option>
+                        <option value="meter" <?= (isset($_POST['quantity_unit']) && $_POST['quantity_unit'] == 'meter') ? 'selected' : '' ?>>Meter</option>
+                        <option value="liter" <?= (isset($_POST['quantity_unit']) && $_POST['quantity_unit'] == 'liter') ? 'selected' : '' ?>>Liter</option>
+                        <option value="pack" <?= (isset($_POST['quantity_unit']) && $_POST['quantity_unit'] == 'pack') ? 'selected' : '' ?>>Pack</option>
+                      </select>
+
+                      <?php if (isset($errors['quantity_unit'])): ?>
+                        <p class="fs-14 text-danger mb-0 mt-1">
+                          <?= $errors['quantity_unit'] ?>
+                        </p>
+                      <?php endif; ?>
+                    </div>
+                  </div>
                 </div>
+
 
                 <div class="col-md-4">
                   <label class="form-label">Price (₱)</label>
@@ -630,9 +665,27 @@ if ($result) {
                 </div>
 
                 <div class="col-md-4">
-                  <label class="form-label">Quantity</label>
-                  <input type="number" name="quantity" id="editQuantity" class="form-control" placeholder="10">
+                  <div class="d-flex gap-2">
+                    <div class="flex-fill" style="width: 130px;">
+                      <label class="form-label">Quantity</label>
+                      <input type="number" name="quantity" id="editQuantity" class="form-control" placeholder="10">
+                    </div>
+                    <div class="flex-fill">
+                      <label class="form-label">Unit</label>
+                      <select name="quantity_unit" id="editQuantityUnit" class="form-select">
+                        <option value="piece">Piece</option>
+                        <option value="unit">Unit</option>
+                        <option value="set">Set</option>
+                        <option value="roll">Roll</option>
+                        <option value="box">Box</option>
+                        <option value="meter">Meter</option>
+                        <option value="liter">Liter</option>
+                        <option value="pack">Pack</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
+
 
                 <div class="col-md-4">
                   <label class="form-label">Price (₱)</label>
@@ -727,15 +780,6 @@ if ($result) {
                 <input type="text" class="form-control" id="viewCategory" readonly>
               </div>
 
-              <div class="col-md-6">
-                <label class="form-label">Status</label>
-                <input type="text" class="form-control" id="viewStatus" readonly>
-              </div>
-
-              <div class="col-md-6">
-                <label class="form-label">Location</label>
-                <input type="text" class="form-control" id="viewLocation" readonly>
-              </div>
 
               <div class="col-md-4">
                 <label class="form-label">Quantity</label>
@@ -751,6 +795,18 @@ if ($result) {
                 <label class="form-label">Selling Price (₱)</label>
                 <input type="text" class="form-control" id="viewSellingPrice" readonly>
               </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Status</label>
+                <input type="text" class="form-control" id="viewStatus" readonly>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Location</label>
+                <input type="text" class="form-control" id="viewLocation" readonly>
+              </div>
+
+
 
               <div class="col-6">
                 <label class="form-label">Supplier</label>
@@ -828,7 +884,7 @@ if ($result) {
       $('#viewCategory').val($(this).data('category'));
       $('#viewStatus').val($(this).data('status'));
       $('#viewLocation').val($(this).data('location'));
-      $('#viewQuantity').val($(this).data('quantity'));
+      $('#viewQuantity').val($(this).data('quantity') + ' ' + $(this).data('quantity-unit')); // UPDATED
       $('#viewPrice').val($(this).data('price'));
       $('#viewSellingPrice').val($(this).data('selling'));
       $('#viewSupplier').val($(this).data('supplier'));
@@ -854,6 +910,7 @@ if ($result) {
       $('#editStatus').val($(this).data('status'));
       $('#editLocation').val($(this).data('location'));
       $('#editQuantity').val($(this).data('quantity'));
+      $('#editQuantityUnit').val($(this).data('quantity-unit')); // ADD THIS LINE
       $('#editPrice').val($(this).data('price'));
       $('#editSellingPrice').val($(this).data('selling'));
       $('#editSupplier').val($(this).data('supplier'));

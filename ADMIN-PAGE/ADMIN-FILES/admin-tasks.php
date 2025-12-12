@@ -6,11 +6,21 @@ include 'admin-header.php';
 $errors = [];
 $success = false;
 
+// Fetch all active employees for the dropdown
+$employees = [];
+$employee_query = "SELECT employee_id, first_name, last_name, position FROM employees WHERE is_archived = 0 AND POSITION NOT IN ('Admin', 'Admin/Secretary') ORDER BY first_name ASC";
+$employee_result = mysqli_query($conn, $employee_query);
+if ($employee_result) {
+  while ($emp = mysqli_fetch_assoc($employee_result)) {
+    $employees[] = $emp;
+  }
+}
+
 // Handle form submission for ADD TASK
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_task'])) {
 
   if (!$is_admin) {
-    echo "<script>alert('You do not have permission to add items.'); window.location='" . $_SERVER['PHP_SELF'] . "';</script>";
+    echo "<script>alert('You do not have permission to add tasks.'); window.location='" . $_SERVER['PHP_SELF'] . "';</script>";
     exit;
   }
 
@@ -18,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_task'])) {
   $task_desc = trim($_POST['task_desc'] ?? '');
   $priority = trim($_POST['priority'] ?? '');
   $status = trim($_POST['status'] ?? '');
-  $assigned_to = trim($_POST['assigned_to'] ?? '');
+  $assigned_to_id = trim($_POST['assigned_to'] ?? '');
   $project_name = trim($_POST['project_name'] ?? '');
   $due_date = trim($_POST['due_date'] ?? '');
 
@@ -39,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_task'])) {
     $errors['status'] = 'Status is required';
   }
 
-  if (empty($assigned_to)) {
+  if (empty($assigned_to_id)) {
     $errors['assigned_to'] = 'Assigned to is required';
   }
 
@@ -53,18 +63,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_task'])) {
 
   // If no errors, insert into database
   if (empty($errors)) {
+    // Get assigned employee name
+    $assigned_employee_name = '';
+    foreach ($employees as $emp) {
+      if ($emp['employee_id'] == $assigned_to_id) {
+        $assigned_employee_name = $emp['first_name'] . ' ' . $emp['last_name'];
+        break;
+      }
+    }
+
     $task_title = mysqli_real_escape_string($conn, $task_title);
     $task_desc = mysqli_real_escape_string($conn, $task_desc);
     $priority = mysqli_real_escape_string($conn, $priority);
     $status = mysqli_real_escape_string($conn, $status);
-    $assigned_to = mysqli_real_escape_string($conn, $assigned_to);
+    $assigned_to_id = intval($assigned_to_id);
+    $assigned_to_name = mysqli_real_escape_string($conn, $assigned_employee_name);
     $project_name = mysqli_real_escape_string($conn, $project_name);
     $due_date = mysqli_real_escape_string($conn, $due_date);
 
-    $sql = "INSERT INTO tasks (task_title, task_desc, priority, status, assigned_to, project_name, due_date, is_archived) 
-                VALUES ('$task_title', '$task_desc', '$priority', '$status', '$assigned_to', '$project_name', '$due_date', 0)";
+    $sql = "INSERT INTO tasks (task_title, task_desc, priority, status, assigned_to_id, assigned_to, project_name, due_date, is_archived) 
+                VALUES ('$task_title', '$task_desc', '$priority', '$status', $assigned_to_id, '$assigned_to_name', '$project_name', '$due_date', 0)";
 
     if (mysqli_query($conn, $sql)) {
+      $task_id = mysqli_insert_id($conn);
+      
+      // LOG ACTIVITY
+      log_activity(
+        $conn,
+        $employee_id,
+        $employee_full_name,
+        'CREATE',
+        'TASKS',
+        $task_id,
+        $task_title,
+        "Created task '$task_title' assigned to $assigned_employee_name"
+      );
+
       $success = true;
       echo "<script>
                 alert('Task added successfully!');
@@ -81,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_task'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_task'])) {
 
   if (!$is_admin) {
-    echo "<script>alert('You do not have permission to add items.'); window.location='" . $_SERVER['PHP_SELF'] . "';</script>";
+    echo "<script>alert('You do not have permission to edit tasks.'); window.location='" . $_SERVER['PHP_SELF'] . "';</script>";
     exit;
   }
 
@@ -90,7 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_task'])) {
   $task_desc = trim($_POST['task_desc'] ?? '');
   $priority = trim($_POST['priority'] ?? '');
   $status = trim($_POST['status'] ?? '');
-  $assigned_to = trim($_POST['assigned_to'] ?? '');
+  $assigned_to_id = trim($_POST['assigned_to'] ?? '');
   $project_name = trim($_POST['project_name'] ?? '');
   $due_date = trim($_POST['due_date'] ?? '');
 
@@ -111,7 +145,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_task'])) {
     $errors['status'] = 'Status is required';
   }
 
-  if (empty($assigned_to)) {
+  if (empty($assigned_to_id)) {
     $errors['assigned_to'] = 'Assigned to is required';
   }
 
@@ -125,11 +159,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_task'])) {
 
   // If no errors, update the database
   if (empty($errors)) {
+    // Get assigned employee name
+    $assigned_employee_name = '';
+    foreach ($employees as $emp) {
+      if ($emp['employee_id'] == $assigned_to_id) {
+        $assigned_employee_name = $emp['first_name'] . ' ' . $emp['last_name'];
+        break;
+      }
+    }
+
     $task_title = mysqli_real_escape_string($conn, $task_title);
     $task_desc = mysqli_real_escape_string($conn, $task_desc);
     $priority = mysqli_real_escape_string($conn, $priority);
     $status = mysqli_real_escape_string($conn, $status);
-    $assigned_to = mysqli_real_escape_string($conn, $assigned_to);
+    $assigned_to_id = intval($assigned_to_id);
+    $assigned_to_name = mysqli_real_escape_string($conn, $assigned_employee_name);
     $project_name = mysqli_real_escape_string($conn, $project_name);
     $due_date = mysqli_real_escape_string($conn, $due_date);
 
@@ -138,12 +182,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_task'])) {
                 task_desc = '$task_desc',
                 priority = '$priority',
                 status = '$status',
-                assigned_to = '$assigned_to',
+                assigned_to_id = $assigned_to_id,
+                assigned_to = '$assigned_to_name',
                 project_name = '$project_name',
                 due_date = '$due_date'
             WHERE task_id = $task_id";
 
     if (mysqli_query($conn, $sql)) {
+      // LOG ACTIVITY
+      log_activity(
+        $conn,
+        $employee_id,
+        $employee_full_name,
+        'UPDATE',
+        'TASKS',
+        $task_id,
+        $task_title,
+        "Updated task '$task_title'"
+      );
+
       echo "<script>
                 alert('Task updated successfully!');
                 window.location = '" . $_SERVER['PHP_SELF'] . "?success=1';
@@ -159,14 +216,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_task'])) {
 if (isset($_POST['modal-archive-button'])) {
   
   if (!$is_admin) {
-    echo "<script>alert('You do not have permission to add items.'); window.location='" . $_SERVER['PHP_SELF'] . "';</script>";
+    echo "<script>alert('You do not have permission to archive tasks.'); window.location='" . $_SERVER['PHP_SELF'] . "';</script>";
     exit;
   }
 
   $archive_id = (int)$_POST['archive_id'];
 
+  // Get task info before archiving
+  $task_info_query = "SELECT task_title FROM tasks WHERE task_id = $archive_id";
+  $task_info_result = mysqli_query($conn, $task_info_query);
+  $task_info = mysqli_fetch_assoc($task_info_result);
+  $task_title = $task_info['task_title'];
+
   $sql = "UPDATE tasks SET is_archived = 1 WHERE task_id = $archive_id";
   if (mysqli_query($conn, $sql)) {
+    // LOG ACTIVITY
+    log_activity(
+      $conn,
+      $employee_id,
+      $employee_full_name,
+      'ARCHIVE',
+      'TASKS',
+      $archive_id,
+      $task_title,
+      "Archived task '$task_title'"
+    );
+
     echo "<script>alert('Task archived successfully!'); window.location='" . $_SERVER['PHP_SELF'] . "';</script>";
     exit;
   } else {
@@ -382,7 +457,7 @@ if ($result) {
                       data-desc="<?= htmlspecialchars($task['task_desc']) ?>"
                       data-priority="<?= htmlspecialchars($task['priority']) ?>"
                       data-status="<?= htmlspecialchars($task['status']) ?>"
-                      data-assigned="<?= htmlspecialchars($task['assigned_to']) ?>"
+                      data-assigned="<?= $task['assigned_to_id'] ?>"
                       data-project="<?= htmlspecialchars($task['project_name']) ?>"
                       data-due="<?= $task['due_date'] ?>"
                       data-bs-toggle="modal"
@@ -442,6 +517,7 @@ if ($result) {
               <div class="col-md-6 mb-3">
                 <label class="form-label">Priority</label>
                 <select name="priority" class="form-select">
+                  <option value="">Select Priority</option>
                   <option value="High" <?= (isset($_POST['priority']) && $_POST['priority'] == 'High') ? 'selected' : '' ?>>High</option>
                   <option value="Medium" <?= (isset($_POST['priority']) && $_POST['priority'] == 'Medium') ? 'selected' : '' ?>>Medium</option>
                   <option value="Low" <?= (isset($_POST['priority']) && $_POST['priority'] == 'Low') ? 'selected' : '' ?>>Low</option>
@@ -454,6 +530,7 @@ if ($result) {
               <div class="col-md-6 mb-3">
                 <label class="form-label">Status</label>
                 <select name="status" class="form-select">
+                  <option value="">Select Status</option>
                   <option value="Pending" <?= (isset($_POST['status']) && $_POST['status'] == 'Pending') ? 'selected' : '' ?>>Pending</option>
                   <option value="In Progress" <?= (isset($_POST['status']) && $_POST['status'] == 'In Progress') ? 'selected' : '' ?>>In Progress</option>
                   <option value="Completed" <?= (isset($_POST['status']) && $_POST['status'] == 'Completed') ? 'selected' : '' ?>>Completed</option>
@@ -466,8 +543,15 @@ if ($result) {
 
             <div class="row">
               <div class="col-md-6 mb-3">
-                <label class="form-label">Assigned To</label>
-                <input type="text" name="assigned_to" class="form-control" placeholder="John Smith" value="<?= $_POST['assigned_to'] ?? '' ?>">
+                <label class="form-label">Assign To Employee</label>
+                <select name="assigned_to" class="form-select">
+                  <option value="">Select Employee</option>
+                  <?php foreach ($employees as $emp): ?>
+                    <option value="<?= $emp['employee_id'] ?>" <?= (isset($_POST['assigned_to']) && $_POST['assigned_to'] == $emp['employee_id']) ? 'selected' : '' ?>>
+                      <?= htmlspecialchars($emp['first_name'] . ' ' . $emp['last_name']) ?> - <?= htmlspecialchars($emp['position']) ?>
+                    </option>
+                  <?php endforeach; ?>
+                </select>
                 <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['assigned_to']) ? 'block' : 'none' ?>">
                   <?= $errors['assigned_to'] ?? 'This field is required' ?>
                 </p>
@@ -550,8 +634,14 @@ if ($result) {
 
             <div class="row">
               <div class="col-md-6 mb-3">
-                <label class="form-label">Assigned To</label>
-                <input type="text" name="assigned_to" id="editAssignedTo" class="form-control" placeholder="John Smith">
+                <label class="form-label">Assign To Employee</label>
+                <select name="assigned_to" id="editAssignedTo" class="form-select">
+                  <?php foreach ($employees as $emp): ?>
+                    <option value="<?= $emp['employee_id'] ?>">
+                      <?= htmlspecialchars($emp['first_name'] . ' ' . $emp['last_name']) ?> - <?= htmlspecialchars($emp['position']) ?>
+                    </option>
+                  <?php endforeach; ?>
+                </select>
               </div>
 
               <div class="col-md-6 mb-3">
