@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_task'])) {
   $task_desc = trim($_POST['task_desc'] ?? '');
   $priority = trim($_POST['priority'] ?? '');
   $status = trim($_POST['status'] ?? '');
-  $assigned_to_id = trim($_POST['assigned_to'] ?? '');
+  $assigned_to_id = intval($_POST['assigned_to'] ?? 0);  // CONVERT TO INT HERE
   $project_name = trim($_POST['project_name'] ?? '');
   $due_date = trim($_POST['due_date'] ?? '');
 
@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_task'])) {
     $errors['status'] = 'Status is required';
   }
 
-  if (empty($assigned_to_id)) {
+  if ($assigned_to_id === 0) {
     $errors['assigned_to'] = 'Assigned to is required';
   }
 
@@ -76,7 +76,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_task'])) {
     $task_desc = mysqli_real_escape_string($conn, $task_desc);
     $priority = mysqli_real_escape_string($conn, $priority);
     $status = mysqli_real_escape_string($conn, $status);
-    $assigned_to_id = intval($assigned_to_id);
     $assigned_to_name = mysqli_real_escape_string($conn, $assigned_employee_name);
     $project_name = mysqli_real_escape_string($conn, $project_name);
     $due_date = mysqli_real_escape_string($conn, $due_date);
@@ -97,6 +96,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_task'])) {
         $task_id,
         $task_title,
         "Created task '$task_title' assigned to $assigned_employee_name"
+      );
+
+      // CREATE NOTIFICATION FOR ASSIGNED EMPLOYEE
+      create_notification(
+        $conn,
+        $assigned_to_id,           // recipient_id (INTEGER)
+        $employee_id,              // sender_id (INTEGER)
+        $employee_full_name,       // sender_name (STRING)
+        'TASK_ASSIGNED',           // type (STRING)
+        'New Task Assigned',       // title (STRING)
+        "You have been assigned a new task: $task_title", // message (STRING)
+        'admin-tasks.php',         // link (STRING)
+        $task_id                   // related_id (INTEGER)
+      );
+
+      // CREATE NOTIFICATION FOR ADMIN WHO CREATED THE TASK (to confirm creation)
+      create_notification(
+        $conn,
+        $employee_id,              // recipient_id - the admin who created it (INTEGER)
+        $employee_id,              // sender_id (INTEGER)
+        $employee_full_name,       // sender_name (STRING)
+        'TASK_ASSIGNED',           // type (STRING)
+        'Task Created',            // title (STRING)
+        "You created task: $task_title and assigned it to $assigned_employee_name", // message (STRING)
+        'admin-tasks.php',         // link (STRING)
+        $task_id                   // related_id (INTEGER)
       );
 
       $success = true;
@@ -124,7 +149,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_task'])) {
   $task_desc = trim($_POST['task_desc'] ?? '');
   $priority = trim($_POST['priority'] ?? '');
   $status = trim($_POST['status'] ?? '');
-  $assigned_to_id = trim($_POST['assigned_to'] ?? '');
+  $assigned_to_id = intval($_POST['assigned_to'] ?? 0);  // CONVERT TO INT HERE
   $project_name = trim($_POST['project_name'] ?? '');
   $due_date = trim($_POST['due_date'] ?? '');
 
@@ -145,7 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_task'])) {
     $errors['status'] = 'Status is required';
   }
 
-  if (empty($assigned_to_id)) {
+  if ($assigned_to_id === 0) {
     $errors['assigned_to'] = 'Assigned to is required';
   }
 
@@ -172,7 +197,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_task'])) {
     $task_desc = mysqli_real_escape_string($conn, $task_desc);
     $priority = mysqli_real_escape_string($conn, $priority);
     $status = mysqli_real_escape_string($conn, $status);
-    $assigned_to_id = intval($assigned_to_id);
     $assigned_to_name = mysqli_real_escape_string($conn, $assigned_employee_name);
     $project_name = mysqli_real_escape_string($conn, $project_name);
     $due_date = mysqli_real_escape_string($conn, $due_date);
@@ -199,6 +223,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_task'])) {
         $task_id,
         $task_title,
         "Updated task '$task_title'"
+      );
+
+      // CREATE NOTIFICATION FOR ASSIGNED EMPLOYEE
+      create_notification(
+        $conn,
+        $assigned_to_id,           // recipient_id (INTEGER)
+        $employee_id,              // sender_id (INTEGER)
+        $employee_full_name,       // sender_name (STRING)
+        'TASK_UPDATED',            // type (STRING)
+        'Task Updated',            // title (STRING)
+        "Task has been updated: $task_title", // message (STRING)
+        'admin-tasks.php',         // link (STRING)
+        $task_id                   // related_id (INTEGER)
+      );
+
+      // CREATE NOTIFICATION FOR ADMIN WHO UPDATED THE TASK
+      create_notification(
+        $conn,
+        $employee_id,              // recipient_id - the admin who updated it (INTEGER)
+        $employee_id,              // sender_id (INTEGER)
+        $employee_full_name,       // sender_name (STRING)
+        'TASK_UPDATED',            // type (STRING)
+        'Task Updated',            // title (STRING)
+        "You updated task: $task_title", // message (STRING)
+        'admin-tasks.php',         // link (STRING)
+        $task_id                   // related_id (INTEGER)
       );
 
       echo "<script>

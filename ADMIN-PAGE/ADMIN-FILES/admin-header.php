@@ -17,8 +17,31 @@ $is_admin = (strpos($employee_position, 'Admin') !== false);
 
 // Check if user is logged in as employee
 if (!isset($_SESSION['employee_id']) || $_SESSION['user_type'] !== 'employee') {
-    header('Location: ../../LOGS-PAGE/LOGS-FILES/login.php');
-    exit;
+  header('Location: ../../LOGS-PAGE/LOGS-FILES/login.php');
+  exit;
+}
+
+if (file_exists('../../INCLUDES/notifications.php')) {
+  include_once '../../INCLUDES/notifications.php';
+
+  // Get unread count
+  $unread_count = get_unread_count($conn, $employee_id);
+
+  // Get recent notifications (limit 5 for dropdown)
+  $notif_sql = "SELECT * FROM notifications 
+                  WHERE recipient_id = $employee_id 
+                  ORDER BY created_at DESC 
+                  LIMIT 5";
+  $notif_result = mysqli_query($conn, $notif_sql);
+  $notifications = [];
+  if ($notif_result) {
+    while ($notif = mysqli_fetch_assoc($notif_result)) {
+      $notifications[] = $notif;
+    }
+  }
+} else {
+  $unread_count = 0;
+  $notifications = [];
 }
 
 ?>
@@ -69,22 +92,78 @@ if (!isset($_SESSION['employee_id']) || $_SESSION['user_type'] !== 'employee') {
                 <div id="button-bell" class="position-relative flex" data-bs-toggle="tooltip"
                   data-bs-placement="bottom" data-bs-title="Notifications">
                   <i class="fa-solid fa-bell fs-5 text-light"></i>
-                  <span class="badge bg-danger rounded-pill badge-bell position-absolute">
-                    3
-                  </span>
+                  <?php if ($unread_count > 0): ?>
+                    <span class="badge bg-danger rounded-pill badge-bell position-absolute">
+                      <?= $unread_count > 9 ? '9+' : $unread_count ?>
+                    </span>
+                  <?php endif; ?>
                 </div>
               </button>
 
-              <ul class="dropdown-menu mt-1 notif-dropdown" style="transform: translateX(-154px);">
-                <p class="fs-5 ps-3 mb-2 notif-text">New Signups</p>
-                <li>
-                  <a class="dropdown-item" href="signup-accounts.php">
-                    <span class="text-secondary small">
-                      You have 3 new signups
-                    </span>
-                  </a>
-                </li>
-                <li><a class="dropdown-item" href="#">No new signups</a></li>
+              <ul class="dropdown-menu mt-1 notif-dropdown" style="transform: translateX(-280px); width: 320px; max-height: 450px; overflow-y: auto;">
+                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+                  <p class="fs-5 mb-0 notif-text">Notifications</p>
+                  <?php if ($unread_count > 0): ?>
+                    <a href="mark-all-read.php" class="btn btn-sm btn-link text-decoration-none p-0">
+                      Mark all as read
+                    </a>
+                  <?php endif; ?>
+                </div>
+
+                <?php if (empty($notifications)): ?>
+                  <li class="text-center py-4">
+                    <i class="fas fa-bell-slash fa-2x text-muted mb-2"></i>
+                    <p class="text-muted mb-0 small">No notifications</p>
+                  </li>
+                <?php else: ?>
+                  <?php foreach ($notifications as $notif): ?>
+                    <li>
+                      <a class="dropdown-item notification-item <?= $notif['is_read'] ? '' : 'unread-notif' ?>"
+                        href="<?= htmlspecialchars($notif['link'] ?? '#') ?>"
+                        data-id="<?= $notif['notification_id'] ?>">
+                        <div class="d-flex gap-2">
+                          <div class="notif-icon">
+                            <?php
+                            $icon = match ($notif['type']) {
+                              'TASK_ASSIGNED' => '<i class="fas fa-tasks green-text"></i>',
+                              'TASK_UPDATED' => '<i class="fas fa-edit text-info"></i>',
+                              'TASK_COMPLETED' => '<i class="fas fa-check-circle text-success"></i>',
+                              default => '<i class="fas fa-bell text-secondary"></i>'
+                            };
+                            echo $icon;
+                            ?>
+                          </div>
+                          <div class="flex-grow-1">
+                            <p class="mb-0 fw-semibold small"><?= htmlspecialchars($notif['title']) ?></p>
+                            <p class="mb-1 small text-muted text-truncate" style="max-width: 240px;">
+                              <?= htmlspecialchars($notif['message']) ?>
+                            </p>
+                            <small class="text-muted" style="font-size: 11px;">
+                              <?php
+                              $time_diff = time() - strtotime($notif['created_at']);
+                              if ($time_diff < 60) {
+                                echo 'Just now';
+                              } elseif ($time_diff < 3600) {
+                                echo floor($time_diff / 60) . ' min ago';
+                              } elseif ($time_diff < 86400) {
+                                echo floor($time_diff / 3600) . ' hr ago';
+                              } else {
+                                echo date('M d, Y', strtotime($notif['created_at']));
+                              }
+                              ?>
+                            </small>
+                          </div>
+                        </div>
+                      </a>
+                    </li>
+                  <?php endforeach; ?>
+
+                  <li class="border-top">
+                    <a href="admin-all-notifications.php" class="dropdown-item text-center green-text small py-2 mt-2">
+                      <i class="fas fa-list me-1"></i> See all notifications
+                    </a>
+                  </li>
+                <?php endif; ?>
               </ul>
             </div>
           </div>
@@ -284,8 +363,7 @@ if (!isset($_SESSION['employee_id']) || $_SESSION['user_type'] !== 'employee') {
 
   window.addEventListener('scroll', function(e) {
     e.stopImmediatePropagation();
-}, true);
-
+  }, true);
 </script>
 
 </html>

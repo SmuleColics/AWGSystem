@@ -1,7 +1,6 @@
 <?php
 ob_start();
 include 'admin-header.php';
-include '../../INCLUDES/log-activity.php';
 
 // Handle RESTORE (unarchive)
 if (isset($_POST['modal-restore-button'])) {
