@@ -1,6 +1,8 @@
 <?php 
   session_start();
   include '../../INCLUDES/db-con.php';
+  include '../../INCLUDES/log-activity.php';
+
   $user_id = $_SESSION['user_id'] ?? null;
   $first_name = $_SESSION['first_name'] ?? 'Guest';
   $email = $_SESSION['email'] ?? null;
@@ -123,7 +125,7 @@
               </a>
             </li> -->
             <li class="mb-1">
-              <a class="dropdown-item d-flex align-items-center" href="../../LANDING-PAGE/LP-FILES/LandingPage.php">
+              <a class="dropdown-item d-flex align-items-center" href="logout.php">
                 <i class="fa-solid fa-right-from-bracket me-2 fs-22"></i>
                 <span class="fs-18 d-inline-block">Log out</span>
               </a>
@@ -158,9 +160,9 @@
         <li class="nav-item">
           <a class="nav-link nav-projects fs-18 fw-semibold" href="user-awg-projects.php">Projects</a>
         </li>
-        <li class="nav-item">
+        <!-- <li class="nav-item">
           <a class="nav-link nav-contact fs-18 fw-semibold" href="user-contact-support.php">Contact</a>
-        </li>
+        </li> -->
       </ul>
     </div>
   </div>

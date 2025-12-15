@@ -84,6 +84,20 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
           $_SESSION['email'] = $user['email'];
           $_SESSION['user_type'] = 'user';
 
+          $user_full_name = $user['first_name'] . ' ' . $user['last_name'];
+
+          // LOG USER LOGIN ACTIVITY
+          log_activity(
+            $conn, 
+            $user['user_id'], 
+            $user_full_name, 
+            'LOGIN', 
+            'SYSTEM', 
+            null, 
+            null, 
+            'User logged in | Email: ' . $user['email']
+          );
+
           echo "<script>
             alert('Welcome back, " . htmlspecialchars($user['first_name']) . "!');
             window.location.href = '../../USER-PAGE/USER-FILES/user-portal.php';

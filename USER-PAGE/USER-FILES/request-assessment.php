@@ -8,15 +8,6 @@ $success = false;
 $user_data = [];
 $user_id = null;
 
-// Check if user is logged in
-// if (!isset($_SESSION['email'])) {
-//   echo "<script>
-//           alert('Please login first to schedule an assessment.');
-//           window.location = 'login.php';
-//         </script>";
-//   exit;
-// }
-
 // Get user data
 $user_id = $_SESSION['user_id'] ?? null;
 $sql = "SELECT * FROM users WHERE email = '$email'";
@@ -120,16 +111,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['schedule_assessment']
       $errors['database'] = 'Error updating user information: ' . mysqli_error($conn);
     } else {
       // Insert assessment schedule with only user_id reference
-      $service_type = mysqli_real_escape_string($conn, $service_type);
-      $preferred_date = mysqli_real_escape_string($conn, $preferred_date);
-      $preferred_time = mysqli_real_escape_string($conn, $preferred_time);
-      $estimated_budget = $estimated_budget ? mysqli_real_escape_string($conn, $estimated_budget) : 'NULL';
-      $notes = mysqli_real_escape_string($conn, $notes);
+      $service_type_esc = mysqli_real_escape_string($conn, $service_type);
+      $preferred_date_esc = mysqli_real_escape_string($conn, $preferred_date);
+      $preferred_time_esc = mysqli_real_escape_string($conn, $preferred_time);
+      $estimated_budget_esc = $estimated_budget ? mysqli_real_escape_string($conn, $estimated_budget) : 'NULL';
+      $notes_esc = mysqli_real_escape_string($conn, $notes);
 
       $sql = "INSERT INTO assessments (user_id, service_type, preferred_date, preferred_time, estimated_budget, notes, status) 
-              VALUES ($user_id, '$service_type', '$preferred_date', '$preferred_time', " . ($estimated_budget === 'NULL' ? 'NULL' : "'$estimated_budget'") . ", '$notes', 'Pending')";
+              VALUES ($user_id, '$service_type_esc', '$preferred_date_esc', '$preferred_time_esc', " . 
+              ($estimated_budget_esc === 'NULL' ? 'NULL' : "'$estimated_budget_esc'") . ", '$notes_esc', 'Pending')";
 
       if (mysqli_query($conn, $sql)) {
+        $assessment_id = mysqli_insert_id($conn);
+        $user_full_name = $first_name . ' ' . $last_name;
+        
+        // LOG USER ACTIVITY
+        log_activity(
+          $conn,
+          $user_id,
+          $user_full_name,
+          'CREATE',
+          'ASSESSMENTS',
+          $assessment_id,
+          $service_type,
+          'User requested assessment | Service: ' . $service_type . ' | Date: ' . $preferred_date . ' ' . $preferred_time
+        );
+
+        // CREATE NOTIFICATION FOR ALL ADMINS
+        // Get all admin employees
+        $admin_sql = "SELECT employee_id FROM employees WHERE position LIKE '%Admin%' AND is_archived = 0";
+        $admin_result = mysqli_query($conn, $admin_sql);
+        
+        if ($admin_result) {
+          while ($admin = mysqli_fetch_assoc($admin_result)) {
+            $notif_title = 'New Assessment Request';
+            $notif_message = $user_full_name . ' requested a ' . $service_type . ' on ' . 
+                            date('M d, Y', strtotime($preferred_date));
+            $notif_link = 'admin-assessments.php?id=' . $assessment_id;
+            
+            $notif_sql = "INSERT INTO notifications (recipient_id, type, title, message, link, is_read) 
+                         VALUES ({$admin['employee_id']}, 'ASSESSMENT_REQUEST', 
+                                '" . mysqli_real_escape_string($conn, $notif_title) . "',
+                                '" . mysqli_real_escape_string($conn, $notif_message) . "',
+                                '" . mysqli_real_escape_string($conn, $notif_link) . "',
+                                0)";
+            mysqli_query($conn, $notif_sql);
+          }
+        }
+
         $success = true;
         echo "<script>
                 alert('Assessment scheduled successfully!');

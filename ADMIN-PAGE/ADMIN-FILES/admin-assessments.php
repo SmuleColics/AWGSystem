@@ -1,5 +1,21 @@
 <?php
 include 'admin-header.php';
+
+// Fetch all assessments with user information
+$sql = "SELECT a.*, u.first_name, u.last_name, u.email, u.phone, 
+        u.house_no, u.brgy, u.city, u.province, u.zip_code
+        FROM assessments a
+        LEFT JOIN users u ON a.user_id = u.user_id
+        WHERE a.status != 'Archived'
+        ORDER BY a.created_at DESC";
+
+$result = mysqli_query($conn, $sql);
+$assessments = [];
+if ($result) {
+  while ($row = mysqli_fetch_assoc($result)) {
+    $assessments[] = $row;
+  }
+}
 ?>
 
 <!DOCTYPE html>
@@ -19,7 +35,6 @@ include 'admin-header.php';
     .sidebar-content-item:nth-child(4) .sidebar-anchor,
     .sidebar-content-item:nth-child(4) .sidebar-anchor span {
       color: #16A249 !important;
-
     }
   </style>
 </head>
@@ -39,7 +54,6 @@ include 'admin-header.php';
         </a>
       </div>
 
-
     </div>
 
     <div class="row g-3 mb-4">
@@ -47,252 +61,248 @@ include 'admin-header.php';
       <div class="col-12">
         <div class="assessment-container rounded-3 bg-white">
           <div class="assessment-top p-4 d-flex justify-content-between align-items-center flex-column flex-md-row gap-3">
-            <h2 class="fs-24 mobile-fs-22 mb-0">All Assessments Requests</h2>
+            <h2 class="fs-24 mobile-fs-22 mb-0">All Assessments Requests (<?= count($assessments) ?>)</h2>
             <div>
               <select id="assessmentFilter" class="form-select">
                 <option value="all">Show All</option>
-                <option value="accepted">Accepted</option>
-                <option value="rejected">Rejected</option>
+                <option value="Pending">Pending</option>
+                <option value="Accepted">Accepted</option>
+                <option value="Rejected">Rejected</option>
+                <option value="Completed">Completed</option>
               </select>
             </div>
 
           </div>
           <div class="px-4 pb-4 d-flex flex-column gap-4">
-            <div class="assessment-con d-flex flex-md-row flex-column border p-3 rounded-3 gap-4">
-              <div class="w-100">
-                <div class="d-flex align-items-center gap-3 mb-2">
-                  <h3 class="fs-18 mb-0">
-                    John Doe
-                    <span class="fs-14 light-text">(johndoe@gmail.com)</span>
-                  </h3>
-                  <?php
-                  $taskStatus = "";
 
-                  $taskStatusClass = match ($taskStatus) {
-                    "Pending"      => "badge-pill taskstatus-pending",
-                    "Completed"    => "badge-pill taskstatus-completed",
-                    default        => "badge-pill"
-                  };
-                  ?>
-
-                  <span class="<?= $taskStatusClass ?>"><?= $taskStatus ?></span>
-
-                </div>
-                <div class="row mt-1">
-                  <div class="col-6">
-                    <p class="fs-14 mb-2">
-                      <span class="light-text">Service: </span>
-                      CCTV Assessment
-                    </p>
-                    <p class="fs-14 mb-2">
-                      <span class="light-text">Time: </span>
-                      Morning
-                    </p>
-                    <p class="fs-14 mb-2">
-                      <span class="light-text">Location: </span>
-                      Makati City, Metro Manila
-                    </p>
-                    <p class="fs-14 mb-0">
-                      <span class="light-text">Notes: </span><BR />
-                      Need security camera installation for office building
-                    </p>
-                  </div>
-                  <div class="col-6">
-                    <p class="fs-14 mb-2">
-                      <span class="light-text">Date: </span>
-                      11/25/2025
-                    </p>
-                    <p class="fs-14 mb-2">
-                      <span class="light-text">Phone: </span>
-                      09171234567
-                    </p>
-                    <p class="fs-14 mb-2">
-                      <span class="light-text">Estimated Budget: </span>
-                      $20,000
-                    </p>
-                    
-
-                  </div>
-                </div>
-
-
+            <?php if (empty($assessments)): ?>
+              <div class="text-center py-5">
+                <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+                <p class="text-muted">No assessment requests found</p>
               </div>
-              <div class="assessment-actions d-flex flex-column gap-2">
-                <button class="btn btn-green flex">
-                  <i class="fas fa-check-circle me-1"></i>
-                  Accept
-                </button>
-                <button class="btn btn-danger border flex">
-                  <i class="fas fa-times-circle me-1"></i>
-                  Reject
-                </button>
-                <button class="btn btn-light border flex ">
-                  <i class="fa-solid fa-box-archive me-1"></i>
-                  Archive
-                </button>
-              </div>
-            </div>
+            <?php else: ?>
+              <?php foreach ($assessments as $assessment): ?>
+                <?php
+                $user_full_name = $assessment['first_name'] . ' ' . $assessment['last_name'];
+                $location = trim($assessment['city'] . ', ' . $assessment['province']);
+                $formatted_date = date('m/d/Y', strtotime($assessment['preferred_date']));
 
-            <div class="assessment-con d-flex flex-md-row flex-column border p-3 rounded-3 gap-4">
-              <div class="w-100">
-                <div class="d-flex align-items-center gap-3 mb-2">
-                  <h3 class="fs-18 mb-0">
-                    Lenard Colico
-                    <span class="fs-14 light-text">(johndoe@gmail.com)</span>
-                  </h3>
-                  <?php
-                  $taskStatus = "Pending"; // example, dynamic later
+                // Status badge classes
+                $statusClass = match ($assessment['status']) {
+                  "Pending"      => "badge-pill taskstatus-pending",
+                  "Accepted"     => "badge-pill taskstatus-inprogress",
+                  "Completed"    => "badge-pill taskstatus-completed",
+                  "Rejected"     => "badge-pill priority-high",
+                  default        => "badge-pill"
+                };
+                ?>
 
-                  $taskStatusClass = match ($taskStatus) {
-                    "Pending"      => "badge-pill taskstatus-pending",
-                    "In Progress"  => "badge-pill taskstatus-inprogress",
-                    "Completed"    => "badge-pill taskstatus-completed",
-                    default        => "badge-pill"
-                  };
-                  ?>
+                <div class="assessment-con d-flex flex-md-row flex-column border p-3 rounded-3 gap-4" data-status="<?= htmlspecialchars($assessment['status']) ?>">
+                  <div class="w-100">
+                    <div class="d-flex align-items-center gap-3 mb-2">
+                      <h3 class="fs-18 mb-0">
+                        <?= htmlspecialchars($user_full_name) ?>
+                        <span class="fs-14 light-text">(<?= htmlspecialchars($assessment['email']) ?>)</span>
+                      </h3>
+                      <span class="<?= $statusClass ?>"><?= htmlspecialchars($assessment['status']) ?></span>
+                    </div>
 
-                  <span class="<?= $taskStatusClass ?>"><?= $taskStatus ?></span>
+                    <div class="row mt-1">
+                      <div class="col-md-6">
+                        <p class="fs-14 mb-2">
+                          <span class="light-text">Service: </span>
+                          <?= htmlspecialchars($assessment['service_type']) ?>
+                        </p>
+                        <p class="fs-14 mb-2">
+                          <span class="light-text">Time: </span>
+                          <?= htmlspecialchars($assessment['preferred_time']) ?>
+                        </p>
+                        <p class="fs-14 mb-2">
+                          <span class="light-text">Location: </span>
+                          <?= htmlspecialchars($location) ?>
+                        </p>
+                        <?php if (!empty($assessment['notes'])): ?>
+                          <p class="fs-14 mb-0">
+                            <span class="light-text">Notes: </span><br />
+                            <?= htmlspecialchars($assessment['notes']) ?>
+                          </p>
+                        <?php endif; ?>
+                      </div>
 
-                </div>
-                <div class="row mt-1">
-                  <div class="col-6">
-                    <p class="fs-14 mb-2">
-                      <span class="light-text">Service: </span>
-                      CCTV Assessment
-                    </p>
-                    <p class="fs-14 mb-2">
-                      <span class="light-text">Time: </span>
-                      Morning
-                    </p>
-                    <p class="fs-14 mb-2">
-                      <span class="light-text">Location: </span>
-                      GMA, Cavite
-                    </p>
+                      <div class="col-md-6">
+                        <p class="fs-14 mb-2">
+                          <span class="light-text">Date: </span>
+                          <?= $formatted_date ?>
+                        </p>
+                        <p class="fs-14 mb-2">
+                          <span class="light-text">Phone: </span>
+                          <?= htmlspecialchars($assessment['phone']) ?>
+                        </p>
+                        <?php if (!empty($assessment['estimated_budget'])): ?>
+                          <p class="fs-14 mb-2">
+                            <span class="light-text">Estimated Budget: </span>
+                            ₱<?= number_format($assessment['estimated_budget'], 2) ?>
+                          </p>
+                        <?php endif; ?>
+                        <p class="fs-14 mb-2">
+                          <span class="light-text">Requested: </span>
+                          <?= date('M d, Y h:i A', strtotime($assessment['created_at'])) ?>
+                        </p>
+                      </div>
+                    </div>
+
                   </div>
-                  <div class="col-6">
-                    <p class="fs-14 mb-2">
-                      <span class="light-text">Date: </span>
-                      11/25/2025
-                    </p>
-                    <p class="fs-14 mb-2">
-                      <span class="light-text">Phone: </span>
-                      09171234567
-                    </p>
-                    <p class="fs-14 mb-2">
-                      <span class="light-text">Estimated Budget: </span>
-                      $50,000
-                    </p>
+
+                  <div class="assessment-actions d-flex flex-column gap-2">
+                    <?php if ($assessment['status'] === 'Pending'): ?>
+                      <!-- Pending Status Actions -->
+                      <form method="POST" action="accept-assessment.php" style="margin: 0;">
+                        <input type="hidden" name="assessment_id" value="<?= $assessment['assessment_id'] ?>">
+                        <button type="submit" class="btn btn-green flex w-100">
+                          <i class="fas fa-check-circle me-1"></i>
+                          Accept
+                        </button>
+                      </form>
+
+                      <button
+                        class="btn btn-danger border flex"
+                        data-bs-toggle="modal"
+                        data-bs-target="#rejectAssessmentModal"
+                        onclick="setRejectAssessmentId(<?= $assessment['assessment_id'] ?>)">
+                        <i class="fas fa-times-circle me-1"></i>
+                        Reject
+                      </button>
+
+                    <?php elseif ($assessment['status'] === 'Accepted'): ?>
+                      <!-- Accepted Status Actions -->
+                      <a href="admin-quotation-proposal.php?id=<?= $assessment['assessment_id'] ?>" class="btn btn-green border flex">
+                        <i class="fas fa-file-invoice me-1"></i>
+                        Create Quotation
+                      </a>
+
+                    <?php elseif ($assessment['status'] === 'Completed'): ?>
+                      <!-- Completed Status Actions -->
+                      <a href="admin-quotations.php?id=<?= $assessment['assessment_id'] ?>" class="btn btn-green flex">
+                        <i class="fa-solid fa-eye me-1"></i>
+                        View Quotation
+                      </a>
+                    <?php endif; ?>
+
+                    <!-- Archive button for all statuses -->
+                    <form method="POST" action="archive-assessment.php" style="margin: 0;">
+                      <input type="hidden" name="assessment_id" value="<?= $assessment['assessment_id'] ?>">
+                      <button type="submit" class="btn btn-light border flex w-100">
+                        <i class="fa-solid fa-box-archive me-1"></i>
+                        Archive
+                      </button>
+                    </form>
                   </div>
                 </div>
 
-                <p class="fs-14 mb-0">
-                  <span class="light-text">Notes: </span><BR />
-                  Need security camera installation for office building
-                </p>
-              </div>
-              <div class="assessment-actions d-flex flex-column gap-2">
-                <a href="admin-quotation-proposal.php" class="btn btn-green border flex ">
-                  <i class="fas fa-file-invoice me-1"></i></i>
-                  Create/Manage 
-                </a>
-                <button class="btn btn-light border flex ">
-                  <i class="fa-solid fa-box-archive me-1"></i>
-                  Archive
-                </button>
-              </div>
-            </div>
+              <?php endforeach; ?>
+            <?php endif; ?>
 
-            <div class="assessment-con d-flex flex-md-row flex-column border p-3 rounded-3 gap-4">
-              <div class="w-100">
-                <div class="d-flex align-items-center gap-3 mb-2">
-                  <h3 class="fs-18 mb-0">
-                    John Doe
-                    <span class="fs-14 light-text">(johndoe@gmail.com)</span>
-                  </h3>
-                  <?php
-                  $taskStatus = "Completed";
-                  $userStatus = "Accepted";
-
-                  $taskStatusClass = match ($taskStatus) {
-                    "Pending"      => "badge-pill taskstatus-pending",
-                    "Completed"    => "badge-pill taskstatus-completed",
-                    default        => "badge-pill"
-                  };
-
-                  $userApprovalClass = match ($userStatus) {
-                    "Rejected"      => "badge-pill priority-high",
-                    "Waiting"      => "badge-pill taskstatus-pending",
-                    "Accepted"    => "badge-pill taskstatus-completed",
-                    default        => "badge-pill"
-                  };
-                  ?>
-
-                  <span class="<?= $taskStatusClass ?>">Quotation <?= $taskStatus ?></span>
-                  <!-- <span class="<?= $userApprovalClass ?>">Client <?= $userStatus ?></span> -->
-
-                </div>
-                <div class="row mt-1">
-                  <div class="col-6">
-                    <p class="fs-14 mb-2">
-                      <span class="light-text">Service: </span>
-                      CCTV Assessment
-                    </p>
-                    <p class="fs-14 mb-2">
-                      <span class="light-text">Time: </span>
-                      Morning
-                    </p>
-                    <p class="fs-14 mb-2">
-                      <span class="light-text">Location: </span>
-                      Makati City, Metro Manila
-                    </p>
-                  </div>
-                  <div class="col-6">
-                    <p class="fs-14 mb-2">
-                      <span class="light-text">Date: </span>
-                      11/25/2025
-                    </p>
-                    <p class="fs-14 mb-2">
-                      <span class="light-text">Phone: </span>
-                      09171234567
-                    </p>
-                    <p class="fs-14 mb-2">
-                      <span class="light-text">Estimated Budget: </span>
-                      $20,000
-                    </p>
-
-                  </div>
-                </div>
-
-                <p class="fs-14 mb-0">
-                  <span class="light-text">Notes: </span><BR />
-                  Need security camera installation for office building
-                </p>
-              </div>
-              <div class="assessment-actions d-flex flex-column gap-2">
-                <a href="admin-quotations.php" class="btn btn-green flex">
-                <i class="fa-solid fa-eye me-1"></i>
-                  View 
-                </a>
-                <button class="btn btn-light border flex ">
-                  <i class="fa-solid fa-box-archive me-1"></i>
-                  Archive
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       </div>
 
     </div>
 
-
   </main>
   <!-- END OF MAIN -->
 
+  <!-- Reject Assessment Modal -->
+  <div class="modal fade" id="rejectAssessmentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content rounded-3">
+
+        <div class="modal-header">
+          <h5 class="modal-title">Reject Assessment Request</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <form method="POST" action="reject-assessment.php">
+          <div class="modal-body">
+
+            <!-- Reason Select -->
+            <div class="mb-3">
+              <label class="form-label">Reason for Rejection</label>
+              <select class="form-select" name="reject_reason" id="rejectReason" required>
+                <option value="">Select a reason</option>
+                <option value="Location is too far away">Location is too far away</option>
+                <option value="Budget is too low">Budget is too low</option>
+                <option value="Schedule conflict">Schedule conflict</option>
+                <option value="Service not available">Service not available</option>
+                <option value="Others">Others</option>
+              </select>
+            </div>
+
+            <!-- Other Reason Input -->
+            <div class="mb-3 d-none" id="otherReasonWrapper">
+              <label class="form-label">Please specify</label>
+              <textarea
+                class="form-control"
+                name="other_reason"
+                rows="3"
+                placeholder="Please specify the reason for rejection..."></textarea>
+            </div>
+
+            <!-- Hidden Assessment ID -->
+            <input type="hidden" name="assessment_id" id="rejectAssessmentId" value="">
+
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-light border" data-bs-dismiss="modal">
+              Cancel
+            </button>
+            <button type="submit" class="btn btn-danger">
+              Confirm Rejection
+            </button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Handle reject reason dropdown
+    const rejectReason = document.getElementById('rejectReason');
+    const otherReasonWrapper = document.getElementById('otherReasonWrapper');
+
+    rejectReason.addEventListener('change', function() {
+      if (this.value === 'Others') {
+        otherReasonWrapper.classList.remove('d-none');
+      } else {
+        otherReasonWrapper.classList.add('d-none');
+      }
+    });
+
+    // Set assessment ID for rejection
+    function setRejectAssessmentId(assessmentId) {
+      document.getElementById('rejectAssessmentId').value = assessmentId;
+    }
+
+    // Filter assessments by status
+    const assessmentFilter = document.getElementById('assessmentFilter');
+    const assessmentCons = document.querySelectorAll('.assessment-con');
+
+    assessmentFilter.addEventListener('change', function() {
+      const selectedStatus = this.value.toLowerCase();
+
+      assessmentCons.forEach(con => {
+        const status = con.getAttribute('data-status').toLowerCase();
+
+        if (selectedStatus === 'all' || status === selectedStatus) {
+          con.style.display = 'flex';
+        } else {
+          con.style.display = 'none';
+        }
+      });
+    });
+  </script>
+
 </body>
-
-
-
-
 
 </html>

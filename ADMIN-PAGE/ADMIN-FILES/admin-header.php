@@ -1,10 +1,15 @@
 <?php
-
 session_start();
 include '../../INCLUDES/db-con.php';
 include '../../INCLUDES/log-activity.php';
 
-// Store employee info in variables for easy access
+// Check if user is logged in as employee
+if (!isset($_SESSION['employee_id']) || $_SESSION['user_type'] !== 'employee') {
+  header('Location: /INSY55-PROJECT/LOGS-PAGE/LOGS-FILES/login.php');
+  exit;
+}
+
+// Store employee info in variables for easy access - MUST BE BEFORE NOTIFICATIONS
 $employee_id = $_SESSION['employee_id'];
 $employee_first_name = $_SESSION['first_name'];
 $employee_last_name = $_SESSION['last_name'];
@@ -15,23 +20,26 @@ $employee_position = $_SESSION['position'];
 // Check if user is Admin or Admin/Secretary (has full permissions)
 $is_admin = (strpos($employee_position, 'Admin') !== false);
 
-// Check if user is logged in as employee
-if (!isset($_SESSION['employee_id']) || $_SESSION['user_type'] !== 'employee') {
-  header('Location: ../../LOGS-PAGE/LOGS-FILES/login.php');
-  exit;
-}
 
+// Check if user is logged in as employee
 if (file_exists('../../INCLUDES/notifications.php')) {
   include_once '../../INCLUDES/notifications.php';
 
-  // Get unread count
-  $unread_count = get_unread_count($conn, $employee_id);
+  // Get unread count - EXCLUDE client-side notification types
+  $unread_sql = "SELECT COUNT(*) as count FROM notifications 
+                WHERE recipient_id = $employee_id 
+                AND is_read = 0
+                AND type NOT IN ('ASSESSMENT_ACCEPTED', 'ASSESSMENT_REJECTED', 'QUOTATION_CREATED')";
+  $unread_result = mysqli_query($conn, $unread_sql);
+  $unread_row = mysqli_fetch_assoc($unread_result);
+  $unread_count = $unread_row['count'];
 
-  // Get recent notifications (limit 5 for dropdown)
+  // Get recent notifications (limit 5 for dropdown) - EXCLUDE client-side notification types
   $notif_sql = "SELECT * FROM notifications 
-                  WHERE recipient_id = $employee_id 
-                  ORDER BY created_at DESC 
-                  LIMIT 5";
+                WHERE recipient_id = $employee_id 
+                AND type NOT IN ('ASSESSMENT_ACCEPTED', 'ASSESSMENT_REJECTED', 'QUOTATION_CREATED')
+                ORDER BY created_at DESC 
+                LIMIT 5";
   $notif_result = mysqli_query($conn, $notif_sql);
   $notifications = [];
   if ($notif_result) {
@@ -43,7 +51,6 @@ if (file_exists('../../INCLUDES/notifications.php')) {
   $unread_count = 0;
   $notifications = [];
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -104,8 +111,8 @@ if (file_exists('../../INCLUDES/notifications.php')) {
                 <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
                   <p class="fs-5 mb-0 notif-text">Notifications</p>
                   <?php if ($unread_count > 0): ?>
-                    <a href="mark-all-read.php" class="btn btn-sm btn-link text-decoration-none p-0">
-                      Mark all as read
+                    <a href="mark-all-read.php" class="btn btn-sm text-decoration-none p-0 green-text">
+                      <span class="green-text"> Mark all as read</span>
                     </a>
                   <?php endif; ?>
                 </div>
@@ -126,9 +133,11 @@ if (file_exists('../../INCLUDES/notifications.php')) {
                             <?php
                             $icon = match ($notif['type']) {
                               'TASK_ASSIGNED' => '<i class="fas fa-tasks green-text"></i>',
-                              'TASK_UPDATED' => '<i class="fas fa-edit text-info"></i>',
-                              'TASK_COMPLETED' => '<i class="fas fa-check-circle text-success"></i>',
-                              default => '<i class="fas fa-bell text-secondary"></i>'
+                              'TASK_UPDATED' => '<i class="fas fa-edit green-text"></i>',
+                              'TASK_COMPLETED' => '<i class="fas fa-check-circle green-text"></i>',
+                              'ASSESSMENT_ACCEPTED_ADMIN' => '<i class="fas fa-user-check green-text"></i>',
+                              'ASSESSMENT_REJECTED_ADMIN' => '<i class="fas fa-user-times text-danger"></i>',
+                              default => '<i class="fas fa-bell green-text"></i>'
                             };
                             echo $icon;
                             ?>

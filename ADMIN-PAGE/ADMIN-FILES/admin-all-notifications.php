@@ -4,12 +4,10 @@
 include 'admin-header.php';
 // include '../../INCLUDES/notifications.php';
 
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
+// Fetch all notifications for admin - EXCLUDE client-side notification types
 $notif_sql = "SELECT * FROM notifications 
               WHERE recipient_id = $employee_id 
+              AND type NOT IN ('ASSESSMENT_ACCEPTED', 'ASSESSMENT_REJECTED', 'QUOTATION_CREATED')
               ORDER BY created_at DESC";
 $notif_result = mysqli_query($conn, $notif_sql);
 
@@ -22,9 +20,16 @@ if ($notif_result) {
 
 if (isset($_GET['mark_read'])) {
   $notif_id = intval($_GET['mark_read']);
-  mark_notification_read($conn, $notif_id);
-  header('Location: admin-all-notifications.php');
-  exit;
+  $mark_read_sql = "UPDATE notifications SET is_read = 1 WHERE notification_id = $notif_id AND recipient_id = $employee_id";
+  mysqli_query($conn, $mark_read_sql);
+  
+  // Get the link from the notification
+  $link_sql = "SELECT link FROM notifications WHERE notification_id = $notif_id";
+  $link_result = mysqli_query($conn, $link_sql);
+  if ($link_result && $link_row = mysqli_fetch_assoc($link_result)) {
+    header('Location: ' . $link_row['link']);
+    exit;
+  }
 }
 ?>
 
@@ -64,7 +69,7 @@ if (isset($_GET['mark_read'])) {
       </div>
       <?php if ($unread_count > 0): ?>
         <a href="mark-all-read.php" class="btn btn-green text-white">
-          <i class="fas fa-check-double me-1"></i> Mark All AS Read
+          <i class="fas fa-check-double me-1"></i> Mark all as read
         </a>
       <?php endif; ?>
     </div>
@@ -86,9 +91,9 @@ if (isset($_GET['mark_read'])) {
                   <?php
                   $icon = match ($notif['type']) {
                     'TASK_ASSIGNED' => '<i class="fas fa-tasks green-text fa-lg"></i>',
-                    'TASK_UPDATED' => '<i class="fas fa-edit text-info fa-lg"></i>',
-                    'TASK_COMPLETED' => '<i class="fas fa-check-circle text-success fa-lg"></i>',
-                    default => '<i class="fas fa-bell text-secondary fa-lg"></i>'
+                    'TASK_UPDATED' => '<i class="fas fa-edit green-text fa-lg"></i>',
+                    'TASK_COMPLETED' => '<i class="fas fa-check-circle green-text fa-lg"></i>',
+                    default => '<i class="fas fa-bell green-text fa-lg"></i>'
                   };
                   echo $icon;
                   ?>

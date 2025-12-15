@@ -38,6 +38,7 @@ $logs_result = mysqli_query($conn, $sql);
 $total_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activity_logs"));
 $today_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activity_logs WHERE DATE(created_at) = CURDATE()"));
 $inventory_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activity_logs WHERE module = 'INVENTORY'"));
+$assessment_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activity_logs WHERE module = 'ASSESSMENTS'"));
 ?>
 
 <!DOCTYPE html>
@@ -62,22 +63,28 @@ $inventory_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activi
 
     <!-- Statistics Cards -->
     <div class="row g-3 mb-4">
-      <div class="col-md-4">
+      <div class="col-md-3">
         <div class="p-4 inventory-category rounded">
           <p class="light-text fs-14 mb-0">Total Activities</p>
           <p class="fw-bold fs-24 mb-0"><?= number_format($total_logs) ?></p>
         </div>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <div class="p-4 inventory-category rounded">
           <p class="light-text fs-14 mb-0">Today's Activities</p>
           <p class="fw-bold fs-24 mb-0 text-primary"><?= number_format($today_logs) ?></p>
         </div>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <div class="p-4 inventory-category rounded">
           <p class="light-text fs-14 mb-0">Inventory Activities</p>
           <p class="fw-bold fs-24 mb-0 green-text"><?= number_format($inventory_logs) ?></p>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="p-4 inventory-category rounded">
+          <p class="light-text fs-14 mb-0">Assessment Activities</p>
+          <p class="fw-bold fs-24 mb-0 text-info"><?= number_format($assessment_logs) ?></p>
         </div>
       </div>
     </div>
@@ -86,10 +93,10 @@ $inventory_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activi
     <div class="border bg-white rounded-3">
       <div class="table-responsive p-4">
         <table id="logsTable" class="table table-hover mb-0">
-          <div class="d-flex align-items-center justify-content-between gap-3">
+          <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
             <p class="fs-24 mobile-fs-22 mb-0">Activity Logs</p>
-            <div class="d-flex gap-2">
-              <form method="GET" class="d-flex gap-2" id="filterForm">
+            <div class="d-flex gap-2 flex-wrap">
+              <form method="GET" class="d-flex gap-2 flex-wrap" id="filterForm">
 
                 <div>
                   <select name="module" class="form-select filter-input">
@@ -99,6 +106,7 @@ $inventory_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activi
                     <option value="EMPLOYEES" <?= $module_filter === 'EMPLOYEES' ? 'selected' : '' ?>>Employees</option>
                     <option value="TASKS" <?= $module_filter === 'TASKS' ? 'selected' : '' ?>>Tasks</option>
                     <option value="ASSESSMENTS" <?= $module_filter === 'ASSESSMENTS' ? 'selected' : '' ?>>Assessments</option>
+                    <option value="PROJECTS" <?= $module_filter === 'PROJECTS' ? 'selected' : '' ?>>Projects</option>
                   </select>
                 </div>
 
@@ -106,8 +114,11 @@ $inventory_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activi
                   <select name="action" class="form-select filter-input">
                     <option value="ALL" <?= $action_filter === 'ALL' ? 'selected' : '' ?>>All Actions</option>
                     <option value="LOGIN" <?= $action_filter === 'LOGIN' ? 'selected' : '' ?>>Login</option>
+                    <option value="LOGOUT" <?= $action_filter === 'LOGOUT' ? 'selected' : '' ?>>Logout</option>
                     <option value="CREATE" <?= $action_filter === 'CREATE' ? 'selected' : '' ?>>Create</option>
                     <option value="UPDATE" <?= $action_filter === 'UPDATE' ? 'selected' : '' ?>>Update</option>
+                    <option value="ACCEPT" <?= $action_filter === 'ACCEPT' ? 'selected' : '' ?>>Accept</option>
+                    <option value="REJECT" <?= $action_filter === 'REJECT' ? 'selected' : '' ?>>Reject</option>
                     <option value="ARCHIVE" <?= $action_filter === 'ARCHIVE' ? 'selected' : '' ?>>Archive</option>
                     <option value="RESTORE" <?= $action_filter === 'RESTORE' ? 'selected' : '' ?>>Restore</option>
                   </select>
@@ -130,7 +141,6 @@ $inventory_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activi
               <th>Module</th>
               <th>Subject</th>
               <th>Description</th>
-              <!-- <th>Action</th> -->
             </tr>
           </thead>
           <tbody>
@@ -147,11 +157,13 @@ $inventory_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activi
                   <td>
                     <?php
                     $action_class = match ($log['action']) {
-                      'LOGIN' => 'badge-pill priority-medium',
-                      'LOGOUT' => 'badge-pill priority-low',
+                      'LOGIN' => 'badge-pill priority-low',
+                      'LOGOUT' => 'badge-pill priority-medium',
                       'CREATE' => 'badge-pill action-create',
                       'UPDATE' => 'badge-pill taskstatus-inprogress',
-                      'ARCHIVE' => 'badge-pill priority-high',
+                      'ACCEPT' => 'badge-pill taskstatus-completed',
+                      'REJECT' => 'badge-pill priority-high',
+                      'ARCHIVE' => 'badge-pill bg-secondary text-white',
                       'RESTORE' => 'badge-pill priority-low',
                       'DELETE' => 'badge-pill bg-danger',
                       default => 'badge bg-secondary'
@@ -162,7 +174,6 @@ $inventory_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activi
                   <td><?= htmlspecialchars($log['module']) ?></td>
                   <td><?= $log['item_name'] ? htmlspecialchars($log['item_name']) : '-' ?></td>
                   <td><small><?= htmlspecialchars($log['description']) ?></small></td>
-                  <!-- <td><i class="fas fa-eye"></i></td> -->
                 </tr>
               <?php endwhile; ?>
             <?php else: ?>
@@ -198,7 +209,10 @@ $inventory_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activi
         order: [
           [1, 'desc']
         ],
-        pageLength: 25
+        pageLength: 25,
+        language: {
+          emptyTable: "No activity logs found"
+        }
       });
     });
   </script>
