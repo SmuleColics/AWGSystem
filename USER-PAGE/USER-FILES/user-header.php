@@ -1,15 +1,44 @@
 <?php 
-  session_start();
+  if (session_status() === PHP_SESSION_NONE) {
+      session_start();
+  }
+  date_default_timezone_set('Asia/Manila');
   include '../../INCLUDES/db-con.php';
   include '../../INCLUDES/log-activity.php';
 
+  // Get user info from session
   $user_id = $_SESSION['user_id'] ?? null;
   $first_name = $_SESSION['first_name'] ?? 'Guest';
+  $last_name = $_SESSION['last_name'] ?? '';
   $email = $_SESSION['email'] ?? null;
 
-  // echo("User ID: " . $user_id . "<br>");
-  // echo("First Name: " . $first_name . "<br>");
-  // echo("Email: " . $email . "<br>");
+  // Get user notifications (ONLY client-side types)
+  $unread_count = 0;
+  $notifications = [];
+
+  if ($user_id) {
+    // Get unread count - ONLY include client-side notification types
+    $unread_sql = "SELECT COUNT(*) as count FROM notifications 
+                  WHERE recipient_id = $user_id 
+                  AND is_read = 0
+                  AND type IN ('ASSESSMENT_ACCEPTED', 'ASSESSMENT_REJECTED', 'QUOTATION_CREATED')";
+    $unread_result = mysqli_query($conn, $unread_sql);
+    $unread_row = mysqli_fetch_assoc($unread_result);
+    $unread_count = $unread_row['count'] ?? 0;
+
+    // Get recent notifications (limit 5 for dropdown) - ONLY client-side notification types
+    $notif_sql = "SELECT * FROM notifications 
+                  WHERE recipient_id = $user_id 
+                  AND type IN ('ASSESSMENT_ACCEPTED', 'ASSESSMENT_REJECTED', 'QUOTATION_CREATED')
+                  ORDER BY created_at DESC 
+                  LIMIT 5";
+    $notif_result = mysqli_query($conn, $notif_sql);
+    if ($notif_result) {
+      while ($notif = mysqli_fetch_assoc($notif_result)) {
+        $notifications[] = $notif;
+      }
+    }
+  }
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -52,9 +81,6 @@
           <li class="nav-item ">
             <a class="nav-link nav-projects fs-14 fw-semibold" href="user-awg-projects.php">Projects</a>
           </li>
-          <!-- <li class="nav-item ">
-            <a class="nav-link nav-contact fs-14 fw-semibold" href="user-contact-support.php">Contact</a>
-          </li> -->
         </ul>
       </div>
 
@@ -69,23 +95,79 @@
               <div id="button-bell" class="position-relative flex" data-bs-toggle="tooltip"
                 data-bs-placement="bottom" data-bs-title="Notifications">
                 <i class="fa-solid fa-bell fs-5 text-white" style="color: #fff;"></i>
-                <span class="badge bg-danger rounded-pill badge-bell position-absolute">
-                  3
-                </span>
+                <?php if ($unread_count > 0): ?>
+                  <span class="badge bg-danger rounded-pill badge-bell position-absolute">
+                    <?= $unread_count > 9 ? '9+' : $unread_count ?>
+                  </span>
+                <?php endif; ?>
               </div>
             </button>
 
-            <ul class="dropdown-menu mt-1 notif-dropdown" style="transform: translateX(-124px);">
-              <p class="fs-5 ps-3 mb-2 notif-text">New Signups</p>
-              <li>
-                <a class="dropdown-item" href="signup-accounts.php">
-                  <span class="text-secondary small">
-                    You have 3 new signups
-                  </span>
-                </a>
-              </li>
+            <ul class="dropdown-menu mt-1 notif-dropdown" style="transform: translateX(-154px); width: 300px; max-height: 450px; overflow-y: auto;">
+              <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+                <p class="fs-5 mb-0 notif-text">Notifications</p>
+                <?php if ($unread_count > 0): ?>
+                  <a href="mark-notifications-read.php" class="btn btn-sm text-decoration-none p-0 green-text">
+                    <span class="green-text" style="font-size: 12px;">Mark all as read</span>
+                  </a>
+                <?php endif; ?>
+              </div>
 
-              <li><a class="dropdown-item" href="#">No new signups</a></li>
+              <?php if (empty($notifications)): ?>
+                <li class="text-center py-4">
+                  <i class="fas fa-bell-slash fa-2x text-muted mb-2"></i>
+                  <p class="text-muted mb-0 small">No notifications</p>
+                </li>
+              <?php else: ?>
+                <?php foreach ($notifications as $notif): ?>
+                  <li>
+                    <a class="dropdown-item notification-item <?= $notif['is_read'] ? '' : 'unread-notif' ?>"
+                      href="<?= htmlspecialchars($notif['link'] ?? '#') ?>"
+                      data-id="<?= $notif['notification_id'] ?>"
+                      onclick="markAsRead(<?= $notif['notification_id'] ?>)">
+                      <div class="d-flex gap-2">
+                        <div class="notif-icon">
+                          <?php
+                          $icon = match ($notif['type']) {
+                            'ASSESSMENT_ACCEPTED' => '<i class="fas fa-check-circle" style="color: #16A249;"></i>',
+                            'ASSESSMENT_REJECTED' => '<i class="fas fa-times-circle" style="color: #dc3545;"></i>',
+                            'QUOTATION_CREATED' => '<i class="fas fa-file-invoice" style="color: #16A249;"></i>',
+                            default => '<i class="fas fa-bell" style="color: #16A249;"></i>'
+                          };
+                          echo $icon;
+                          ?>
+                        </div>
+                        <div class="flex-grow-1">
+                          <p class="mb-0 fw-semibold small"><?= htmlspecialchars($notif['title']) ?></p>
+                          <p class="mb-1 small text-muted text-truncate" style="max-width: 220px;">
+                            <?= htmlspecialchars($notif['message']) ?>
+                          </p>
+                          <small class="text-muted" style="font-size: 11px;">
+                            <?php
+                            $time_diff = time() - strtotime($notif['created_at']);
+                            if ($time_diff < 60) {
+                              echo 'Just now';
+                            } elseif ($time_diff < 3600) {
+                              echo floor($time_diff / 60) . ' min ago';
+                            } elseif ($time_diff < 86400) {
+                              echo floor($time_diff / 3600) . ' hr ago';
+                            } else {
+                              echo date('M d, Y', strtotime($notif['created_at']));
+                            }
+                            ?>
+                          </small>
+                        </div>
+                      </div>
+                    </a>
+                  </li>
+                <?php endforeach; ?>
+
+                <li class="border-top">
+                  <a href="user-all-notifications.php" class="dropdown-item text-center" style="color: #16A249; text-decoration: none; font-size: 12px; padding: 8px 0; display: block; margin-top: 8px;">
+                    <i class="fas fa-list me-1"></i> See all notifications
+                  </a>
+                </li>
+              <?php endif; ?>
             </ul>
           </div>
         </div>
@@ -107,23 +189,10 @@
                 </div>
                 <div class="dropdown-profile-text" style="margin-left: -4px;">
                   <p class="fs-18 view-profile-text">View Profile</p>
-                  <p class="m-0 fs-14 db-text-secondary">Administrator</p>
+                  <p class="m-0 fs-14 db-text-secondary">Client</p>
                 </div>
               </a>
             </li>
-            <!-- SETTINGS
-            <li class="mb-1">
-              <a class="dropdown-item d-flex align-items-center" href="#">
-                <i class="fa-solid fa-question ms-1 me-2 fs-22"></i>
-                <span class="fs-18 d-inline-block ms-1">Help & Support</span>
-              </a>
-            </li>
-            <li class="mb-1">
-              <a class="dropdown-item d-flex align-items-center" href="#">
-                <i class="fa-solid fa-gear me-2 fs-22 "></i>
-                <span class="fs-18 d-inline-block">Settings</span>
-              </a>
-            </li> -->
             <li class="mb-1">
               <a class="dropdown-item d-flex align-items-center" href="logout.php">
                 <i class="fa-solid fa-right-from-bracket me-2 fs-22"></i>
@@ -160,15 +229,32 @@
         <li class="nav-item">
           <a class="nav-link nav-projects fs-18 fw-semibold" href="user-awg-projects.php">Projects</a>
         </li>
-        <!-- <li class="nav-item">
-          <a class="nav-link nav-contact fs-18 fw-semibold" href="user-contact-support.php">Contact</a>
-        </li> -->
       </ul>
     </div>
   </div>
 
 </body>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
+<!-- ========== SCRIPTS ========== -->
+<script>
+  const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+  tooltipTriggerList.forEach((el) => new bootstrap.Tooltip(el));
+
+  // Mark notification as read and navigate
+  function markAsRead(notificationId) {
+    // Send AJAX request to mark as read
+    fetch('mark-notification-read.php', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: 'notification_id=' + notificationId
+    })
+    .then(response => response.text())
+    .catch(error => console.error('Error:', error));
+  }
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 </html>

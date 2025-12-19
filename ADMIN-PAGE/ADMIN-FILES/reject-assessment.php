@@ -1,4 +1,5 @@
 <?php
+// Save as: reject-assessment.php
 session_start();
 include '../../INCLUDES/db-con.php';
 include '../../INCLUDES/log-activity.php';
@@ -15,28 +16,26 @@ $employee_name = $_SESSION['first_name'] . ' ' . $_SESSION['last_name'];
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['assessment_id'])) {
   $assessment_id = intval($_POST['assessment_id']);
   $reject_reason = mysqli_real_escape_string($conn, $_POST['reject_reason']);
+  $other_reason = isset($_POST['other_reason']) ? mysqli_real_escape_string($conn, $_POST['other_reason']) : '';
   
-  // If "Others" is selected, use the custom reason
-  if ($reject_reason === 'Others' && !empty($_POST['other_reason'])) {
-    $reject_reason = mysqli_real_escape_string($conn, $_POST['other_reason']);
-  }
+  // Use other_reason if "Others" was selected
+  $final_reason = ($reject_reason === 'Others' && !empty($other_reason)) ? $other_reason : $reject_reason;
   
   // Get assessment details
   $assessment_sql = "SELECT a.*, u.first_name, u.last_name 
-                    FROM assessments a 
-                    LEFT JOIN users u ON a.user_id = u.user_id 
-                    WHERE a.assessment_id = $assessment_id";
+                     FROM assessments a 
+                     LEFT JOIN users u ON a.user_id = u.user_id 
+                     WHERE a.assessment_id = $assessment_id";
   $assessment_result = mysqli_query($conn, $assessment_sql);
   
   if ($assessment_result && mysqli_num_rows($assessment_result) > 0) {
     $assessment = mysqli_fetch_assoc($assessment_result);
     
-    // Update assessment status to Rejected and store rejection reason
+    // Update assessment status to Rejected and add rejection reason to notes
     $update_sql = "UPDATE assessments 
-                  SET status = 'Rejected', 
-                      rejection_reason = '$reject_reason',
-                      rejected_at = NOW()
-                  WHERE assessment_id = $assessment_id";
+                   SET status = 'Rejected', 
+                       notes = CONCAT(IFNULL(notes, ''), '\n\nRejection Reason: $final_reason')
+                   WHERE assessment_id = $assessment_id";
     
     if (mysqli_query($conn, $update_sql)) {
       $user_full_name = $assessment['first_name'] . ' ' . $assessment['last_name'];
@@ -50,12 +49,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['assessment_id'])) {
         'ASSESSMENTS',
         $assessment_id,
         $assessment['service_type'],
-        'Assessment rejected for ' . $user_full_name . ' | Service: ' . $assessment['service_type'] . ' | Reason: ' . $reject_reason
+        'Assessment rejected for ' . $user_full_name . ' | Service: ' . $assessment['service_type'] . ' | Reason: ' . $final_reason
       );
       
       // CREATE NOTIFICATION FOR USER (CLIENT SIDE)
       $user_notif_title = 'Assessment Request Rejected';
-      $user_notif_message = 'Hello ' . $user_full_name . ', unfortunately your ' . $assessment['service_type'] . ' assessment request has been rejected. Reason: ' . $reject_reason;
+      $user_notif_message = 'Hello ' . $user_full_name . ', your ' . $assessment['service_type'] . ' assessment request has been rejected. Reason: ' . $final_reason;
       $user_notif_link = 'user-assessments.php';
       
       $user_notif_sql = "INSERT INTO notifications (recipient_id, type, title, message, link, is_read) 
@@ -68,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['assessment_id'])) {
       
       // CREATE NOTIFICATION FOR ADMIN (ADMIN SIDE)
       $admin_notif_title = 'Assessment Rejected';
-      $admin_notif_message = $user_full_name . '\'s ' . $assessment['service_type'] . ' assessment request has been rejected by ' . $employee_name . '. Reason: ' . $reject_reason;
+      $admin_notif_message = $user_full_name . '\'s ' . $assessment['service_type'] . ' assessment request has been rejected by ' . $employee_name . '. Reason: ' . $final_reason;
       $admin_notif_link = 'admin-assessments.php';
       
       $admin_notif_sql = "INSERT INTO notifications (recipient_id, type, title, message, link, is_read, sender_name) 

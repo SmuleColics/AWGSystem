@@ -6,7 +6,7 @@ $sql = "SELECT a.*, u.first_name, u.last_name, u.email, u.phone,
         u.house_no, u.brgy, u.city, u.province, u.zip_code
         FROM assessments a
         LEFT JOIN users u ON a.user_id = u.user_id
-        WHERE a.status != 'Archived'
+        WHERE is_archived = 0
         ORDER BY a.created_at DESC";
 
 $result = mysqli_query($conn, $sql);
@@ -16,6 +16,44 @@ if ($result) {
     $assessments[] = $row;
   }
 }
+
+// HANDLE ARCHIVE ASSESSMBENT (INLINE)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['archive_assessment'])) {
+  $assessment_id = intval($_POST['assessment_id']);
+
+  $archive_sql = "
+    UPDATE assessments 
+    SET is_archived = 1
+    WHERE assessment_id = $assessment_id
+  ";
+
+    if (mysqli_query($conn, $archive_sql)) {
+
+      // 🔹 ACTIVITY LOG
+      log_activity(
+        $conn,
+        $employee_id,
+        $employee_name,
+        'ARCHIVE',
+        'ASSESSMENTS',
+        $assessment_id,
+        $service_type,
+        "Archived assessment for $user_full_name | Service: $service_type"
+      );
+
+      echo "<script>
+        alert('Assessment archived successfully.');
+        window.location.href = 'admin-assessments.php';
+      </script>";
+      exit;
+
+    }else {
+    echo "<script>
+      alert('Error archiving assessment.');
+    </script>";
+  }
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -76,130 +114,146 @@ if ($result) {
           <div class="px-4 pb-4 d-flex flex-column gap-4">
 
             <?php if (empty($assessments)): ?>
+              <!-- Empty State (shown on initial page load when no assessments exist) -->
               <div class="text-center py-5">
                 <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
                 <p class="text-muted">No assessment requests found</p>
               </div>
             <?php else: ?>
-              <?php foreach ($assessments as $assessment): ?>
-                <?php
-                $user_full_name = $assessment['first_name'] . ' ' . $assessment['last_name'];
-                $location = trim($assessment['city'] . ', ' . $assessment['province']);
-                $formatted_date = date('m/d/Y', strtotime($assessment['preferred_date']));
+              <!-- Empty State (shown when filtering returns no results) -->
+              <div id="assessmentEmptyState" class="text-center py-5 d-none">
+                <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+                <p class="text-muted">No assessments found for this status</p>
+              </div>
 
-                // Status badge classes
-                $statusClass = match ($assessment['status']) {
-                  "Pending"      => "badge-pill taskstatus-pending",
-                  "Accepted"     => "badge-pill taskstatus-inprogress",
-                  "Completed"    => "badge-pill taskstatus-completed",
-                  "Rejected"     => "badge-pill priority-high",
-                  default        => "badge-pill"
-                };
-                ?>
+              <!-- Assessment Cards Container -->
+              <div id="assessmentCardsContainer">
+                <?php foreach ($assessments as $assessment): ?>
+                  <?php
+                  $user_full_name = $assessment['first_name'] . ' ' . $assessment['last_name'];
+                  $location = trim($assessment['city'] . ', ' . $assessment['province']);
+                  $formatted_date = date('m/d/Y', strtotime($assessment['preferred_date']));
 
-                <div class="assessment-con d-flex flex-md-row flex-column border p-3 rounded-3 gap-4" data-status="<?= htmlspecialchars($assessment['status']) ?>">
-                  <div class="w-100">
-                    <div class="d-flex align-items-center gap-3 mb-2">
-                      <h3 class="fs-18 mb-0">
-                        <?= htmlspecialchars($user_full_name) ?>
-                        <span class="fs-14 light-text">(<?= htmlspecialchars($assessment['email']) ?>)</span>
-                      </h3>
-                      <span class="<?= $statusClass ?>"><?= htmlspecialchars($assessment['status']) ?></span>
-                    </div>
+                  // Status badge classes
+                  $statusClass = match ($assessment['status']) {
+                    "Pending"      => "badge-pill taskstatus-pending",
+                    "Accepted"     => "badge-pill taskstatus-inprogress",
+                    "Completed"    => "badge-pill taskstatus-completed",
+                    "Rejected"     => "badge-pill priority-high",
+                    default        => "badge-pill"
+                  };
+                  ?>
 
-                    <div class="row mt-1">
-                      <div class="col-md-6">
-                        <p class="fs-14 mb-2">
-                          <span class="light-text">Service: </span>
-                          <?= htmlspecialchars($assessment['service_type']) ?>
-                        </p>
-                        <p class="fs-14 mb-2">
-                          <span class="light-text">Time: </span>
-                          <?= htmlspecialchars($assessment['preferred_time']) ?>
-                        </p>
-                        <p class="fs-14 mb-2">
-                          <span class="light-text">Location: </span>
-                          <?= htmlspecialchars($location) ?>
-                        </p>
-                        <?php if (!empty($assessment['notes'])): ?>
-                          <p class="fs-14 mb-0">
-                            <span class="light-text">Notes: </span><br />
-                            <?= htmlspecialchars($assessment['notes']) ?>
-                          </p>
-                        <?php endif; ?>
+                  <div class="assessment-con d-flex flex-md-row flex-column border p-3 rounded-3 gap-4" data-status="<?= htmlspecialchars($assessment['status']) ?>">
+                    <div class="w-100">
+                      <div class="d-flex align-items-center gap-3 mb-2">
+                        <h3 class="fs-18 mb-0">
+                          <?= htmlspecialchars($user_full_name) ?>
+                          <span class="fs-14 light-text">(<?= htmlspecialchars($assessment['email']) ?>)</span>
+                        </h3>
+                        <span class="<?= $statusClass ?>"><?= htmlspecialchars($assessment['status']) ?></span>
                       </div>
 
-                      <div class="col-md-6">
-                        <p class="fs-14 mb-2">
-                          <span class="light-text">Date: </span>
-                          <?= $formatted_date ?>
-                        </p>
-                        <p class="fs-14 mb-2">
-                          <span class="light-text">Phone: </span>
-                          <?= htmlspecialchars($assessment['phone']) ?>
-                        </p>
-                        <?php if (!empty($assessment['estimated_budget'])): ?>
+                      <div class="row mt-1">
+                        <div class="col-md-6">
                           <p class="fs-14 mb-2">
-                            <span class="light-text">Estimated Budget: </span>
-                            ₱<?= number_format($assessment['estimated_budget'], 2) ?>
+                            <span class="light-text">Service: </span>
+                            <?= htmlspecialchars($assessment['service_type']) ?>
                           </p>
-                        <?php endif; ?>
-                        <p class="fs-14 mb-2">
-                          <span class="light-text">Requested: </span>
-                          <?= date('M d, Y h:i A', strtotime($assessment['created_at'])) ?>
-                        </p>
+                          <p class="fs-14 mb-2">
+                            <span class="light-text">Time: </span>
+                            <?= htmlspecialchars($assessment['preferred_time']) ?>
+                          </p>
+                          <p class="fs-14 mb-2">
+                            <span class="light-text">Location: </span>
+                            <?= htmlspecialchars($location) ?>
+                          </p>
+                          <?php if (!empty($assessment['notes'])): ?>
+                            <p class="fs-14 mb-0">
+                              <span class="light-text">Notes: </span><br />
+                              <?= htmlspecialchars($assessment['notes']) ?>
+                            </p>
+                          <?php endif; ?>
+                        </div>
+
+                        <div class="col-md-6">
+                          <p class="fs-14 mb-2">
+                            <span class="light-text">Date: </span>
+                            <?= $formatted_date ?>
+                          </p>
+                          <p class="fs-14 mb-2">
+                            <span class="light-text">Phone: </span>
+                            <?= htmlspecialchars($assessment['phone']) ?>
+                          </p>
+                          <?php if (!empty($assessment['estimated_budget'])): ?>
+                            <p class="fs-14 mb-2">
+                              <span class="light-text">Estimated Budget: </span>
+                              ₱<?= number_format($assessment['estimated_budget'], 2) ?>
+                            </p>
+                          <?php endif; ?>
+                          <p class="fs-14 mb-2">
+                            <span class="light-text">Requested: </span>
+                            <?= date('M d, Y h:i A', strtotime($assessment['created_at'])) ?>
+                          </p>
+                        </div>
                       </div>
+
                     </div>
 
-                  </div>
+                    <div class="assessment-actions d-flex flex-column gap-2">
+                      <?php if ($is_admin): ?>
 
-                  <div class="assessment-actions d-flex flex-column gap-2">
-                    <?php if ($assessment['status'] === 'Pending'): ?>
-                      <!-- Pending Status Actions -->
-                      <form method="POST" action="accept-assessment.php" style="margin: 0;">
-                        <input type="hidden" name="assessment_id" value="<?= $assessment['assessment_id'] ?>">
-                        <button type="submit" class="btn btn-green flex w-100">
-                          <i class="fas fa-check-circle me-1"></i>
-                          Accept
+                        <?php if ($assessment['status'] === 'Pending'): ?>
+                          <!-- Pending Status Actions -->
+                          <form method="POST" action="accept-assessment.php" style="margin: 0;">
+                            <input type="hidden" name="assessment_id" value="<?= $assessment['assessment_id'] ?>">
+                            <button type="submit" class="btn btn-green flex w-100">
+                              <i class="fas fa-check-circle me-1"></i>
+                              Accept
+                            </button>
+                          </form>
+
+                          <button
+                            class="btn btn-danger border flex"
+                            data-bs-toggle="modal"
+                            data-bs-target="#rejectAssessmentModal"
+                            onclick="setRejectAssessmentId(<?= $assessment['assessment_id'] ?>)">
+                            <i class="fas fa-times-circle me-1"></i>
+                            Reject
+                          </button>
+
+                        <?php elseif ($assessment['status'] === 'Accepted'): ?>
+                          <!-- Accepted Status Actions -->
+                          <a href="admin-quotation-proposal.php?id=<?= $assessment['assessment_id'] ?>" class="btn btn-green border flex">
+                            <i class="fas fa-file-invoice me-1"></i>
+                            Create Quotation
+                          </a>
+                        <?php endif; ?>
+
+                      <?php elseif ($assessment['status'] === 'Completed'): ?>
+                        <!-- Completed Status Actions -->
+                        <a href="admin-quotations.php?id=<?= $assessment['assessment_id'] ?>" class="btn btn-green flex">
+                          <i class="fa-solid fa-eye me-1"></i>
+                          View Quotation
+                        </a>
+                      <?php endif; ?>
+                      <?php if ($is_admin): ?>
+                        <!-- Archive button for all statuses -->
+                        <button
+                          type="button"
+                          class="btn btn-light border flex w-100"
+                          data-bs-toggle="modal"
+                          data-bs-target="#archiveAssessmentModal"
+                          onclick="setArchiveAssessmentId(<?= $assessment['assessment_id'] ?>)">
+                          <i class="fa-solid fa-box-archive me-1"></i>
+                          Archive
                         </button>
-                      </form>
-
-                      <button
-                        class="btn btn-danger border flex"
-                        data-bs-toggle="modal"
-                        data-bs-target="#rejectAssessmentModal"
-                        onclick="setRejectAssessmentId(<?= $assessment['assessment_id'] ?>)">
-                        <i class="fas fa-times-circle me-1"></i>
-                        Reject
-                      </button>
-
-                    <?php elseif ($assessment['status'] === 'Accepted'): ?>
-                      <!-- Accepted Status Actions -->
-                      <a href="admin-quotation-proposal.php?id=<?= $assessment['assessment_id'] ?>" class="btn btn-green border flex">
-                        <i class="fas fa-file-invoice me-1"></i>
-                        Create Quotation
-                      </a>
-
-                    <?php elseif ($assessment['status'] === 'Completed'): ?>
-                      <!-- Completed Status Actions -->
-                      <a href="admin-quotations.php?id=<?= $assessment['assessment_id'] ?>" class="btn btn-green flex">
-                        <i class="fa-solid fa-eye me-1"></i>
-                        View Quotation
-                      </a>
-                    <?php endif; ?>
-
-                    <!-- Archive button for all statuses -->
-                    <form method="POST" action="archive-assessment.php" style="margin: 0;">
-                      <input type="hidden" name="assessment_id" value="<?= $assessment['assessment_id'] ?>">
-                      <button type="submit" class="btn btn-light border flex w-100">
-                        <i class="fa-solid fa-box-archive me-1"></i>
-                        Archive
-                      </button>
-                    </form>
+                      <?php endif; ?>
+                    </div>
                   </div>
-                </div>
 
-              <?php endforeach; ?>
+                <?php endforeach; ?>
+              </div>
             <?php endif; ?>
 
           </div>
@@ -266,6 +320,32 @@ if ($result) {
     </div>
   </div>
 
+  <!-- Archive Assessment Modal -->
+  <div class="modal fade" id="archiveAssessmentModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+    aria-labelledby="archiveAssessmentLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header d-flex justify-content-between">
+          <h1 class="modal-title fs-5" id="archiveAssessmentLabel">Archive Assessment</h1>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <form method="POST">
+          <input type="hidden" name="assessment_id" id="archiveAssessmentId">
+          <input type="hidden" name="archive_assessment" value="1">
+          <div class="modal-body">
+            <h3 class="fs-24 text-center m-0 py-4">Are you sure you want to archive this assessment?</h3>
+            <p class="text-center text-muted">Archived assessments can be restored later.</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-danger">Archive</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <script>
     // Handle reject reason dropdown
     const rejectReason = document.getElementById('rejectReason');
@@ -284,22 +364,39 @@ if ($result) {
       document.getElementById('rejectAssessmentId').value = assessmentId;
     }
 
+    // Set assessment ID for archiving
+    function setArchiveAssessmentId(assessmentId) {
+      document.getElementById('archiveAssessmentId').value = assessmentId;
+    }
+
     // Filter assessments by status
     const assessmentFilter = document.getElementById('assessmentFilter');
     const assessmentCons = document.querySelectorAll('.assessment-con');
+    const emptyStateMessage = document.getElementById('assessmentEmptyState');
 
     assessmentFilter.addEventListener('change', function() {
-      const selectedStatus = this.value.toLowerCase();
+      const selectedStatus = this.value;
+      let visibleCount = 0;
 
       assessmentCons.forEach(con => {
-        const status = con.getAttribute('data-status').toLowerCase();
+        const status = con.getAttribute('data-status');
 
         if (selectedStatus === 'all' || status === selectedStatus) {
-          con.style.display = 'flex';
+          con.classList.remove('d-none');
+          visibleCount++;
         } else {
-          con.style.display = 'none';
+          con.classList.add('d-none');
         }
       });
+
+      // Show or hide empty state based on visible count
+      if (emptyStateMessage) {
+        if (visibleCount === 0) {
+          emptyStateMessage.classList.remove('d-none');
+        } else {
+          emptyStateMessage.classList.add('d-none');
+        }
+      }
     });
   </script>
 

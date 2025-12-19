@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
   }
 
   if (empty($selling_price) || !is_numeric($selling_price) || $selling_price < 0) {
-    $errors['selling_price'] = 'Valid selling price is required';
+    $errors['selling_price'] = 'Valid unit price is required';
   }
 
   if (empty($status)) {
@@ -138,7 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_item'])) {
   }
 
   if (empty($selling_price) || !is_numeric($selling_price) || $selling_price < 0) {
-    $errors['selling_price'] = 'Valid selling price is required';
+    $errors['selling_price'] = 'Valid unit price is required';
   }
 
   if (empty($status)) {
@@ -560,7 +560,7 @@ if ($result) {
                 </div>
 
                 <div class="col-md-4">
-                  <label class="form-label">Selling Price (₱)</label>
+                  <label class="form-label">Unit Price (₱)</label>
                   <input type="number" name="selling_price" class="form-control" placeholder="2000" value="<?= $_POST['selling_price'] ?? '' ?>">
                   <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['selling_price']) ? 'block' : 'none' ?>">
                     <?= $errors['selling_price'] ?? 'This field is required' ?>
