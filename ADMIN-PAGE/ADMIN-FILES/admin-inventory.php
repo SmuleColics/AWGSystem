@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
   $item_name = trim($_POST['item_name'] ?? '');
   $category = trim($_POST['category'] ?? '');
   $quantity = trim($_POST['quantity'] ?? '');
-  $quantity_unit = trim($_POST['quantity_unit'] ?? 'piece'); // ADD THIS LINE
+  $quantity_unit = trim($_POST['quantity_unit'] ?? 'piece');
   $price = trim($_POST['price'] ?? '');
   $selling_price = trim($_POST['selling_price'] ?? '');
   $status = trim($_POST['status'] ?? '');
@@ -27,7 +27,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
   $warranty_months = intval($_POST['warranty_months'] ?? 0);
   $warranty_days = intval($_POST['warranty_days'] ?? 0);
 
-
   if (empty($item_name)) {
     $errors['item_name'] = 'Item name is required';
   }
@@ -36,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
     $errors['category'] = 'Category is required';
   }
 
-  if (empty($quantity) || !is_numeric($quantity) || $quantity < 0) {
+  if (!is_numeric($quantity)) {
     $errors['quantity'] = 'Valid quantity is required';
   }
 
@@ -46,10 +45,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
 
   if (empty($selling_price) || !is_numeric($selling_price) || $selling_price < 0) {
     $errors['selling_price'] = 'Valid unit price is required';
-  }
-
-  if (empty($status)) {
-    $errors['status'] = 'Status is required';
   }
 
   if (empty($location)) {
@@ -63,10 +58,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
   if (empty($errors)) {
     $item_name_esc = mysqli_real_escape_string($conn, $item_name);
     $category_esc = mysqli_real_escape_string($conn, $category);
-    $quantity_unit_esc = mysqli_real_escape_string($conn, $quantity_unit); // ADD THIS LINE
-    $status_esc = mysqli_real_escape_string($conn, $status);
+    $quantity_unit_esc = mysqli_real_escape_string($conn, $quantity_unit);
     $location_esc = mysqli_real_escape_string($conn, $location);
     $supplier_esc = mysqli_real_escape_string($conn, $supplier);
+
+    // Auto-determine status based on quantity
+    if ($quantity <= 0) {
+      $status = 'Out of Stock';
+    } elseif ($quantity <= 10) {
+      $status = 'Low Stock';
+    } else {
+      $status = 'In Stock';
+    }
+    
+    $status_esc = mysqli_real_escape_string($conn, $status);
 
     $sql = "INSERT INTO inventory_items (item_name, category, quantity, quantity_unit, price, selling_price, status, location, supplier, warranty_years, warranty_months, warranty_days, is_archived) 
             VALUES ('$item_name_esc', '$category_esc', $quantity, '$quantity_unit_esc', $price, $selling_price, '$status_esc', '$location_esc', '$supplier_esc', $warranty_years, $warranty_months, $warranty_days, 0)";
@@ -83,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
         'INVENTORY',
         $new_item_id,
         $item_name,
-        "Created new inventory item: $item_name ($category) - Qty: $quantity $quantity_unit"
+        "Created new inventory item: $item_name ($category) - Qty: $quantity $quantity_unit, Status: $status"
       );
 
       echo "<script>
@@ -110,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_item'])) {
   $item_name = trim($_POST['item_name'] ?? '');
   $category = trim($_POST['category'] ?? '');
   $quantity = trim($_POST['quantity'] ?? '');
-  $quantity_unit = trim($_POST['quantity_unit'] ?? 'piece'); // ADD THIS LINE
+  $quantity_unit = trim($_POST['quantity_unit'] ?? 'piece');
   $price = trim($_POST['price'] ?? '');
   $selling_price = trim($_POST['selling_price'] ?? '');
   $status = trim($_POST['status'] ?? '');
@@ -129,7 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_item'])) {
     $errors['category'] = 'Category is required';
   }
 
-  if (empty($quantity) || !is_numeric($quantity) || $quantity < 0) {
+  if (!is_numeric($quantity)) {
     $errors['quantity'] = 'Valid quantity is required';
   }
 
@@ -139,10 +144,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_item'])) {
 
   if (empty($selling_price) || !is_numeric($selling_price) || $selling_price < 0) {
     $errors['selling_price'] = 'Valid unit price is required';
-  }
-
-  if (empty($status)) {
-    $errors['status'] = 'Status is required';
   }
 
   if (empty($location)) {
@@ -156,12 +157,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_item'])) {
   if (empty($errors)) {
     $item_name_esc = mysqli_real_escape_string($conn, $item_name);
     $category_esc = mysqli_real_escape_string($conn, $category);
-    $quantity_unit_esc = mysqli_real_escape_string($conn, $quantity_unit); // ADD THIS LINE
-    $status_esc = mysqli_real_escape_string($conn, $status);
+    $quantity_unit_esc = mysqli_real_escape_string($conn, $quantity_unit);
     $location_esc = mysqli_real_escape_string($conn, $location);
     $supplier_esc = mysqli_real_escape_string($conn, $supplier);
 
-    // UPDATE SQL TO INCLUDE quantity_unit
+    // Auto-determine status based on quantity
+    if ($quantity <= 0) {
+      $status = 'Out of Stock';
+    } elseif ($quantity <= 10) {
+      $status = 'Low Stock';
+    } else {
+      $status = 'In Stock';
+    }
+    
+    $status_esc = mysqli_real_escape_string($conn, $status);
+
     $sql = "UPDATE inventory_items SET 
             item_name = '$item_name_esc',
             category = '$category_esc',
@@ -188,7 +198,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_item'])) {
         'INVENTORY',
         $item_id,
         $item_name,
-        "Updated inventory item: $item_name - Status: $status, Qty: $quantity $quantity_unit" // UPDATED
+        "Updated inventory item: $item_name - Status: $status, Qty: $quantity $quantity_unit"
       );
 
       echo "<script>
@@ -282,6 +292,35 @@ if ($result) {
     $items[] = $row;
   }
 }
+
+// ========== AUTO-UPDATE STATUS BASED ON QUANTITY ========== //
+function updateItemStatus($conn, $item_id) {
+  // Get current quantity
+  $sql = "SELECT quantity FROM inventory_items WHERE item_id = $item_id";
+  $result = mysqli_query($conn, $sql);
+  
+  if ($result && $row = mysqli_fetch_assoc($result)) {
+    $quantity = $row['quantity'];
+    $new_status = '';
+    
+    if ($quantity <= 0) {
+      $new_status = 'Out of Stock';
+    } elseif ($quantity <= 10) {
+      $new_status = 'Low Stock';
+    } else {
+      $new_status = 'In Stock';
+    }
+    
+    // Update status
+    $update_sql = "UPDATE inventory_items SET status = '$new_status' WHERE item_id = $item_id";
+    mysqli_query($conn, $update_sql);
+    
+    return $new_status;
+  }
+  
+  return null;
+}
+
 
 ?>
 

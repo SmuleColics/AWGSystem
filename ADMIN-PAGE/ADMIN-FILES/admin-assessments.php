@@ -27,27 +27,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['archive_assessment'])
     WHERE assessment_id = $assessment_id
   ";
 
-    if (mysqli_query($conn, $archive_sql)) {
+  if (mysqli_query($conn, $archive_sql)) {
 
-      // 🔹 ACTIVITY LOG
-      log_activity(
-        $conn,
-        $employee_id,
-        $employee_name,
-        'ARCHIVE',
-        'ASSESSMENTS',
-        $assessment_id,
-        $service_type,
-        "Archived assessment for $user_full_name | Service: $service_type"
-      );
+    // 🔹 ACTIVITY LOG
+    log_activity(
+      $conn,
+      $employee_id,
+      $employee_name,
+      'ARCHIVE',
+      'ASSESSMENTS',
+      $assessment_id,
+      $service_type,
+      "Archived assessment for $user_full_name | Service: $service_type"
+    );
 
-      echo "<script>
+    echo "<script>
         alert('Assessment archived successfully.');
         window.location.href = 'admin-assessments.php';
       </script>";
-      exit;
-
-    }else {
+    exit;
+  } else {
     echo "<script>
       alert('Error archiving assessment.');
     </script>";
@@ -144,7 +143,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['archive_assessment'])
                   };
                   ?>
 
-                  <div class="assessment-con d-flex flex-md-row flex-column border p-3 rounded-3 gap-4" data-status="<?= htmlspecialchars($assessment['status']) ?>">
+                  <div class="assessment-con d-flex flex-md-row flex-column border p-3 rounded-3 gap-4 mb-3" data-status="<?= htmlspecialchars($assessment['status']) ?>">
                     <div class="w-100">
                       <div class="d-flex align-items-center gap-3 mb-2">
                         <h3 class="fs-18 mb-0">
@@ -223,22 +222,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['archive_assessment'])
                           </button>
 
                         <?php elseif ($assessment['status'] === 'Accepted'): ?>
-                          <!-- Accepted Status Actions -->
+                          <!-- Accepted Status Actions - Check if quotation exists and is sent -->
+                          <?php
+                          $quotation_check_sql = "SELECT status FROM quotations WHERE assessment_id = {$assessment['assessment_id']}";
+                          $quotation_check_result = mysqli_query($conn, $quotation_check_sql);
+                          $quotation_check = mysqli_fetch_assoc($quotation_check_result);
+
+                          $button_text = 'Create Quotation';
+                          $button_icon = 'fa-plus';
+
+                          // If quotation exists and is sent, change button text
+                          if ($quotation_check && $quotation_check['status'] === 'Sent') {
+                            $button_text = 'Manage Quotation';
+                            $button_icon = 'fa-file-invoice';
+                          }
+                          ?>
                           <a href="admin-quotation-proposal.php?id=<?= $assessment['assessment_id'] ?>" class="btn btn-green border flex">
-                            <i class="fas fa-file-invoice me-1"></i>
-                            Create Quotation
+                            <i class="fas <?= $button_icon ?> me-1"></i>
+                            <?= $button_text ?>
+                          </a>
+
+                        <?php elseif ($assessment['status'] === 'Completed'): ?>
+                          <!-- Completed Status Actions -->
+                          <a href="admin-quotation-proposal.php?id=<?= $assessment['assessment_id'] ?>" class="btn btn-success border flex">
+                            <i class="fa-solid fa-eye me-1"></i>
+                            View Quotation
                           </a>
                         <?php endif; ?>
 
-                      <?php elseif ($assessment['status'] === 'Completed'): ?>
-                        <!-- Completed Status Actions -->
-                        <a href="admin-quotations.php?id=<?= $assessment['assessment_id'] ?>" class="btn btn-green flex">
-                          <i class="fa-solid fa-eye me-1"></i>
-                          View Quotation
-                        </a>
-                      <?php endif; ?>
-                      <?php if ($is_admin): ?>
-                        <!-- Archive button for all statuses -->
+                        <!-- Archive button for all statuses (Admin only) -->
                         <button
                           type="button"
                           class="btn btn-light border flex w-100"
@@ -248,6 +260,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['archive_assessment'])
                           <i class="fa-solid fa-box-archive me-1"></i>
                           Archive
                         </button>
+
+                      <?php else: ?>
+                        <!-- NON-ADMIN USERS (Employees) -->
+                        <?php if ($assessment['status'] === 'Accepted' || $assessment['status'] === 'Completed'): ?>
+                          <a href="admin-quotation-proposal.php?id=<?= $assessment['assessment_id'] ?>" class="btn btn-success border flex">
+                            <i class="fa-solid fa-eye me-1"></i>
+                            View Quotation
+                          </a>
+                        <?php endif; ?>
                       <?php endif; ?>
                     </div>
                   </div>

@@ -108,7 +108,7 @@ if (file_exists('../../INCLUDES/notifications.php')) {
                 </div>
               </button>
 
-              <ul class="dropdown-menu mt-1 notif-dropdown" style="transform: translateX(-280px); width: 320px; max-height: 450px; overflow-y: auto;">
+              <ul class="dropdown-menu mt-1 notif-dropdown" style="transform: translateX(-220px); width: 320px; max-height: 450px; overflow-y: auto;">
                 <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
                   <p class="fs-5 mb-0 notif-text">Notifications</p>
                   <?php if ($unread_count > 0): ?>
@@ -146,9 +146,14 @@ if (file_exists('../../INCLUDES/notifications.php')) {
                           </div>
                           <div class="flex-grow-1">
                             <p class="mb-0 fw-semibold small"><?= htmlspecialchars($notif['title']) ?></p>
-                            <p class="mb-1 small text-muted text-truncate" style="max-width: 240px;">
+                            <p class="mb-1 small text-muted text-truncate"
+                              style="max-width: 240px;"
+                              data-bs-toggle="tooltip"
+                              data-bs-placement="top"
+                              title="<?= htmlspecialchars($notif['message']) ?>">
                               <?= htmlspecialchars($notif['message']) ?>
                             </p>
+
                             <small class="text-muted" style="font-size: 11px;">
                               <?php
                               $time_diff = time() - strtotime($notif['created_at']);
@@ -186,7 +191,7 @@ if (file_exists('../../INCLUDES/notifications.php')) {
                 <i class="fa-solid fa-user fs-18 green-text" style="position: relative; top: -2px;"></i>
               </div>
             </button>
-            <ul class="dropdown-menu mt-1 profile-dropdown" style="transform: translateX(-130px);">
+            <ul class="dropdown-menu mt-1 profile-dropdown" style="transform: translateX(-150px);">
               <li class="dropdown-profile-top d-flex mb-1">
                 <a class="dropdown-item d-flex align-items-center" href="my-profile.php">
                   <div class="green-bg rounded-circle flex ms-1"
@@ -377,24 +382,33 @@ if (file_exists('../../INCLUDES/notifications.php')) {
   }, true);
 
   function markAdminNotifRead(event, el) {
-  event.preventDefault();
+    event.preventDefault();
 
-  const notifId = el.dataset.id;
-  const link = el.getAttribute('href');
+    const notifId = el.dataset.id;
+    const link = el.getAttribute('href');
 
-  fetch('admin-mark-notification-read.php', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded'
-    },
-    body: 'notification_id=' + notifId
-  })
-  .finally(() => {
-    if (link && link !== '#') {
-      window.location.href = link;
-    }
+    fetch('admin-mark-notification-read.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: 'notification_id=' + notifId
+      })
+      .finally(() => {
+        if (link && link !== '#') {
+          window.location.href = link;
+        }
+      });
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const tooltipTriggerList = [].slice.call(
+      document.querySelectorAll('[data-bs-toggle="tooltip"]')
+    );
+    tooltipTriggerList.forEach(function (el) {
+      new bootstrap.Tooltip(el);
+    });
   });
-}
 </script>
 
 

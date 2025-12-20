@@ -1,44 +1,44 @@
-<?php 
-  if (session_status() === PHP_SESSION_NONE) {
-      session_start();
-  }
-  date_default_timezone_set('Asia/Manila');
-  include '../../INCLUDES/db-con.php';
-  include '../../INCLUDES/log-activity.php';
+<?php
+if (session_status() === PHP_SESSION_NONE) {
+  session_start();
+}
+date_default_timezone_set('Asia/Manila');
+include '../../INCLUDES/db-con.php';
+include '../../INCLUDES/log-activity.php';
 
-  // Get user info from session
-  $user_id = $_SESSION['user_id'] ?? null;
-  $first_name = $_SESSION['first_name'] ?? 'Guest';
-  $last_name = $_SESSION['last_name'] ?? '';
-  $email = $_SESSION['email'] ?? null;
+// Get user info from session
+$user_id = $_SESSION['user_id'] ?? null;
+$first_name = $_SESSION['first_name'] ?? 'Guest';
+$last_name = $_SESSION['last_name'] ?? '';
+$email = $_SESSION['email'] ?? null;
 
-  // Get user notifications (ONLY client-side types)
-  $unread_count = 0;
-  $notifications = [];
+// Get user notifications (ONLY client-side types)
+$unread_count = 0;
+$notifications = [];
 
-  if ($user_id) {
-    // Get unread count - ONLY include client-side notification types
-    $unread_sql = "SELECT COUNT(*) as count FROM notifications 
+if ($user_id) {
+  // Get unread count - ONLY include client-side notification types
+  $unread_sql = "SELECT COUNT(*) as count FROM notifications 
                   WHERE recipient_id = $user_id 
                   AND is_read = 0
                   AND type IN ('ASSESSMENT_ACCEPTED', 'ASSESSMENT_REJECTED', 'QUOTATION_CREATED')";
-    $unread_result = mysqli_query($conn, $unread_sql);
-    $unread_row = mysqli_fetch_assoc($unread_result);
-    $unread_count = $unread_row['count'] ?? 0;
+  $unread_result = mysqli_query($conn, $unread_sql);
+  $unread_row = mysqli_fetch_assoc($unread_result);
+  $unread_count = $unread_row['count'] ?? 0;
 
-    // Get recent notifications (limit 5 for dropdown) - ONLY client-side notification types
-    $notif_sql = "SELECT * FROM notifications 
+  // Get recent notifications (limit 5 for dropdown) - ONLY client-side notification types
+  $notif_sql = "SELECT * FROM notifications 
                   WHERE recipient_id = $user_id 
                   AND type IN ('ASSESSMENT_ACCEPTED', 'ASSESSMENT_REJECTED', 'QUOTATION_CREATED')
                   ORDER BY created_at DESC 
                   LIMIT 5";
-    $notif_result = mysqli_query($conn, $notif_sql);
-    if ($notif_result) {
-      while ($notif = mysqli_fetch_assoc($notif_result)) {
-        $notifications[] = $notif;
-      }
+  $notif_result = mysqli_query($conn, $notif_sql);
+  if ($notif_result) {
+    while ($notif = mysqli_fetch_assoc($notif_result)) {
+      $notifications[] = $notif;
     }
   }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -103,7 +103,8 @@
               </div>
             </button>
 
-            <ul class="dropdown-menu mt-1 notif-dropdown" style="transform: translateX(-154px); width: 300px; max-height: 450px; overflow-y: auto;">
+
+            <ul class="dropdown-menu mt-1 notif-dropdown" style="transform: translateX(-194px); width: 300px; max-height: 450px; overflow-y: auto;">
               <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
                 <p class="fs-5 mb-0 notif-text">Notifications</p>
                 <?php if ($unread_count > 0): ?>
@@ -139,9 +140,14 @@
                         </div>
                         <div class="flex-grow-1">
                           <p class="mb-0 fw-semibold small"><?= htmlspecialchars($notif['title']) ?></p>
-                          <p class="mb-1 small text-muted text-truncate" style="max-width: 220px;">
+                          <p class="mb-1 small text-muted text-truncate"
+                            style="max-width: 220px;"
+                            data-bs-toggle="tooltip"
+                            data-bs-placement="top"
+                            title="<?= htmlspecialchars($notif['message']) ?>">
                             <?= htmlspecialchars($notif['message']) ?>
                           </p>
+
                           <small class="text-muted" style="font-size: 11px;">
                             <?php
                             $time_diff = time() - strtotime($notif['created_at']);
@@ -244,15 +250,23 @@
   function markAsRead(notificationId) {
     // Send AJAX request to mark as read
     fetch('mark-notification-read.php', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: 'notification_id=' + notificationId
-    })
-    .then(response => response.text())
-    .catch(error => console.error('Error:', error));
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'notification_id=' + notificationId
+      })
+      .then(response => response.text())
+      .catch(error => console.error('Error:', error));
   }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+  });
+
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>

@@ -80,25 +80,119 @@ $form_data = [
   'notes' => $quotation['notes'] ?? ''
 ];
 
-// Handle delete item
-if (isset($_GET['delete_item'])) {
-  $item_id = intval($_GET['delete_item']);
-  $delete_sql = "DELETE FROM quotation_items WHERE item_id = $item_id AND assessment_id = $assessment_id";
-  if (mysqli_query($conn, $delete_sql)) {
-    // Activity Log
+// Handle delete item with archive - Using modal confirmation
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['modal-delete-button'])) {
+  $item_id = intval($_POST['delete_item_id']);
+
+  // Get item details before deletion
+  $get_item_sql = "SELECT qi.*, ii.quantity as current_inventory_qty 
+                  FROM quotation_items qi 
+                  LEFT JOIN inventory_items ii ON qi.inventory_item_id = ii.item_id 
+                  WHERE qi.item_id = $item_id AND qi.assessment_id = $assessment_id";
+  $get_item_result = mysqli_query($conn, $get_item_sql);
+  $item_to_delete = mysqli_fetch_assoc($get_item_result);
+
+  if ($item_to_delete) {
+    // If item is from inventory, restore quantity
+    if ($item_to_delete['inventory_item_id']) {
+      $restore_qty = $item_to_delete['current_inventory_qty'] + $item_to_delete['quantity'];
+      $restore_sql = "UPDATE inventory_items 
+                    SET quantity = $restore_qty 
+                    WHERE item_id = {$item_to_delete['inventory_item_id']}";
+      mysqli_query($conn, $restore_sql);
+      
+      // Update status after restoring quantity
+      $new_status = '';
+      if ($restore_qty <= 0) {
+        $new_status = 'Out of Stock';
+      } elseif ($restore_qty <= 10) {
+        $new_status = 'Low Stock';
+      } else {
+        $new_status = 'In Stock';
+      }
+      
+      $update_status_sql = "UPDATE inventory_items 
+                          SET status = '$new_status' 
+                          WHERE item_id = {$item_to_delete['inventory_item_id']}";
+      mysqli_query($conn, $update_status_sql);
+      
+      // Archive the item if it was created for this quotation (negative or zero quantity after restoration)
+      if ($restore_qty <= 0) {
+        $archive_sql = "UPDATE inventory_items 
+                      SET is_archived = 1 
+                      WHERE item_id = {$item_to_delete['inventory_item_id']}";
+        mysqli_query($conn, $archive_sql);
+      }
+    }
+
+    // Delete from quotation_items
+    $delete_sql = "DELETE FROM quotation_items WHERE item_id = $item_id";
+    if (mysqli_query($conn, $delete_sql)) {
+      log_activity(
+        $conn,
+        $employee_id,
+        $employee_name,
+        'DELETE',
+        'QUOTATION_ITEMS',
+        $item_id,
+        'Item Deleted',
+        "Deleted quotation item from quotation for assessment #$assessment_id"
+      );
+
+      echo "<script>
+        alert('Item deleted successfully');
+        window.location.href = 'admin-quotation-proposal.php?id=$assessment_id';
+      </script>";
+      exit;
+    }
+  }
+}
+
+// Handle edit item
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_item'])) {
+  $edit_item_id = intval($_POST['edit_item_id']);
+  $quantity = floatval($_POST['edit_quantity']);
+  $unit_price = floatval($_POST['edit_unit_price']);
+  $total = $quantity * $unit_price;
+
+  // Get old quantity to restore inventory
+  $old_item_sql = "SELECT * FROM quotation_items WHERE item_id = $edit_item_id";
+  $old_item_result = mysqli_query($conn, $old_item_sql);
+  $old_item = mysqli_fetch_assoc($old_item_result);
+
+  if ($old_item && $old_item['inventory_item_id']) {
+    // Calculate quantity difference
+    $qty_diff = $quantity - $old_item['quantity'];
+
+    // Update inventory quantity AND selling price
+    $update_inv_sql = "UPDATE inventory_items 
+                      SET quantity = quantity - $qty_diff,
+                          selling_price = $unit_price
+                      WHERE item_id = {$old_item['inventory_item_id']}";
+    mysqli_query($conn, $update_inv_sql);
+  }
+
+  // Update quotation item
+  $update_sql = "UPDATE quotation_items 
+                SET quantity = $quantity, 
+                    unit_price = $unit_price, 
+                    total = $total 
+                WHERE item_id = $edit_item_id";
+
+  if (mysqli_query($conn, $update_sql)) {
     log_activity(
       $conn,
       $employee_id,
       $employee_name,
-      'DELETE',
+      'UPDATE',
       'QUOTATION_ITEMS',
-      $item_id,
-      'Item Deleted',
-      "Deleted quotation item from quotation for assessment #$assessment_id"
+      $edit_item_id,
+      'Item Updated',
+      "Updated quotation item in assessment #$assessment_id (Qty: $quantity, Price: ₱$unit_price)"
     );
 
     echo "<script>
-      alert('Item deleted successfully');
+      alert('Item updated successfully and inventory synced');
       window.location.href = 'admin-quotation-proposal.php?id=$assessment_id';
     </script>";
     exit;
@@ -130,22 +224,22 @@ if (isset($_GET['delete_labor'])) {
   }
 }
 
-// Handle add item to quotation
+// Handle add item to quotation - FIXED
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
-  $item_id = isset($_POST['item_id']) && $_POST['item_id'] !== '' ? intval($_POST['item_id']) : null;
+  $inventory_item_id = isset($_POST['item_id']) && $_POST['item_id'] !== '' ? intval($_POST['item_id']) : null;
   $item_name = mysqli_real_escape_string($conn, trim($_POST['item_name']));
   $quantity = floatval($_POST['quantity']);
   $unit_type = mysqli_real_escape_string($conn, trim($_POST['unit_type']));
 
   // For existing inventory items: use unit_price
   // For new items: use selling_price as unit_price in quotation
-  if ($item_id !== null) {
+  if ($inventory_item_id !== null) {
     $unit_price = floatval($_POST['unit_price']);
   } else {
     $unit_price = floatval($_POST['item_selling_price']);
   }
 
-  $item_cost = isset($_POST['item_cost']) ? floatval($_POST['item_cost']) : $unit_price;
+  $item_cost = isset($_POST['item_cost']) ? floatval($_POST['item_cost']) : 0;
   $item_selling_price = isset($_POST['item_selling_price']) ? floatval($_POST['item_selling_price']) : $unit_price;
   $total = $quantity * $unit_price;
 
@@ -159,49 +253,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
   if (empty($unit_type)) {
     $errors['unit_type'] = 'Unit type is required';
   }
-  if ($item_id === null && $item_cost <= 0) {
+  if ($inventory_item_id === null && $item_cost <= 0) {
     $errors['item_cost'] = 'Cost price must be greater than 0';
   }
-  if ($item_id === null && $item_selling_price <= 0) {
+  if ($inventory_item_id === null && $item_selling_price <= 0) {
     $errors['item_selling_price'] = 'Selling price must be greater than 0';
   }
-  if ($item_id !== null && $unit_price <= 0) {
+  if ($inventory_item_id !== null && $unit_price <= 0) {
     $errors['unit_price'] = 'Unit price must be greater than 0';
   }
 
   if (empty($errors)) {
+    $new_inventory_id = null;
+
     // If item exists in inventory, reduce its quantity
-    if ($item_id !== null) {
+    if ($inventory_item_id !== null) {
       // Get current inventory quantity
-      $inv_check_sql = "SELECT quantity FROM inventory_items WHERE item_id = $item_id";
+      $inv_check_sql = "SELECT quantity FROM inventory_items WHERE item_id = $inventory_item_id";
       $inv_check_result = mysqli_query($conn, $inv_check_sql);
       $inv_check = mysqli_fetch_assoc($inv_check_result);
 
       if ($inv_check) {
         $new_quantity = $inv_check['quantity'] - $quantity;
 
-        // Update inventory quantity
-        $update_inv_sql = "UPDATE inventory_items SET quantity = $new_quantity WHERE item_id = $item_id";
+        // Update inventory quantity (allow negative)
+        $update_inv_sql = "UPDATE inventory_items SET quantity = $new_quantity WHERE item_id = $inventory_item_id";
         mysqli_query($conn, $update_inv_sql);
+        
+        // Update status based on new quantity
+        $new_status = '';
+        if ($new_quantity <= 0) {
+          $new_status = 'Out of Stock';
+        } elseif ($new_quantity <= 10) {
+          $new_status = 'Low Stock';
+        } else {
+          $new_status = 'In Stock';
+        }
+        
+        $update_status_sql = "UPDATE inventory_items SET status = '$new_status' WHERE item_id = $inventory_item_id";
+        mysqli_query($conn, $update_status_sql);
+
+        $new_inventory_id = $inventory_item_id;
       }
     } else {
-      // If no item_id selected, add new item to inventory as "Out of Stock"
+      // If no item_id selected, add new item to inventory with NEGATIVE quantity
+      // This indicates the deficit/need for this item
+      $negative_quantity = -$quantity; // Set as negative to show deficit
       $service_type = mysqli_real_escape_string($conn, $assessment['service_type']);
-      $insert_inventory_sql = "INSERT INTO inventory_items (item_name, category, quantity, quantity_unit, price, selling_price, status, location, supplier, created_at)
-                              VALUES ('$item_name', '$service_type', 0, '$unit_type', '$item_cost', '$item_selling_price', 'Out of Stock', '', '', NOW())";
+      $insert_inventory_sql = "INSERT INTO inventory_items (item_name, category, quantity, quantity_unit, price, selling_price, status, location, supplier, is_archived, created_at)
+                              VALUES ('$item_name', '$service_type', $negative_quantity, '$unit_type', '$item_cost', '$item_selling_price', 'Out of Stock', '', '', 0, NOW())";
 
       if (mysqli_query($conn, $insert_inventory_sql)) {
-        $item_id = mysqli_insert_id($conn);
+        $new_inventory_id = mysqli_insert_id($conn);
       }
     }
 
-    // Add item to quotation items table
-    $insert_sql = "INSERT INTO quotation_items (assessment_id, item_id, item_name, quantity, unit_type, unit_price, total, created_at)
-                  VALUES ($assessment_id, $item_id, '$item_name', $quantity, '$unit_type', $unit_price, $total, NOW())";
+    // Add item to quotation items table - FIXED: removed item_id from INSERT
+    $insert_sql = "INSERT INTO quotation_items (assessment_id, inventory_item_id, item_name, quantity, unit_type, unit_price, total, created_at)
+                  VALUES ($assessment_id, " . ($new_inventory_id ? $new_inventory_id : "NULL") . ", '$item_name', $quantity, '$unit_type', $unit_price, $total, NOW())";
 
     if (mysqli_query($conn, $insert_sql)) {
       // Activity Log
-      if ($_POST['item_id'] && $_POST['item_id'] !== '') {
+      if ($inventory_item_id !== null) {
         // Item from inventory
         log_activity(
           $conn,
@@ -209,21 +322,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
           $employee_name,
           'CREATE',
           'QUOTATION_ITEMS',
-          $item_id,
+          $new_inventory_id,
           $item_name,
           "Added quotation item from inventory: $item_name (Qty: $quantity, Unit Price: ₱$unit_price) to assessment #$assessment_id"
         );
       } else {
-        // New item created
+        // New item created with negative quantity (deficit)
         log_activity(
           $conn,
           $employee_id,
           $employee_name,
           'CREATE',
           'QUOTATION_ITEMS',
-          $item_id,
+          $new_inventory_id,
           $item_name,
-          "Added new quotation item: $item_name (Qty: $quantity, Cost: ₱$item_cost, Selling Price: ₱$item_selling_price) to assessment #$assessment_id. Item created in inventory as 'Out of Stock'"
+          "Added new quotation item: $item_name (Qty: $quantity, Cost: ₱$item_cost, Selling Price: ₱$item_selling_price) to assessment #$assessment_id. Item created in inventory with deficit of $quantity units (qty: $negative_quantity)."
         );
       }
 
@@ -399,7 +512,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_quotation'])
                     WHERE assessment_id = $assessment_id";
 
     if (mysqli_query($conn, $complete_sql)) {
-      // Activity Log
+      
+      // ✅ UPDATE ASSESSMENT STATUS TO COMPLETED
+      $update_assessment_sql = "UPDATE assessments SET status = 'Completed' WHERE assessment_id = $assessment_id";
+      mysqli_query($conn, $update_assessment_sql);
+      
+      $user_full_name = $assessment['first_name'] . ' ' . $assessment['last_name'];
+      $project_name = $quotation['project_name'];
+      
+      // LOG ACTIVITY
       log_activity(
         $conn,
         $employee_id,
@@ -408,17 +529,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_quotation'])
         'QUOTATIONS',
         $assessment_id,
         'Quotation Completed',
-        "Quotation for assessment #$assessment_id completed and sent. Total Amount: ₱$grand_total"
+        'Quotation for assessment #' . $assessment_id . ' completed and sent. Total Amount: ₱' . number_format($grand_total, 2)
       );
 
-      // Create Notification for CLIENT
-      $user_full_name = $assessment['first_name'] . ' ' . $assessment['last_name'];
-      $project_name = $quotation['project_name'];
-      $user_full_name_escaped = mysqli_real_escape_string($conn, $user_full_name);
-      $project_name_escaped = mysqli_real_escape_string($conn, $project_name);
-      $client_notification_sql = "INSERT INTO notifications (recipient_id, type, title, message, link, is_read)
-                                 VALUES ({$assessment['user_id']}, 'QUOTATION_CREATED', 'Your Quotation is Ready', 'Your quotation for $project_name_escaped is now ready for review. Total Amount: ₱$grand_total', 'user-assessments.php', 0)";
-      mysqli_query($conn, $client_notification_sql);
+      // CREATE NOTIFICATION FOR USER (CLIENT SIDE)
+      $user_notif_title = 'Your Quotation is Ready';
+      $user_notif_message = 'Hello ' . $user_full_name . ', your quotation for ' . $project_name . ' is now ready for review. Total Amount: ₱' . number_format($grand_total, 2);
+      $user_notif_link = 'user-assessments.php';
+      
+      $user_notif_sql = "INSERT INTO notifications (recipient_id, type, title, message, link, is_read) 
+                        VALUES ({$assessment['user_id']}, 'QUOTATION_CREATED', 
+                              '" . mysqli_real_escape_string($conn, $user_notif_title) . "',
+                              '" . mysqli_real_escape_string($conn, $user_notif_message) . "',
+                              '" . mysqli_real_escape_string($conn, $user_notif_link) . "',
+                              0)";
+      mysqli_query($conn, $user_notif_sql);
+
+      // CREATE NOTIFICATION FOR ADMIN (ADMIN SIDE) - INCLUDING SENDER
+      $admin_notif_title = 'Quotation Sent to Client';
+      $admin_notif_message = $user_full_name . '\'s quotation for ' . $project_name . ' has been sent by ' . $employee_name . '. Total Amount: ₱' . number_format($grand_total, 2);
+      $admin_notif_link = 'admin-quotation-proposal.php?id=' . $assessment_id;
+      
+      $admin_notif_sql = "INSERT INTO notifications (recipient_id, type, title, message, link, is_read, sender_name) 
+                        VALUES ($employee_id, 'QUOTATION_SENT_ADMIN', 
+                              '" . mysqli_real_escape_string($conn, $admin_notif_title) . "',
+                              '" . mysqli_real_escape_string($conn, $admin_notif_message) . "',
+                              '" . mysqli_real_escape_string($conn, $admin_notif_link) . "',
+                              0,
+                              '" . mysqli_real_escape_string($conn, $employee_name) . "')";
+      mysqli_query($conn, $admin_notif_sql);
 
       echo "<script>
         alert('Quotation completed and sent successfully!');
@@ -640,11 +779,14 @@ $formatted_date = date('m/d/Y', strtotime($assessment['preferred_date']));
                         <p class="mb-2">₱<?= number_format($item['total'], 2) ?></p>
                       </div>
                       <div class="col-md-1">
-                        <a href="#" class="text-secondary"><i class="fas fa-edit"></i></a>
+                        <a href="#" class="text-secondary" data-bs-toggle="modal" data-bs-target="#editItemModal"
+                          onclick="populateEditModal(<?= $item['item_id'] ?>, '<?= addslashes($item['item_name']) ?>', <?= $item['quantity'] ?>, <?= $item['unit_price'] ?>)">
+                          <i class="fas fa-edit"></i>
+                        </a>
                       </div>
                       <div class="col-md-1">
-                        <a href="?id=<?= $assessment_id ?>&delete_item=<?= $item['item_id'] ?>" class="text-danger"
-                          onclick="return confirm('Are you sure you want to delete this item? This will restore the inventory quantity.')">
+                        <a href="#" class="text-danger" data-bs-toggle="modal" data-bs-target="#deleteItemModal"
+                          onclick="setDeleteItemId(<?= $item['item_id'] ?>, '<?= addslashes($item['item_name']) ?>')">
                           <i class="fas fa-trash"></i>
                         </a>
                       </div>
@@ -719,119 +861,119 @@ $formatted_date = date('m/d/Y', strtotime($assessment['preferred_date']));
   </main>
   <!-- END OF MAIN -->
 
-<!-- ADD ITEM MODAL -->
-<div class="modal fade" id="addItemModal" tabindex="-1">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Add Item</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
+  <!-- ADD ITEM MODAL -->
+  <div class="modal fade" id="addItemModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add Item</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
 
-      <form method="POST">
-        <input type="hidden" name="add_item" value="1">
-        <div class="modal-body">
-          <div class="row g-3">
-            <!-- Select from Inventory -->
-            <div class="col-12">
-              <label class="form-label">Select from Inventory (Optional)</label>
-              <select id="inventorySelect" class="form-select">
-                <option value="">-- Or add new item --</option>
-                <?php foreach ($inventory_items as $inv_item): ?>
-                  <option value="<?= $inv_item['item_id'] ?>"
-                    data-price="<?= $inv_item['selling_price'] ?>"
-                    data-name="<?= htmlspecialchars($inv_item['item_name']) ?>"
-                    data-quantity="<?= $inv_item['quantity'] ?>"
-                    data-unit="<?= htmlspecialchars($inv_item['quantity_unit']) ?>">
-                    <?= htmlspecialchars($inv_item['item_name']) ?> - ₱<?= number_format($inv_item['selling_price'], 2) ?> (<?= $inv_item['status'] ?> - Stock: <?= $inv_item['quantity'] ?> <?= htmlspecialchars($inv_item['quantity_unit']) ?>)
-                  </option>
-                <?php endforeach; ?>
-              </select>
-            </div>
+        <form method="POST">
+          <input type="hidden" name="add_item" value="1">
+          <div class="modal-body">
+            <div class="row g-3">
+              <!-- Select from Inventory -->
+              <div class="col-12">
+                <label class="form-label">Select from Inventory (Optional)</label>
+                <select id="inventorySelect" class="form-select">
+                  <option value="">-- Or add new item --</option>
+                  <?php foreach ($inventory_items as $inv_item): ?>
+                    <option value="<?= $inv_item['item_id'] ?>"
+                      data-price="<?= $inv_item['selling_price'] ?>"
+                      data-name="<?= htmlspecialchars($inv_item['item_name']) ?>"
+                      data-quantity="<?= $inv_item['quantity'] ?>"
+                      data-unit="<?= htmlspecialchars($inv_item['quantity_unit']) ?>">
+                      <?= htmlspecialchars($inv_item['item_name']) ?> - ₱<?= number_format($inv_item['selling_price'], 2) ?> (<?= $inv_item['status'] ?> - Stock: <?= $inv_item['quantity'] ?> <?= htmlspecialchars($inv_item['quantity_unit']) ?>)
+                    </option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
 
-            <!-- Item Name -->
-            <div class="col-md-6">
-              <label class="form-label">Item Name *</label>
-              <input type="text" class="form-control <?= isset($errors['item_name']) ? 'is-invalid' : '' ?>"
-                id="itemName" name="item_name" placeholder="4mp CCTV Camera" required>
-              <input type="hidden" name="item_id" id="itemId" value="">
-              <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['item_name']) ? 'block' : 'none' ?>">
-                <?= $errors['item_name'] ?? 'This field is required' ?>
-              </p>
-            </div>
+              <!-- Item Name -->
+              <div class="col-md-6">
+                <label class="form-label">Item Name *</label>
+                <input type="text" class="form-control <?= isset($errors['item_name']) ? 'is-invalid' : '' ?>"
+                  id="itemName" name="item_name" placeholder="4mp CCTV Camera" required>
+                <input type="hidden" name="item_id" id="itemId" value="">
+                <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['item_name']) ? 'block' : 'none' ?>">
+                  <?= $errors['item_name'] ?? 'This field is required' ?>
+                </p>
+              </div>
 
-            <!-- Quantity -->
-            <div class="col-md-3">
-              <label class="form-label">Quantity *</label>
-              <input type="number" class="form-control <?= isset($errors['quantity']) ? 'is-invalid' : '' ?>"
-                id="itemQuantity" name="quantity" placeholder="1" min="0.01" step="0.01" required>
-              <small id="quantityWarning" class="d-block text-warning mt-1" style="display: none;"></small>
-              <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['quantity']) ? 'block' : 'none' ?>">
-                <?= $errors['quantity'] ?? 'Must be greater than 0' ?>
-              </p>
-            </div>
+              <!-- Quantity -->
+              <div class="col-md-3">
+                <label class="form-label">Quantity *</label>
+                <input type="number" class="form-control <?= isset($errors['quantity']) ? 'is-invalid' : '' ?>"
+                  id="itemQuantity" name="quantity" placeholder="1" min="0.01" step="0.01" required>
+                <small id="quantityWarning" class="d-block text-warning mt-1" style="display: none;"></small>
+                <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['quantity']) ? 'block' : 'none' ?>">
+                  <?= $errors['quantity'] ?? 'Must be greater than 0' ?>
+                </p>
+              </div>
 
-            <!-- Unit Type -->
-            <div class="col-md-3">
-              <label class="form-label">Unit Type *</label>
-              <select class="form-select <?= isset($errors['unit_type']) ? 'is-invalid' : '' ?>"
-                id="unitType" name="unit_type" required>
-                <option value="">Select unit</option>
-                <option value="piece">Piece</option>
-                <option value="roll">Roll</option>
-                <option value="unit">Unit</option>
-                <option value="box">Box</option>
-                <option value="pack">Pack</option>
-                <option value="set">Set</option>
-              </select>
-              <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['unit_type']) ? 'block' : 'none' ?>">
-                <?= $errors['unit_type'] ?? 'This field is required' ?>
-              </p>
-            </div>
+              <!-- Unit Type -->
+              <div class="col-md-3">
+                <label class="form-label">Unit Type *</label>
+                <select class="form-select <?= isset($errors['unit_type']) ? 'is-invalid' : '' ?>"
+                  id="unitType" name="unit_type" required>
+                  <option value="">Select unit</option>
+                  <option value="piece">Piece</option>
+                  <option value="roll">Roll</option>
+                  <option value="unit">Unit</option>
+                  <option value="box">Box</option>
+                  <option value="pack">Pack</option>
+                  <option value="set">Set</option>
+                </select>
+                <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['unit_type']) ? 'block' : 'none' ?>">
+                  <?= $errors['unit_type'] ?? 'This field is required' ?>
+                </p>
+              </div>
 
-            <!-- Cost Price (Only for new items) -->
-            <div class="col-md-6" id="costPriceField">
-              <label class="form-label">Cost Price (₱) *</label>
-              <input type="number" class="form-control <?= isset($errors['item_cost']) ? 'is-invalid' : '' ?>"
-                id="itemCost" name="item_cost" placeholder="0.00" min="0" step="0.01">
-              <small class="text-muted">Your cost for this item</small>
-              <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['item_cost']) ? 'block' : 'none' ?>">
-                <?= $errors['item_cost'] ?? 'Must be greater than 0' ?>
-              </p>
-            </div>
+              <!-- Cost Price (Only for new items) -->
+              <div class="col-md-6" id="costPriceField">
+                <label class="form-label">Cost Price (₱) *</label>
+                <input type="number" class="form-control <?= isset($errors['item_cost']) ? 'is-invalid' : '' ?>"
+                  id="itemCost" name="item_cost" placeholder="0.00" min="0" step="0.01">
+                <small class="text-muted">Your cost for this item</small>
+                <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['item_cost']) ? 'block' : 'none' ?>">
+                  <?= $errors['item_cost'] ?? 'Must be greater than 0' ?>
+                </p>
+              </div>
 
-            <!-- Selling Price (Only for new items) -->
-            <div class="col-md-6" id="sellingPriceField">
-              <label class="form-label">Selling Price (₱) *</label>
-              <input type="number" class="form-control <?= isset($errors['item_selling_price']) ? 'is-invalid' : '' ?>"
-                id="itemSellingPrice" name="item_selling_price" placeholder="0.00" min="0" step="0.01">
-              <small class="text-muted">Selling price in inventory</small>
-              <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['item_selling_price']) ? 'block' : 'none' ?>">
-                <?= $errors['item_selling_price'] ?? 'Must be greater than 0' ?>
-              </p>
-            </div>
+              <!-- Selling Price (Only for new items) -->
+              <div class="col-md-6" id="sellingPriceField">
+                <label class="form-label">Selling Price (₱) *</label>
+                <input type="number" class="form-control <?= isset($errors['item_selling_price']) ? 'is-invalid' : '' ?>"
+                  id="itemSellingPrice" name="item_selling_price" placeholder="0.00" min="0" step="0.01">
+                <small class="text-muted">Selling price in inventory</small>
+                <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['item_selling_price']) ? 'block' : 'none' ?>">
+                  <?= $errors['item_selling_price'] ?? 'Must be greater than 0' ?>
+                </p>
+              </div>
 
-            <!-- Unit Price (Only for inventory items) -->
-            <div class="col-md-12" id="unitPriceField" style="display: none;">
-              <label class="form-label">Unit Price (₱) *</label>
-              <input type="number" class="form-control <?= isset($errors['unit_price']) ? 'is-invalid' : '' ?>"
-                id="unitPrice" name="unit_price" placeholder="0.00" min="0" step="0.01">
-              <small class="text-muted">Price for this quotation</small>
-              <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['unit_price']) ? 'block' : 'none' ?>">
-                <?= $errors['unit_price'] ?? 'Must be greater than 0' ?>
-              </p>
+              <!-- Unit Price (Only for inventory items) -->
+              <div class="col-md-12" id="unitPriceField" style="display: none;">
+                <label class="form-label">Unit Price (₱) *</label>
+                <input type="number" class="form-control <?= isset($errors['unit_price']) ? 'is-invalid' : '' ?>"
+                  id="unitPrice" name="unit_price" placeholder="0.00" min="0" step="0.01">
+                <small class="text-muted">Price for this quotation</small>
+                <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['unit_price']) ? 'block' : 'none' ?>">
+                  <?= $errors['unit_price'] ?? 'Must be greater than 0' ?>
+                </p>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-green">Add Item</button>
-        </div>
-      </form>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-green">Add Item</button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
-</div>
 
 
   <!-- ADD LABOR MODAL -->
@@ -876,139 +1018,222 @@ $formatted_date = date('m/d/Y', strtotime($assessment['preferred_date']));
     </div>
   </div>
 
+  <!-- DELETE ITEM MODAL -->
+  <div class="modal fade" id="deleteItemModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+    aria-labelledby="deleteItemLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header d-flex justify-content-between">
+          <h1 class="modal-title fs-5" id="deleteItemLabel">Delete Quotation Item</h1>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <form method="POST">
+          <input type="hidden" name="delete_item_id" id="deleteItemId">
+          <div class="modal-body">
+            <h3 class="fs-24 text-center m-0 py-4">Are you sure you want to archive this item?</h3>
+            <p class="text-center text-muted mb-2"><strong id="deleteItemName"></strong></p>
+            <p class="text-center text-muted">This will restore inventory quantity or archive new items.</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="submit" name="modal-delete-button" class="btn btn-danger">Archive</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- EDIT ITEM MODAL -->
+  <div class="modal fade" id="editItemModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Edit Item</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <form method="POST">
+          <input type="hidden" name="edit_item" value="1">
+          <input type="hidden" name="edit_item_id" id="editItemId">
+          <div class="modal-body">
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label">Item Name</label>
+                <input type="text" class="form-control" id="editItemName" readonly>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Quantity *</label>
+                <input type="number" class="form-control" id="editQuantity" name="edit_quantity"
+                  min="0.01" step="0.01" required>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Selling Price (₱) *</label>
+                <input type="number" class="form-control" id="editUnitPrice" name="edit_unit_price"
+                  min="0" step="0.01" required>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-green">Update Item</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <script>
-  // Populate item details when selecting from inventory
-  document.getElementById('inventorySelect').addEventListener('change', function() {
-    const selectedOption = this.options[this.selectedIndex];
-    
-    if (selectedOption.value) {
-      // Existing inventory item selected
-      const itemName = selectedOption.getAttribute('data-name');
-      const itemPrice = selectedOption.getAttribute('data-price');
-      const stockQuantity = parseFloat(selectedOption.getAttribute('data-quantity'));
-      const unitType = selectedOption.getAttribute('data-unit');
-
-      document.getElementById('itemName').value = itemName;
-      document.getElementById('itemId').value = selectedOption.value;
-      document.getElementById('unitPrice').value = itemPrice;
-      document.getElementById('unitType').value = unitType;
-      document.getElementById('itemQuantity').value = '';
-
-      // Show ONLY unit price field for inventory items
-      document.getElementById('unitPriceField').style.display = 'block';
-      document.getElementById('costPriceField').style.display = 'none';
-      document.getElementById('sellingPriceField').style.display = 'none';
-      
-      // Clear cost and selling price (not needed for inventory items)
-      document.getElementById('itemCost').value = '';
-      document.getElementById('itemSellingPrice').value = '';
-      document.getElementById('itemCost').removeAttribute('required');
-      document.getElementById('itemSellingPrice').removeAttribute('required');
-      document.getElementById('unitPrice').setAttribute('required', 'required');
-
-      // Show available stock info
-      const quantityWarning = document.getElementById('quantityWarning');
-      quantityWarning.textContent = `Available in stock: ${stockQuantity} ${unitType}`;
-      quantityWarning.style.display = 'block';
-      quantityWarning.className = 'd-block text-success mt-1';
-
-      // Store max quantity for validation
-      document.getElementById('itemQuantity').setAttribute('data-max-quantity', stockQuantity);
-      
-    } else {
-      // New item - show all fields
-      document.getElementById('itemName').value = '';
-      document.getElementById('itemId').value = '';
-      document.getElementById('unitType').value = '';
-      document.getElementById('itemQuantity').value = '';
-      document.getElementById('unitPrice').value = '';
-      document.getElementById('itemCost').value = '';
-      document.getElementById('itemSellingPrice').value = '';
-      document.getElementById('itemQuantity').removeAttribute('data-max-quantity');
-      document.getElementById('quantityWarning').style.display = 'none';
-
-      // Show cost and selling price fields, hide unit price field
-      document.getElementById('unitPriceField').style.display = 'none';
-      document.getElementById('costPriceField').style.display = 'block';
-      document.getElementById('sellingPriceField').style.display = 'block';
-      
-      // Set required attributes appropriately
-      document.getElementById('itemCost').setAttribute('required', 'required');
-      document.getElementById('itemSellingPrice').setAttribute('required', 'required');
-      document.getElementById('unitPrice').removeAttribute('required');
+    // Function to set delete item ID and name in modal
+    function setDeleteItemId(itemId, itemName) {
+      document.getElementById('deleteItemId').value = itemId;
+      document.getElementById('deleteItemName').textContent = itemName;
     }
-  });
 
-  // Validate quantity against available stock
-  document.getElementById('itemQuantity').addEventListener('input', function() {
-    const maxQuantity = parseFloat(this.getAttribute('data-max-quantity'));
-    const enteredQuantity = parseFloat(this.value);
-    const quantityWarning = document.getElementById('quantityWarning');
+    // Function to populate edit modal with item data
+    function populateEditModal(itemId, itemName, quantity, unitPrice) {
+      document.getElementById('editItemId').value = itemId;
+      document.getElementById('editItemName').value = itemName;
+      document.getElementById('editQuantity').value = quantity;
+      document.getElementById('editUnitPrice').value = unitPrice;
+    }
 
-    if (maxQuantity && !isNaN(enteredQuantity) && enteredQuantity > 0) {
-      if (enteredQuantity > maxQuantity) {
-        quantityWarning.textContent = `⚠️ Warning: You're requesting ${enteredQuantity} but only ${maxQuantity} is available in stock.`;
-        quantityWarning.className = 'd-block text-danger mt-1';
+    // Populate item details when selecting from inventory
+    document.getElementById('inventorySelect').addEventListener('change', function() {
+      const selectedOption = this.options[this.selectedIndex];
+
+      if (selectedOption.value) {
+        // Existing inventory item selected
+        const itemName = selectedOption.getAttribute('data-name');
+        const itemPrice = selectedOption.getAttribute('data-price');
+        const stockQuantity = parseFloat(selectedOption.getAttribute('data-quantity'));
+        const unitType = selectedOption.getAttribute('data-unit');
+
+        document.getElementById('itemName').value = itemName;
+        document.getElementById('itemId').value = selectedOption.value;
+        document.getElementById('unitPrice').value = itemPrice;
+        document.getElementById('unitType').value = unitType;
+        document.getElementById('itemQuantity').value = '';
+
+        // Show ONLY unit price field for inventory items
+        document.getElementById('unitPriceField').style.display = 'block';
+        document.getElementById('costPriceField').style.display = 'none';
+        document.getElementById('sellingPriceField').style.display = 'none';
+
+        // Clear cost and selling price (not needed for inventory items)
+        document.getElementById('itemCost').value = '';
+        document.getElementById('itemSellingPrice').value = '';
+        document.getElementById('itemCost').removeAttribute('required');
+        document.getElementById('itemSellingPrice').removeAttribute('required');
+        document.getElementById('unitPrice').setAttribute('required', 'required');
+
+        // Show available stock info
+        const quantityWarning = document.getElementById('quantityWarning');
+        quantityWarning.textContent = `Available in stock: ${stockQuantity} ${unitType}`;
+        quantityWarning.style.display = 'block';
+        quantityWarning.className = 'd-block text-success mt-1';
+
+        // Store max quantity for validation
+        document.getElementById('itemQuantity').setAttribute('data-max-quantity', stockQuantity);
+
       } else {
-        const remaining = maxQuantity - enteredQuantity;
-        quantityWarning.textContent = `${remaining} units will remain in stock after this order.`;
-        quantityWarning.className = 'd-block text-info mt-1';
+        // New item - show all fields
+        document.getElementById('itemName').value = '';
+        document.getElementById('itemId').value = '';
+        document.getElementById('unitType').value = '';
+        document.getElementById('itemQuantity').value = '';
+        document.getElementById('unitPrice').value = '';
+        document.getElementById('itemCost').value = '';
+        document.getElementById('itemSellingPrice').value = '';
+        document.getElementById('itemQuantity').removeAttribute('data-max-quantity');
+        document.getElementById('quantityWarning').style.display = 'none';
+
+        // Show cost and selling price fields, hide unit price field
+        document.getElementById('unitPriceField').style.display = 'none';
+        document.getElementById('costPriceField').style.display = 'block';
+        document.getElementById('sellingPriceField').style.display = 'block';
+
+        // Set required attributes appropriately
+        document.getElementById('itemCost').setAttribute('required', 'required');
+        document.getElementById('itemSellingPrice').setAttribute('required', 'required');
+        document.getElementById('unitPrice').removeAttribute('required');
       }
-      quantityWarning.style.display = 'block';
-    }
-  });
-
-  // Allow manual entry to override inventory selection
-  document.getElementById('itemName').addEventListener('input', function() {
-    const selectedOption = document.getElementById('inventorySelect').options[document.getElementById('inventorySelect').selectedIndex];
-    const selectedName = selectedOption.getAttribute('data-name');
-    
-    if (this.value !== selectedName && this.value.trim() !== '') {
-      document.getElementById('itemId').value = '';
-      document.getElementById('itemQuantity').removeAttribute('data-max-quantity');
-      document.getElementById('quantityWarning').style.display = 'none';
-
-      // Show cost and selling price fields, hide unit price field for new items
-      document.getElementById('unitPriceField').style.display = 'none';
-      document.getElementById('costPriceField').style.display = 'block';
-      document.getElementById('sellingPriceField').style.display = 'block';
-      
-      // Set required attributes appropriately
-      document.getElementById('itemCost').setAttribute('required', 'required');
-      document.getElementById('itemSellingPrice').setAttribute('required', 'required');
-      document.getElementById('unitPrice').removeAttribute('required');
-      document.getElementById('unitPrice').value = '';
-    }
-  });
-
-  // Reset modal form when opened
-  const addItemModal = document.getElementById('addItemModal');
-  if (addItemModal) {
-    addItemModal.addEventListener('show.bs.modal', function() {
-      // Reset form fields
-      document.getElementById('inventorySelect').value = '';
-      document.getElementById('itemName').value = '';
-      document.getElementById('itemId').value = '';
-      document.getElementById('itemQuantity').value = '';
-      document.getElementById('unitType').value = '';
-      document.getElementById('unitPrice').value = '';
-      document.getElementById('itemCost').value = '';
-      document.getElementById('itemSellingPrice').value = '';
-
-      // Show cost and selling price fields by default (for new items)
-      document.getElementById('unitPriceField').style.display = 'none';
-      document.getElementById('costPriceField').style.display = 'block';
-      document.getElementById('sellingPriceField').style.display = 'block';
-      
-      // Set required attributes for new item fields
-      document.getElementById('itemCost').setAttribute('required', 'required');
-      document.getElementById('itemSellingPrice').setAttribute('required', 'required');
-      document.getElementById('unitPrice').removeAttribute('required');
-      
-      document.getElementById('quantityWarning').style.display = 'none';
     });
-  }
-</script>
+
+    // Validate quantity against available stock
+    document.getElementById('itemQuantity').addEventListener('input', function() {
+      const maxQuantity = parseFloat(this.getAttribute('data-max-quantity'));
+      const enteredQuantity = parseFloat(this.value);
+      const quantityWarning = document.getElementById('quantityWarning');
+
+      if (maxQuantity && !isNaN(enteredQuantity) && enteredQuantity > 0) {
+        if (enteredQuantity > maxQuantity) {
+          quantityWarning.textContent = `⚠️ Warning: You're requesting ${enteredQuantity} but only ${maxQuantity} is available in stock.`;
+          quantityWarning.className = 'd-block text-danger mt-1';
+        } else {
+          const remaining = maxQuantity - enteredQuantity;
+          quantityWarning.textContent = `${remaining} units will remain in stock after this order.`;
+          quantityWarning.className = 'd-block green-text mt-1';
+        }
+        quantityWarning.style.display = 'block';
+      }
+    });
+
+    // Allow manual entry to override inventory selection
+    document.getElementById('itemName').addEventListener('input', function() {
+      const selectedOption = document.getElementById('inventorySelect').options[document.getElementById('inventorySelect').selectedIndex];
+      const selectedName = selectedOption.getAttribute('data-name');
+
+      if (this.value !== selectedName && this.value.trim() !== '') {
+        document.getElementById('itemId').value = '';
+        document.getElementById('itemQuantity').removeAttribute('data-max-quantity');
+        document.getElementById('quantityWarning').style.display = 'none';
+
+        // Show cost and selling price fields, hide unit price field for new items
+        document.getElementById('unitPriceField').style.display = 'none';
+        document.getElementById('costPriceField').style.display = 'block';
+        document.getElementById('sellingPriceField').style.display = 'block';
+
+        // Set required attributes appropriately
+        document.getElementById('itemCost').setAttribute('required', 'required');
+        document.getElementById('itemSellingPrice').setAttribute('required', 'required');
+        document.getElementById('unitPrice').removeAttribute('required');
+        document.getElementById('unitPrice').value = '';
+      }
+    });
+
+    // Reset modal form when opened
+    const addItemModal = document.getElementById('addItemModal');
+    if (addItemModal) {
+      addItemModal.addEventListener('show.bs.modal', function() {
+        // Reset form fields
+        document.getElementById('inventorySelect').value = '';
+        document.getElementById('itemName').value = '';
+        document.getElementById('itemId').value = '';
+        document.getElementById('itemQuantity').value = '';
+        document.getElementById('unitType').value = '';
+        document.getElementById('unitPrice').value = '';
+        document.getElementById('itemCost').value = '';
+        document.getElementById('itemSellingPrice').value = '';
+
+        // Show cost and selling price fields by default (for new items)
+        document.getElementById('unitPriceField').style.display = 'none';
+        document.getElementById('costPriceField').style.display = 'block';
+        document.getElementById('sellingPriceField').style.display = 'block';
+
+        // Set required attributes for new item fields
+        document.getElementById('itemCost').setAttribute('required', 'required');
+        document.getElementById('itemSellingPrice').setAttribute('required', 'required');
+        document.getElementById('unitPrice').removeAttribute('required');
+
+        document.getElementById('quantityWarning').style.display = 'none';
+      });
+    }
+  </script>
 
 </body>
 
