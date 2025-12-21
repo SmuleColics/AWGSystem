@@ -19,7 +19,7 @@ include 'admin-header.php';
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js"></script>
 </head>
   <style>
-     .sidebar-content-item:nth-child(6) {
+    .sidebar-content-item:nth-child(6) {
       background-color: #f2f2f2 !important;
     }
 

@@ -1,4 +1,5 @@
 <?php
+ob_start();
 
 date_default_timezone_set('Asia/Manila');
 include 'admin-header.php';
@@ -9,6 +10,8 @@ if (!isset($_SESSION['employee_id']) || $_SESSION['user_type'] !== 'employee') {
   exit;
 }
 
+$is_view_only = !$is_admin;
+
 // Get assessment ID from URL
 $assessment_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 
@@ -17,17 +20,20 @@ if ($assessment_id === 0) {
   exit;
 }
 
+
+
 // Fetch assessment details with user information
 $sql = "SELECT a.*, u.first_name, u.last_name, u.email, u.phone, 
         u.house_no, u.brgy, u.city, u.province, u.zip_code
         FROM assessments a
         LEFT JOIN users u ON a.user_id = u.user_id
-        WHERE a.assessment_id = $assessment_id AND a.status = 'Accepted'";
+        WHERE a.assessment_id = $assessment_id AND a.status IN ('Accepted', 'Completed')";
 
 $result = mysqli_query($conn, $sql);
 $assessment = mysqli_fetch_assoc($result);
 
 if (!$assessment) {
+  ob_end_clean(); // Clean the buffer before redirect
   header('Location: admin-assessments.php');
   exit;
 }
@@ -100,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['modal-delete-button']
                     SET quantity = $restore_qty 
                     WHERE item_id = {$item_to_delete['inventory_item_id']}";
       mysqli_query($conn, $restore_sql);
-      
+
       // Update status after restoring quantity
       $new_status = '';
       if ($restore_qty <= 0) {
@@ -110,12 +116,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['modal-delete-button']
       } else {
         $new_status = 'In Stock';
       }
-      
+
       $update_status_sql = "UPDATE inventory_items 
                           SET status = '$new_status' 
                           WHERE item_id = {$item_to_delete['inventory_item_id']}";
       mysqli_query($conn, $update_status_sql);
-      
+
       // Archive the item if it was created for this quotation (negative or zero quantity after restoration)
       if ($restore_qty <= 0) {
         $archive_sql = "UPDATE inventory_items 
@@ -279,7 +285,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
         // Update inventory quantity (allow negative)
         $update_inv_sql = "UPDATE inventory_items SET quantity = $new_quantity WHERE item_id = $inventory_item_id";
         mysqli_query($conn, $update_inv_sql);
-        
+
         // Update status based on new quantity
         $new_status = '';
         if ($new_quantity <= 0) {
@@ -289,7 +295,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
         } else {
           $new_status = 'In Stock';
         }
-        
+
         $update_status_sql = "UPDATE inventory_items SET status = '$new_status' WHERE item_id = $inventory_item_id";
         mysqli_query($conn, $update_status_sql);
 
@@ -512,14 +518,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_quotation'])
                     WHERE assessment_id = $assessment_id";
 
     if (mysqli_query($conn, $complete_sql)) {
-      
+
       // ✅ UPDATE ASSESSMENT STATUS TO COMPLETED
       $update_assessment_sql = "UPDATE assessments SET status = 'Completed' WHERE assessment_id = $assessment_id";
       mysqli_query($conn, $update_assessment_sql);
-      
+
       $user_full_name = $assessment['first_name'] . ' ' . $assessment['last_name'];
       $project_name = $quotation['project_name'];
-      
+
       // LOG ACTIVITY
       log_activity(
         $conn,
@@ -536,7 +542,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_quotation'])
       $user_notif_title = 'Your Quotation is Ready';
       $user_notif_message = 'Hello ' . $user_full_name . ', your quotation for ' . $project_name . ' is now ready for review. Total Amount: ₱' . number_format($grand_total, 2);
       $user_notif_link = 'user-assessments.php';
-      
+
       $user_notif_sql = "INSERT INTO notifications (recipient_id, type, title, message, link, is_read) 
                         VALUES ({$assessment['user_id']}, 'QUOTATION_CREATED', 
                               '" . mysqli_real_escape_string($conn, $user_notif_title) . "',
@@ -549,7 +555,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_quotation'])
       $admin_notif_title = 'Quotation Sent to Client';
       $admin_notif_message = $user_full_name . '\'s quotation for ' . $project_name . ' has been sent by ' . $employee_name . '. Total Amount: ₱' . number_format($grand_total, 2);
       $admin_notif_link = 'admin-quotation-proposal.php?id=' . $assessment_id;
-      
+
       $admin_notif_sql = "INSERT INTO notifications (recipient_id, type, title, message, link, is_read, sender_name) 
                         VALUES ($employee_id, 'QUOTATION_SENT_ADMIN', 
                               '" . mysqli_real_escape_string($conn, $admin_notif_title) . "',
@@ -589,6 +595,7 @@ $user_full_name = $assessment['first_name'] . ' ' . $assessment['last_name'];
 $location = trim($assessment['city'] . ', ' . $assessment['province']);
 $formatted_date = date('m/d/Y', strtotime($assessment['preferred_date']));
 
+ob_end_flush();
 ?>
 
 <!DOCTYPE html>
@@ -665,25 +672,21 @@ $formatted_date = date('m/d/Y', strtotime($assessment['preferred_date']));
                   <div class="row mt-3">
                     <div class="col-md-4">
                       <label for="projectName" class="form-label">Project Name</label>
-                      <input type="text" class="form-control <?= isset($errors['project_name']) ? 'is-invalid' : '' ?>"
+                      <input type="text" class="form-control"
                         id="projectName" name="project_name"
                         value="<?= htmlspecialchars($form_data['project_name']) ?>"
-                        placeholder="CCTV Installation for Office">
-                      <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['project_name']) ? 'block' : 'none' ?>">
-                        <?= $errors['project_name'] ?? 'This field is required' ?>
-                      </p>
+                        placeholder="CCTV Installation for Office"
+                        <?= $is_view_only ? 'readonly' : '' ?>>
                     </div>
 
                     <div class="col-md-4">
                       <label for="category" class="form-label">Category</label>
-                      <input type="text" class="form-control <?= isset($errors['category']) ? 'is-invalid' : '' ?>"
+                      <input type="text" class="form-control"
                         id="category" name="category"
                         value="<?= htmlspecialchars($form_data['category']) ?>"
                         readonly>
-                      <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['category']) ? 'block' : 'none' ?>">
-                        <?= $errors['category'] ?? 'This field is required' ?>
-                      </p>
                     </div>
+
                     <div class="col-md-4">
                       <label for="clientBudget" class="form-label">Client's Estimated Budget:</label>
                       <input id="clientBudget" type="text" class="form-control"
@@ -696,32 +699,35 @@ $formatted_date = date('m/d/Y', strtotime($assessment['preferred_date']));
                   <div class="row mt-3">
                     <div class="col-md-6">
                       <label for="startDate" class="form-label">Start Date</label>
-                      <input id="startDate" type="date" name="start_date" class="form-control <?= isset($errors['date_range']) ? 'is-invalid' : '' ?>"
-                        value="<?= htmlspecialchars($form_data['start_date'] ?? '') ?>">
-                      <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['date_range']) ? 'block' : 'none' ?>">
-                        <?= $errors['date_range'] ?? 'Start date must be before end date' ?>
-                      </p>
+                      <input id="startDate" type="date" name="start_date" class="form-control"
+                        value="<?= htmlspecialchars($form_data['start_date'] ?? '') ?>"
+                        <?= $is_view_only ? 'readonly' : '' ?>>
                     </div>
 
                     <div class="col-md-6">
                       <label for="endDate" class="form-label">End Date</label>
-                      <input id="endDate" type="date" name="end_date" class="form-control <?= isset($errors['date_range']) ? 'is-invalid' : '' ?>"
-                        value="<?= htmlspecialchars($form_data['end_date'] ?? '') ?>">
+                      <input id="endDate" type="date" name="end_date" class="form-control"
+                        value="<?= htmlspecialchars($form_data['end_date'] ?? '') ?>"
+                        <?= $is_view_only ? 'readonly' : '' ?>>
                     </div>
                   </div>
 
                   <div class="my-3">
                     <label for="notes" class="form-label">Notes</label>
                     <textarea class="form-control" id="notes" name="notes" rows="3"
-                      placeholder="Add any additional project details here..."><?= htmlspecialchars($form_data['notes']) ?></textarea>
+                      placeholder="Add any additional project details here..."
+                      <?= $is_view_only ? 'readonly' : '' ?>><?= htmlspecialchars($form_data['notes']) ?></textarea>
                   </div>
 
-                  <div class="d-flex justify-content-end gap-2">
-                    <button type="submit" class="btn btn-green">
-                      <i class="fas fa-save me-1"></i> Save Project Details
-                    </button>
-                  </div>
+                  <?php if (!$is_view_only): ?>
+                    <div class="d-flex justify-content-end gap-2">
+                      <button type="submit" class="btn btn-green">
+                        <i class="fas fa-save me-1"></i> Save Project Details
+                      </button>
+                    </div>
+                  <?php endif; ?>
                 </form>
+
               </div>
             </div>
 
@@ -742,17 +748,19 @@ $formatted_date = date('m/d/Y', strtotime($assessment['preferred_date']));
                     <p class="light-text fs-14">Review the quotation items</p>
                   </div>
 
-                  <div class="d-flex flex-column flex-md-row gap-2">
-                    <button class="btn btn-green d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addItemModal">
-                      <i class="fas fa-plus d-none d-md-block me-1"></i>
-                      Add Item
-                    </button>
+                  <?php if ($is_admin): ?>
+                    <div class="d-flex flex-column flex-md-row gap-2">
+                      <button class="btn btn-green d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addItemModal">
+                        <i class="fas fa-plus d-none d-md-block me-1"></i>
+                        Add Item
+                      </button>
 
-                    <button class="btn btn-green d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addLaborModal">
-                      <i class="fas fa-plus d-none d-md-block me-1"></i>
-                      Add Labor
-                    </button>
-                  </div>
+                      <button class="btn btn-green d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addLaborModal">
+                        <i class="fas fa-plus d-none d-md-block me-1"></i>
+                        Add Labor
+                      </button>
+                    </div>
+                  <?php endif; ?>
 
                 </div>
               </div>
@@ -778,18 +786,20 @@ $formatted_date = date('m/d/Y', strtotime($assessment['preferred_date']));
                         <span class="fs-14 light-text">Total: </span>
                         <p class="mb-2">₱<?= number_format($item['total'], 2) ?></p>
                       </div>
-                      <div class="col-md-1">
-                        <a href="#" class="text-secondary" data-bs-toggle="modal" data-bs-target="#editItemModal"
-                          onclick="populateEditModal(<?= $item['item_id'] ?>, '<?= addslashes($item['item_name']) ?>', <?= $item['quantity'] ?>, <?= $item['unit_price'] ?>)">
-                          <i class="fas fa-edit"></i>
-                        </a>
-                      </div>
-                      <div class="col-md-1">
-                        <a href="#" class="text-danger" data-bs-toggle="modal" data-bs-target="#deleteItemModal"
-                          onclick="setDeleteItemId(<?= $item['item_id'] ?>, '<?= addslashes($item['item_name']) ?>')">
-                          <i class="fas fa-trash"></i>
-                        </a>
-                      </div>
+                      <?php if ($is_admin): ?>
+                        <div class="col-md-1">
+                          <a href="#" class="text-secondary" data-bs-toggle="modal" data-bs-target="#editItemModal"
+                            onclick="populateEditModal(<?= $item['item_id'] ?>, '<?= addslashes($item['item_name']) ?>', <?= $item['quantity'] ?>, <?= $item['unit_price'] ?>)">
+                            <i class="fas fa-edit"></i>
+                          </a>
+                        </div>
+                        <div class="col-md-1">
+                          <a href="#" class="text-danger" data-bs-toggle="modal" data-bs-target="#deleteItemModal"
+                            onclick="setDeleteItemId(<?= $item['item_id'] ?>, '<?= addslashes($item['item_name']) ?>')">
+                            <i class="fas fa-trash"></i>
+                          </a>
+                        </div>
+                      <?php endif; ?>
                     </div>
                   <?php endforeach; ?>
                 <?php else: ?>
@@ -841,16 +851,18 @@ $formatted_date = date('m/d/Y', strtotime($assessment['preferred_date']));
                 </div>
               </div>
 
-              <div class="d-flex align-items-center justify-content-end gap-2">
-                <a href="admin-assessments.php" class="btn btn-outline-secondary">Cancel</a>
-                <form method="POST" style="margin: 0;">
-                  <input type="hidden" name="complete_quotation" value="1">
-                  <button type="submit" class="btn btn-success" <?= ($quotation && $quotation['status'] === 'Sent') ? 'disabled' : '' ?>>
-                    <i class="fas fa-check-circle me-1"></i>
-                    <?= ($quotation && $quotation['status'] === 'Sent') ? 'Quotation Sent' : 'Complete & Send Quotation' ?>
-                  </button>
-                </form>
-              </div>
+              <?php if ($is_admin): ?>
+                <div class="d-flex align-items-center justify-content-end gap-2">
+                  <a href="admin-assessments.php" class="btn btn-outline-secondary">Cancel</a>
+                  <form method="POST" style="margin: 0;">
+                    <input type="hidden" name="complete_quotation" value="1">
+                    <button type="submit" class="btn btn-success" <?= ($quotation && $quotation['status'] === 'Sent') ? 'disabled' : '' ?>>
+                      <i class="fas fa-check-circle me-1"></i>
+                      <?= ($quotation && $quotation['status'] === 'Sent') ? 'Quotation Sent' : 'Complete & Send Quotation' ?>
+                    </button>
+                  </form>
+                </div>
+              <?php endif; ?>
             </div>
           </div>
 
