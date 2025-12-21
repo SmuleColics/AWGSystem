@@ -510,23 +510,138 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_quotation'])
 
     $grand_total = $items_total + $labor_total;
 
-    // Update quotation status and total amount
-    $complete_sql = "UPDATE quotations 
-                    SET status = 'Sent',
-                        total_amount = $grand_total,
-                        updated_at = NOW()
-                    WHERE assessment_id = $assessment_id";
+    // Start transaction
+    mysqli_begin_transaction($conn);
 
-    if (mysqli_query($conn, $complete_sql)) {
+    try {
+      // Update quotation status and total amount
+      $complete_sql = "UPDATE quotations 
+                      SET status = 'Sent',
+                          total_amount = $grand_total,
+                          updated_at = NOW()
+                      WHERE assessment_id = $assessment_id";
 
-      // ✅ UPDATE ASSESSMENT STATUS TO COMPLETED
+      if (!mysqli_query($conn, $complete_sql)) {
+        throw new Exception("Failed to update quotation: " . mysqli_error($conn));
+      }
+
+      // Update assessment status to Completed
       $update_assessment_sql = "UPDATE assessments SET status = 'Completed' WHERE assessment_id = $assessment_id";
-      mysqli_query($conn, $update_assessment_sql);
+      if (!mysqli_query($conn, $update_assessment_sql)) {
+        throw new Exception("Failed to update assessment: " . mysqli_error($conn));
+      }
 
-      $user_full_name = $assessment['first_name'] . ' ' . $assessment['last_name'];
-      $project_name = $quotation['project_name'];
+      // Get quotation ID
+      $quotation_id_sql = "SELECT quotation_id FROM quotations WHERE assessment_id = $assessment_id";
+      $quotation_id_result = mysqli_query($conn, $quotation_id_sql);
+      $quotation_data = mysqli_fetch_assoc($quotation_id_result);
+      $quotation_id = $quotation_data['quotation_id'];
 
-      // LOG ACTIVITY
+      // Check if project already exists
+      $check_project_sql = "SELECT project_id FROM projects WHERE quotation_id = $quotation_id";
+      $check_project_result = mysqli_query($conn, $check_project_sql);
+
+      if (mysqli_num_rows($check_project_result) == 0) {
+        // Get user location
+        $user_location = '';
+        $location_sql = "SELECT CONCAT_WS(', ', house_no, brgy, city, province, zip_code) as location 
+                        FROM users WHERE user_id = {$assessment['user_id']}";
+        $location_result = mysqli_query($conn, $location_sql);
+        if ($location_result && mysqli_num_rows($location_result) > 0) {
+          $location_data = mysqli_fetch_assoc($location_result);
+          $user_location = $location_data['location'] ?? '';
+        }
+
+        // Prepare project data
+        $project_name_esc = mysqli_real_escape_string($conn, $quotation['project_name']);
+        $project_type_esc = mysqli_real_escape_string($conn, $assessment['service_type']);
+        $category_esc = mysqli_real_escape_string($conn, $quotation['category'] ?? '');
+        $location_esc = mysqli_real_escape_string($conn, $user_location);
+        $start_date = "'" . mysqli_real_escape_string($conn, $quotation['start_date']) . "'";
+        $end_date = "'" . mysqli_real_escape_string($conn, $quotation['end_date']) . "'";
+        $notes_esc = mysqli_real_escape_string($conn, $quotation['notes'] ?? '');
+        $remaining_balance = $grand_total;
+
+        // Calculate duration
+        $duration = 'NULL';
+        if (!empty($quotation['start_date']) && !empty($quotation['end_date'])) {
+          $start = new DateTime($quotation['start_date']);
+          $end = new DateTime($quotation['end_date']);
+          $diff = $start->diff($end);
+          $duration_str = $diff->days . ' days';
+          $duration = "'" . mysqli_real_escape_string($conn, $duration_str) . "'";
+        }
+
+        // Insert project
+        $insert_project_sql = "INSERT INTO projects 
+                              (assessment_id, quotation_id, user_id, project_name, project_type, category,
+                              location, start_date, end_date, duration, total_budget, amount_paid, 
+                              remaining_balance, status, visibility, notes, is_archived, created_at) 
+                              VALUES ($assessment_id, $quotation_id, {$assessment['user_id']}, 
+                                      '$project_name_esc', '$project_type_esc', 
+                                      " . (empty($category_esc) ? "NULL" : "'$category_esc'") . ", 
+                                      " . (empty($location_esc) ? "NULL" : "'$location_esc'") . ", 
+                                      $start_date, $end_date, $duration, $grand_total, 0, 
+                                      $remaining_balance, 'In Progress', 'Private', 
+                                      " . (empty($notes_esc) ? "NULL" : "'$notes_esc'") . ", 0, NOW())";
+
+        if (!mysqli_query($conn, $insert_project_sql)) {
+          throw new Exception("Failed to create project: " . mysqli_error($conn));
+        }
+
+        $project_id = mysqli_insert_id($conn);
+
+        // Create initial project update
+        $initial_update_sql = "INSERT INTO project_updates 
+                              (project_id, update_title, update_description, progress_percentage, created_by, created_at) 
+                              VALUES ($project_id, 'Project Created', 
+                                      'Project has been created from approved quotation. Work will begin as scheduled.', 
+                                      0, $employee_id, NOW())";
+        mysqli_query($conn, $initial_update_sql);
+
+        // LOG ACTIVITY FOR PROJECT CREATION
+        log_activity(
+          $conn,
+          $employee_id,
+          $employee_name,
+          'CREATE',
+          'PROJECT',
+          $project_id,
+          $project_name_esc,
+          "Auto-created project from quotation #$quotation_id. Total Budget: ₱" . number_format($grand_total, 2)
+        );
+
+        // CREATE NOTIFICATION FOR USER - PROJECT CREATED
+        $user_full_name = $assessment['first_name'] . ' ' . $assessment['last_name'];
+        $user_project_notif_title = 'Project Started: ' . $quotation['project_name'];
+        $user_project_notif_message = 'Hello ' . $user_full_name . ', your project "' . $quotation['project_name'] . '" has been created and will start on ' . date('F d, Y', strtotime($quotation['start_date'])) . '. Total Budget: ₱' . number_format($grand_total, 2);
+        $user_project_notif_link = 'user-projects-detail.php?id=' . $project_id;
+
+        $user_project_notif_sql = "INSERT INTO notifications (recipient_id, type, title, message, link, is_read, created_at) 
+                                  VALUES ({$assessment['user_id']}, 'PROJECT_CREATED', 
+                                        '" . mysqli_real_escape_string($conn, $user_project_notif_title) . "',
+                                        '" . mysqli_real_escape_string($conn, $user_project_notif_message) . "',
+                                        '" . mysqli_real_escape_string($conn, $user_project_notif_link) . "',
+                                        0, NOW())";
+        mysqli_query($conn, $user_project_notif_sql);
+
+        // CREATE NOTIFICATION FOR ADMIN - PROJECT CREATED
+        $admin_project_notif_title = 'New Project Created';
+        $admin_project_notif_message = $employee_name . ' completed quotation and created project: ' . $quotation['project_name'] . ' for ' . $user_full_name . '. Budget: ₱' . number_format($grand_total, 2);
+        $admin_project_notif_link = 'admin-projects-detail.php?id=' . $project_id;
+
+        $admin_project_notif_sql = "INSERT INTO notifications (recipient_id, type, title, message, link, is_read, sender_name, created_at) 
+                                  VALUES ($employee_id, 'PROJECT_CREATED_ADMIN', 
+                                        '" . mysqli_real_escape_string($conn, $admin_project_notif_title) . "',
+                                        '" . mysqli_real_escape_string($conn, $admin_project_notif_message) . "',
+                                        '" . mysqli_real_escape_string($conn, $admin_project_notif_link) . "',
+                                        0,
+                                        '" . mysqli_real_escape_string($conn, $employee_name) . "',
+                                        NOW())";
+        mysqli_query($conn, $admin_project_notif_sql);
+      }
+
+      // LOG ACTIVITY FOR QUOTATION
       log_activity(
         $conn,
         $employee_id,
@@ -538,40 +653,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_quotation'])
         'Quotation for assessment #' . $assessment_id . ' completed and sent. Total Amount: ₱' . number_format($grand_total, 2)
       );
 
-      // CREATE NOTIFICATION FOR USER (CLIENT SIDE)
+      // CREATE NOTIFICATION FOR USER - QUOTATION READY
+      $user_full_name = $assessment['first_name'] . ' ' . $assessment['last_name'];
       $user_notif_title = 'Your Quotation is Ready';
-      $user_notif_message = 'Hello ' . $user_full_name . ', your quotation for ' . $project_name . ' is now ready for review. Total Amount: ₱' . number_format($grand_total, 2);
+      $user_notif_message = 'Hello ' . $user_full_name . ', your quotation for ' . $quotation['project_name'] . ' is now ready for review. Total Amount: ₱' . number_format($grand_total, 2);
       $user_notif_link = 'user-assessments.php';
 
-      $user_notif_sql = "INSERT INTO notifications (recipient_id, type, title, message, link, is_read) 
+      $user_notif_sql = "INSERT INTO notifications (recipient_id, type, title, message, link, is_read, created_at) 
                         VALUES ({$assessment['user_id']}, 'QUOTATION_CREATED', 
                               '" . mysqli_real_escape_string($conn, $user_notif_title) . "',
                               '" . mysqli_real_escape_string($conn, $user_notif_message) . "',
                               '" . mysqli_real_escape_string($conn, $user_notif_link) . "',
-                              0)";
+                              0, NOW())";
       mysqli_query($conn, $user_notif_sql);
 
-      // CREATE NOTIFICATION FOR ADMIN (ADMIN SIDE) - INCLUDING SENDER
+      // CREATE NOTIFICATION FOR ADMIN - QUOTATION SENT
       $admin_notif_title = 'Quotation Sent to Client';
-      $admin_notif_message = $user_full_name . '\'s quotation for ' . $project_name . ' has been sent by ' . $employee_name . '. Total Amount: ₱' . number_format($grand_total, 2);
+      $admin_notif_message = $user_full_name . '\'s quotation for ' . $quotation['project_name'] . ' has been sent by ' . $employee_name . '. Total Amount: ₱' . number_format($grand_total, 2);
       $admin_notif_link = 'admin-quotation-proposal.php?id=' . $assessment_id;
 
-      $admin_notif_sql = "INSERT INTO notifications (recipient_id, type, title, message, link, is_read, sender_name) 
+      $admin_notif_sql = "INSERT INTO notifications (recipient_id, type, title, message, link, is_read, sender_name, created_at) 
                         VALUES ($employee_id, 'QUOTATION_SENT_ADMIN', 
                               '" . mysqli_real_escape_string($conn, $admin_notif_title) . "',
                               '" . mysqli_real_escape_string($conn, $admin_notif_message) . "',
                               '" . mysqli_real_escape_string($conn, $admin_notif_link) . "',
                               0,
-                              '" . mysqli_real_escape_string($conn, $employee_name) . "')";
+                              '" . mysqli_real_escape_string($conn, $employee_name) . "',
+                              NOW())";
       mysqli_query($conn, $admin_notif_sql);
 
+      // Commit transaction
+      mysqli_commit($conn);
+
       echo "<script>
-        alert('Quotation completed and sent successfully!');
-        window.location.href = 'admin-quotation-proposal.php?id=$assessment_id';
+        alert('Quotation completed successfully! Project has been created.');
+        window.location.href = 'admin-projects.php';
       </script>";
       exit;
-    } else {
-      $errors['general'] = 'Failed to complete quotation: ' . mysqli_error($conn);
+      
+    } catch (Exception $e) {
+      // Rollback on error
+      mysqli_rollback($conn);
+      $errors['general'] = 'Failed to complete quotation: ' . $e->getMessage();
+      error_log("Quotation completion error: " . $e->getMessage());
     }
   }
 }

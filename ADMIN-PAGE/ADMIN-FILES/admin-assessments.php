@@ -99,14 +99,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['archive_assessment'])
         <div class="assessment-container rounded-3 bg-white">
           <div class="assessment-top p-4 d-flex justify-content-between align-items-center flex-column flex-md-row gap-3">
             <h2 class="fs-24 mobile-fs-22 mb-0">All Assessments Requests (<?= count($assessments) ?>)</h2>
-            <div>
-              <select id="assessmentFilter" class="form-select">
-                <option value="all">Show All</option>
-                <option value="Pending">Pending</option>
-                <option value="Accepted">Accepted</option>
-                <option value="Rejected">Rejected</option>
-                <option value="Completed">Completed</option>
-              </select>
+            <div class="d-flex gap-2">
+              <div>
+                <select id="serviceFilter" class="form-select">
+                  <option value="all">All Services</option>
+                  <option value="cctv">CCTV</option>
+                  <option value="solar">Solar</option>
+                  <option value="renovation">Renovation</option>
+                  <option value="other">Other</option>
+                </select>
+
+              </div>
+              <div>
+                <select id="assessmentFilter" class="form-select">
+                  <option value="all">Show All</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Accepted">Accepted</option>
+                  <option value="Rejected">Rejected</option>
+                  <option value="Completed">Completed</option>
+                </select>
+              </div>
             </div>
 
           </div>
@@ -143,7 +155,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['archive_assessment'])
                   };
                   ?>
 
-                  <div class="assessment-con d-flex flex-md-row flex-column border p-3 rounded-3 gap-4 mb-3" data-status="<?= htmlspecialchars($assessment['status']) ?>">
+                  <div class="assessment-con d-flex flex-md-row flex-column border p-3 rounded-3 gap-4 mb-3"
+                    data-status="<?= htmlspecialchars($assessment['status']) ?>"
+                    data-service="<?= strtolower(str_replace(' ', '_', $assessment['service_type'])) ?>">
+
                     <div class="w-100">
                       <div class="d-flex align-items-center gap-3 mb-2">
                         <h3 class="fs-18 mb-0">
@@ -409,58 +424,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['archive_assessment'])
   </div>
 
   <script>
-    // Handle reject reason dropdown
     const rejectReason = document.getElementById('rejectReason');
     const otherReasonWrapper = document.getElementById('otherReasonWrapper');
 
-    rejectReason.addEventListener('change', function() {
-      if (this.value === 'Others') {
-        otherReasonWrapper.classList.remove('d-none');
-      } else {
-        otherReasonWrapper.classList.add('d-none');
-      }
-    });
+    if (rejectReason) {
+      rejectReason.addEventListener('change', function() {
+        if (this.value === 'Others') {
+          otherReasonWrapper.classList.remove('d-none');
+        } else {
+          otherReasonWrapper.classList.add('d-none');
+        }
+      });
+    }
 
-    // Set assessment ID for rejection
     function setRejectAssessmentId(assessmentId) {
       document.getElementById('rejectAssessmentId').value = assessmentId;
     }
 
-    // Set assessment ID for archiving
     function setArchiveAssessmentId(assessmentId) {
       document.getElementById('archiveAssessmentId').value = assessmentId;
     }
 
-    // Filter assessments by status
-    const assessmentFilter = document.getElementById('assessmentFilter');
-    const assessmentCons = document.querySelectorAll('.assessment-con');
-    const emptyStateMessage = document.getElementById('assessmentEmptyState');
+    document.addEventListener('DOMContentLoaded', function() {
 
-    assessmentFilter.addEventListener('change', function() {
-      const selectedStatus = this.value;
-      let visibleCount = 0;
+      const statusFilter = document.getElementById('assessmentFilter');
+      const serviceFilter = document.getElementById('serviceFilter');
+      const assessmentCons = document.querySelectorAll('.assessment-con');
+      const emptyStateMessage = document.getElementById('assessmentEmptyState');
 
-      assessmentCons.forEach(con => {
-        const status = con.getAttribute('data-status');
+      function applyFilters() {
+        const selectedStatus = statusFilter.value;
+        const selectedService = serviceFilter.value;
+        let visibleCount = 0;
 
-        if (selectedStatus === 'all' || status === selectedStatus) {
-          con.classList.remove('d-none');
-          visibleCount++;
-        } else {
-          con.classList.add('d-none');
-        }
-      });
+        assessmentCons.forEach(card => {
+          const cardStatus = card.dataset.status;
+          const cardService = card.dataset.service;
 
-      // Show or hide empty state based on visible count
-      if (emptyStateMessage) {
-        if (visibleCount === 0) {
-          emptyStateMessage.classList.remove('d-none');
-        } else {
-          emptyStateMessage.classList.add('d-none');
+          const statusMatch = selectedStatus === 'all' || cardStatus === selectedStatus;
+
+          const serviceMatch = selectedService === 'all' || cardService.includes(selectedService);
+
+          if (statusMatch && serviceMatch) {
+            card.classList.remove('d-none');
+            visibleCount++;
+          } else {
+            card.classList.add('d-none');
+          }
+        });
+
+        if (emptyStateMessage) {
+          emptyStateMessage.classList.toggle('d-none', visibleCount !== 0);
         }
       }
+
+      statusFilter.addEventListener('change', applyFilters);
+      serviceFilter.addEventListener('change', applyFilters);
+
     });
   </script>
+
 
 </body>
 
