@@ -4,11 +4,34 @@ include 'admin-header.php';
 
 // Handle RESTORE (unarchive)
 if (isset($_POST['modal-restore-button'])) {
+  if (!$is_admin) {
+    echo "<script>alert('You do not have permission to restore tasks.'); window.location='" . $_SERVER['PHP_SELF'] . "';</script>";
+    exit;
+  }
+
   $restore_id = (int)$_POST['restore_id'];
+
+  // Get task info before restoring
+  $task_info_query = "SELECT task_title FROM tasks WHERE task_id = $restore_id";
+  $task_info_result = mysqli_query($conn, $task_info_query);
+  $task_info = mysqli_fetch_assoc($task_info_result);
+  $task_title = $task_info['task_title'];
 
   // Restore the task by setting is_archived = 0
   $sql = "UPDATE tasks SET is_archived = 0 WHERE task_id = $restore_id";
   if (mysqli_query($conn, $sql)) {
+    // LOG ACTIVITY
+    log_activity(
+      $conn,
+      $employee_id,
+      $employee_full_name,
+      'RESTORE',
+      'TASKS',
+      $restore_id,
+      $task_title,
+      "Restored task '$task_title' from archive"
+    );
+
     echo "<script>alert('Task restored successfully!'); window.location='" . $_SERVER['PHP_SELF'] . "';</script>";
     exit;
   } else {
@@ -18,11 +41,43 @@ if (isset($_POST['modal-restore-button'])) {
 
 // Handle PERMANENT DELETE
 if (isset($_POST['modal-permanent-delete-button'])) {
+  if (!$is_admin) {
+    echo "<script>alert('You do not have permission to delete tasks.'); window.location='" . $_SERVER['PHP_SELF'] . "';</script>";
+    exit;
+  }
+
   $delete_id = (int)$_POST['delete_id'];
+
+  // Get task info before deleting
+  $task_info_query = "SELECT task_title, proof_of_completion FROM tasks WHERE task_id = $delete_id";
+  $task_info_result = mysqli_query($conn, $task_info_query);
+  $task_info = mysqli_fetch_assoc($task_info_result);
+  $task_title = $task_info['task_title'];
+  $proof_file = $task_info['proof_of_completion'];
+
+  // Delete proof file if exists
+  if (!empty($proof_file)) {
+    $proof_path = '../uploads/task_proofs/' . $proof_file;
+    if (file_exists($proof_path)) {
+      unlink($proof_path);
+    }
+  }
 
   // Permanently delete the task
   $sql = "DELETE FROM tasks WHERE task_id = $delete_id";
   if (mysqli_query($conn, $sql)) {
+    // LOG ACTIVITY
+    log_activity(
+      $conn,
+      $employee_id,
+      $employee_full_name,
+      'DELETE',
+      'TASKS',
+      $delete_id,
+      $task_title,
+      "Permanently deleted task '$task_title'"
+    );
+
     echo "<script>alert('Task permanently deleted!'); window.location='" . $_SERVER['PHP_SELF'] . "';</script>";
     exit;
   } else {
@@ -109,7 +164,7 @@ if ($result) {
     <div class="d-flex justify-content-between align-items-center mb-4">
       <div>
         <h1 class="fs-36 mobile-fs-32">Archived Tasks</h1>
-        <p class="admin-top-desc">View and restore archived tasks</p>
+        <p class="admin-top-desc">View, restore, or permanently delete archived tasks</p>
       </div>
     </div>
 
@@ -228,8 +283,9 @@ if ($result) {
                     </div>
                   </div>
 
-                  <div class="tasks-actions d-flex flex-column gap-2">
-                    <button class="btn btn-light border  view-task"
+                  <div class="tasks-actions d-flex flex-column gap-2" style="min-width: 150px; width: 150px;">
+                    <button class="btn btn-light border view-task"
+                      data-id="<?= $task['task_id'] ?>"
                       data-title="<?= htmlspecialchars($task['task_title']) ?>"
                       data-desc="<?= htmlspecialchars($task['task_desc']) ?>"
                       data-priority="<?= htmlspecialchars($task['priority']) ?>"
@@ -237,17 +293,20 @@ if ($result) {
                       data-assigned="<?= htmlspecialchars($task['assigned_to']) ?>"
                       data-project="<?= htmlspecialchars($task['project_name']) ?>"
                       data-due="<?= date('m/d/Y', strtotime($task['due_date'])) ?>"
+                      data-proof="<?= htmlspecialchars($task['proof_of_completion'] ?? '') ?>"
                       data-bs-toggle="modal"
                       data-bs-target="#viewTaskModal">
                       View
                     </button>
-                    <button class="btn btn-green restore-task"
+                    <?php if ($is_admin): ?>
+                    <button class="btn btn-success restore-task"
                       data-id="<?= $task['task_id'] ?>"
                       data-bs-toggle="modal"
                       data-bs-target="#restoreTaskModal">
-                      Restore
+                      <i class="fa-solid fa-rotate-left me-1"></i> Restore
                     </button>
                     
+                    <?php endif; ?>
                   </div>
                 </div>
               <?php endforeach; ?>
@@ -315,6 +374,18 @@ if ($result) {
             <input type="text" id="viewDueDate" class="form-control" readonly>
           </div>
 
+          <!-- Proof of Completion Section -->
+          <div id="proofSection" style="display: none;">
+            <hr>
+            <h5 class="mb-3">Proof of Completion</h5>
+            <div id="proofContent" class="text-center">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+            </div>
+          
+          </div>
+
         </div>
 
         <div class="modal-footer">
@@ -355,6 +426,7 @@ if ($result) {
   </div>
 
 
+
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script>
     $(document).ready(function() {
@@ -367,6 +439,31 @@ if ($result) {
         $('#viewAssignedTo').val($(this).data('assigned'));
         $('#viewProjectName').val($(this).data('project'));
         $('#viewDueDate').val($(this).data('due'));
+
+        // Handle proof of completion
+        const proof = $(this).data('proof');
+        if (proof && proof.trim() !== '') {
+          const filepath = '../uploads/task_proofs/' + proof;
+          const fileExt = proof.split('.').pop().toLowerCase();
+
+          $('#proofSection').show();
+
+          // Display proof based on file type
+          let contentHTML = '';
+          if (['jpg', 'jpeg', 'png'].includes(fileExt)) {
+            contentHTML = '<img src="' + filepath + '" class="img-fluid" style="max-height: 400px;" />';
+          } else if (fileExt === 'pdf') {
+            contentHTML = '<iframe src="' + filepath + '" style="width: 100%; height: 400px; border: none;"></iframe>';
+          } else if (['docx', 'xlsx'].includes(fileExt)) {
+            contentHTML = '<div class="alert alert-info"><i class="fa-solid fa-file me-2"></i>File: <strong>' + proof + '</strong><br><p class="mb-0 mt-2">Click Download to view the file</p></div>';
+          } else {
+            contentHTML = '<div class="alert alert-warning"><i class="fa-solid fa-file me-2"></i>File: <strong>' + proof + '</strong></div>';
+          }
+
+          $('#proofContent').html(contentHTML);
+        } else {
+          $('#proofSection').hide();
+        }
       });
 
       // Restore Task Modal - Set ID
@@ -375,13 +472,6 @@ if ($result) {
         $('#restoreTaskId').val(taskId);
       });
 
-      // Delete Task Modal - Set ID and Title
-      $('.delete-task').on('click', function() {
-        let taskId = $(this).data('id');
-        let taskTitle = $(this).data('title');
-        $('#deleteTaskId').val(taskId);
-        $('#deleteTaskTitle').text(taskTitle);
-      });
     });
   </script>
 

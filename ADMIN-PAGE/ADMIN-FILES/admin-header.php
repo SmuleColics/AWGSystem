@@ -265,14 +265,14 @@ if (file_exists('../../INCLUDES/notifications.php')) {
               </a>
             </li>
 
-            <?php if ($is_admin): ?>
-              <li class="sidebar-content-item d-flex align-items-center mb-1">
-                <a href="admin-employees.php" class="sidebar-anchor">
-                  <span class="aside-icon material-symbols-outlined">people</span>
-                  <span class="sidebar-text ms-2">Employees</span>
-                </a>
-              </li>
-            <?php endif; ?>
+
+            <li class="sidebar-content-item d-flex align-items-center mb-1">
+              <a href="admin-employees.php" class="sidebar-anchor">
+                <span class="aside-icon material-symbols-outlined">people</span>
+                <span class="sidebar-text ms-2">Employees</span>
+              </a>
+            </li>
+
 
             <li class="sidebar-content-item d-flex align-items-center mb-1">
               <a href="admin-projects.php" class="sidebar-anchor">
@@ -281,14 +281,14 @@ if (file_exists('../../INCLUDES/notifications.php')) {
               </a>
             </li>
 
-            <?php if ($is_admin): ?>
-              <li class="sidebar-content-item d-flex align-items-center mb-1">
-                <a href="admin-manage-accounts.php" class="sidebar-anchor">
-                  <span class="aside-icon material-symbols-outlined">manage_accounts</span>
-                  <span class="sidebar-text ms-2">Users</span>
-                </a>
-              </li>
-            <?php endif; ?>
+
+            <li class="sidebar-content-item d-flex align-items-center mb-1">
+              <a href="admin-manage-accounts.php" class="sidebar-anchor">
+                <span class="aside-icon material-symbols-outlined">manage_accounts</span>
+                <span class="sidebar-text ms-2">Users</span>
+              </a>
+            </li>
+
           </ul>
         </div>
       </div>
@@ -325,14 +325,14 @@ if (file_exists('../../INCLUDES/notifications.php')) {
           </a>
         </li>
 
-        <?php if ($is_admin): ?>
+  
           <li class="sidebar-content-item d-flex align-items-center mb-1">
             <a href="admin-employees.php" class="sidebar-anchor">
               <span class="aside-icon material-symbols-outlined">people</span>
               <span class="sidebar-text ms-2">Employees</span>
             </a>
           </li>
-        <?php endif; ?>
+  
 
         <li class="sidebar-content-item d-flex align-items-center mb-1">
           <a href="admin-projects.php" class="sidebar-anchor">
@@ -341,14 +341,14 @@ if (file_exists('../../INCLUDES/notifications.php')) {
           </a>
         </li>
 
-        <?php if ($is_admin): ?>
+  
           <li class="sidebar-content-item d-flex align-items-center mb-1">
             <a href="admin-manage-accounts.php" class="sidebar-anchor">
               <span class="aside-icon material-symbols-outlined">manage_accounts</span>
               <span class="sidebar-text ms-2">Users</span>
             </a>
           </li>
-        <?php endif; ?>
+
       </ul>
     </div>
   </aside>
@@ -401,11 +401,11 @@ if (file_exists('../../INCLUDES/notifications.php')) {
       });
   }
 
-  document.addEventListener('DOMContentLoaded', function () {
+  document.addEventListener('DOMContentLoaded', function() {
     const tooltipTriggerList = [].slice.call(
       document.querySelectorAll('[data-bs-toggle="tooltip"]')
     );
-    tooltipTriggerList.forEach(function (el) {
+    tooltipTriggerList.forEach(function(el) {
       new bootstrap.Tooltip(el);
     });
   });

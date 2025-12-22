@@ -1,6 +1,8 @@
 <?php
 session_start();
 require_once '../../INCLUDES/db-con.php';
+require_once '../../INCLUDES/log-activity.php';
+require_once '../../INCLUDES/notifications.php';
 
 // Check if user is logged in
 if (!isset($_SESSION['employee_id'])) {
@@ -17,22 +19,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['archive_update'])) {
     $project_id = intval($_POST['project_id']);
     $archive_update_id = intval($_POST['archive_update_id']);
     
+    // Get project and update details for notifications
+    $details_sql = "SELECT p.project_name, p.user_id, pu.update_title 
+                    FROM projects p 
+                    JOIN project_updates pu ON pu.project_id = p.project_id
+                    WHERE p.project_id = $project_id AND pu.update_id = $archive_update_id";
+    $details_result = mysqli_query($conn, $details_sql);
+    $details = mysqli_fetch_assoc($details_result);
+    
     $archive_sql = "UPDATE project_updates SET is_archived = 1 WHERE update_id = $archive_update_id";
     
     if (mysqli_query($conn, $archive_sql)) {
         // Log activity
-        if (function_exists('log_activity')) {
-            log_activity(
-                $conn,
-                $employee_id,
-                $employee_name,
-                'ARCHIVE',
-                'PROJECT_UPDATE',
-                $archive_update_id,
-                'Update Archived',
-                "Archived project update for project #$project_id"
-            );
-        }
+        log_activity(
+            $conn,
+            $employee_id,
+            $employee_name,
+            'ARCHIVE',
+            'PROJECT_UPDATE',
+            $archive_update_id,
+            $details['update_title'],
+            "Archived project update '{$details['update_title']}' for project '{$details['project_name']}'"
+        );
         
         $_SESSION['success'] = 'Update archived successfully!';
     } else {
@@ -60,6 +68,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_update'])) {
     
     if ($progress_percentage < 0 || $progress_percentage > 100) {
         $_SESSION['error'] = 'Progress must be between 0 and 100';
+        header("Location: admin-projects-detail.php?id=$project_id");
+        exit;
+    }
+    
+    // Get current project progress for validation
+    $current_progress_sql = "SELECT progress_percentage, project_name, user_id FROM projects WHERE project_id = $project_id";
+    $current_progress_result = mysqli_query($conn, $current_progress_sql);
+    $project_data = mysqli_fetch_assoc($current_progress_result);
+    $current_project_progress = intval($project_data['progress_percentage'] ?? 0);
+    
+    // Validate that new progress is greater than or equal to current progress (unless editing)
+    if (!$update_id && $progress_percentage < $current_project_progress) {
+        $_SESSION['error'] = "Progress percentage must be at least {$current_project_progress}% (current project progress)";
         header("Location: admin-projects-detail.php?id=$project_id");
         exit;
     }
@@ -110,7 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_update'])) {
     
     try {
         if ($update_id) {
-            // Update existing update
+            // UPDATE existing update
             $update_sql = "UPDATE project_updates 
                           SET update_title = '$update_title',
                               update_description = '$update_description',
@@ -122,11 +143,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_update'])) {
                 throw new Exception('Failed to update project update');
             }
             
-            $action = 'UPDATE';
-            $message = "Updated project update: $update_title";
+            // Log activity for EDIT
+            log_activity(
+                $conn,
+                $employee_id,
+                $employee_name,
+                'UPDATE',
+                'PROJECT_UPDATE',
+                $update_id,
+                $update_title,
+                "Edited project update '$update_title' for project '{$project_data['project_name']}' (Progress: $progress_percentage%)"
+            );
+            
+            // Get all admins for notification (check is_archived field)
+            $admins_sql = "SELECT employee_id FROM employees WHERE is_archived = 0 AND employee_id != $employee_id";
+            $admins_result = mysqli_query($conn, $admins_sql);
+            
             $success_msg = 'Project update updated successfully';
+            
         } else {
-            // Insert new update
+            // CREATE new update
             $insert_sql = "INSERT INTO project_updates 
                           (project_id, update_title, update_description, progress_percentage, update_image, created_by, is_archived, created_at)
                           VALUES ($project_id, '$update_title', '$update_description', $progress_percentage, " .
@@ -137,41 +173,124 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_update'])) {
                 throw new Exception('Failed to add project update');
             }
             
-            $action = 'CREATE';
-            $message = "Added project update: $update_title";
-            $success_msg = 'Project update added successfully';
-        }
-        
-        // Update project progress
-        $update_progress_sql = "UPDATE projects 
-                               SET progress_percentage = $progress_percentage,
-                                   updated_at = NOW()
-                               WHERE project_id = $project_id";
-        
-        if (!mysqli_query($conn, $update_progress_sql)) {
-            throw new Exception('Failed to update project progress');
-        }
-        
-        // Check if project should be marked as completed
-        if ($progress_percentage >= 100) {
-            $complete_sql = "UPDATE projects 
-                            SET status = 'Completed' 
-                            WHERE project_id = $project_id AND status != 'Completed'";
-            mysqli_query($conn, $complete_sql);
-        }
-        
-        // Log activity
-        if (function_exists('log_activity')) {
+            $new_update_id = mysqli_insert_id($conn);
+            
+            // Log activity for NEW update
             log_activity(
                 $conn,
                 $employee_id,
                 $employee_name,
-                $action,
+                'CREATE',
                 'PROJECT_UPDATE',
-                $project_id,
+                $new_update_id,
                 $update_title,
-                $message . " (Progress: $progress_percentage%)"
+                "Added new project update '$update_title' for project '{$project_data['project_name']}' (Progress: $progress_percentage%)"
             );
+            
+            // Get all admins for notification (check is_archived field)
+            $admins_sql = "SELECT employee_id FROM employees WHERE is_archived = 0 AND employee_id != $employee_id";
+            $admins_result = mysqli_query($conn, $admins_sql);
+            
+            // Send notification to other admins
+            while ($admin = mysqli_fetch_assoc($admins_result)) {
+                create_notification(
+                    $conn,
+                    $admin['employee_id'],
+                    $employee_id,
+                    $employee_name,
+                    'project_update_added',
+                    'New Project Update',
+                    "$employee_name added update '$update_title' to project '{$project_data['project_name']}' - Progress: $progress_percentage%",
+                    "admin-projects-detail.php?id=$project_id",
+                    $project_id
+                );
+            }
+            
+            // Send notification to client
+            create_notification(
+                $conn,
+                $project_data['user_id'],
+                $employee_id,
+                $employee_name,
+                'project_update_added',
+                'New Project Update Available',
+                "A new update has been posted for your project '{$project_data['project_name']}': $update_title (Progress: $progress_percentage%)",
+                "client-project-details.php?id=$project_id",
+                $project_id
+            );
+            
+            $success_msg = 'Project update added successfully';
+        }
+        
+        // Update project progress (only if new progress is higher)
+        if ($progress_percentage > $current_project_progress) {
+            $update_progress_sql = "UPDATE projects 
+                                   SET progress_percentage = $progress_percentage,
+                                       updated_at = NOW()
+                                   WHERE project_id = $project_id";
+            
+            if (!mysqli_query($conn, $update_progress_sql)) {
+                throw new Exception('Failed to update project progress');
+            }
+        }
+        
+        // Check if project should be marked as completed
+        if ($progress_percentage >= 100) {
+            $check_status_sql = "SELECT status FROM projects WHERE project_id = $project_id";
+            $check_result = mysqli_query($conn, $check_status_sql);
+            $current_status = mysqli_fetch_assoc($check_result)['status'];
+            
+            if ($current_status !== 'Completed') {
+                $complete_sql = "UPDATE projects 
+                                SET status = 'Completed' 
+                                WHERE project_id = $project_id";
+                
+                if (mysqli_query($conn, $complete_sql)) {
+                    // Log project completion
+                    log_activity(
+                        $conn,
+                        $employee_id,
+                        $employee_name,
+                        'UPDATE',
+                        'PROJECT',
+                        $project_id,
+                        $project_data['project_name'],
+                        "Project '{$project_data['project_name']}' marked as completed (100% progress)"
+                    );
+                    
+                    // Get all admins for completion notification (check is_archived field)
+                    $admins_sql = "SELECT employee_id FROM employees WHERE is_archived = 0 AND employee_id != $employee_id";
+                    $admins_result = mysqli_query($conn, $admins_sql);
+                    
+                    // Notify other admins about completion
+                    while ($admin = mysqli_fetch_assoc($admins_result)) {
+                        create_notification(
+                            $conn,
+                            $admin['employee_id'],
+                            $employee_id,
+                            $employee_name,
+                            'project_completed',
+                            'Project Completed',
+                            "$employee_name marked project '{$project_data['project_name']}' as completed",
+                            "admin-projects-detail.php?id=$project_id",
+                            $project_id
+                        );
+                    }
+                    
+                    // Notify client about completion
+                    create_notification(
+                        $conn,
+                        $project_data['user_id'],
+                        $employee_id,
+                        $employee_name,
+                        'project_completed',
+                        'Project Completed!',
+                        "Congratulations! Your project '{$project_data['project_name']}' has been completed",
+                        "client-project-details.php?id=$project_id",
+                        $project_id
+                    );
+                }
+            }
         }
         
         mysqli_commit($conn);
@@ -194,8 +313,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_update'])) {
     $project_id = intval($_POST['project_id']);
     $update_id = intval($_POST['delete_update_id']);
     
-    // Get update details
-    $get_update_sql = "SELECT * FROM project_updates WHERE update_id = $update_id AND project_id = $project_id";
+    // Get update and project details
+    $get_update_sql = "SELECT pu.update_title, p.project_name, p.user_id 
+                      FROM project_updates pu 
+                      JOIN projects p ON pu.project_id = p.project_id
+                      WHERE pu.update_id = $update_id AND pu.project_id = $project_id";
     $get_update_result = mysqli_query($conn, $get_update_sql);
     
     if (mysqli_num_rows($get_update_result) > 0) {
@@ -206,18 +328,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_update'])) {
         
         if (mysqli_query($conn, $archive_sql)) {
             // Log activity
-            if (function_exists('log_activity')) {
-                log_activity(
+            log_activity(
+                $conn,
+                $employee_id,
+                $employee_name,
+                'ARCHIVE',
+                'PROJECT_UPDATE',
+                $update_id,
+                $update['update_title'],
+                "Archived project update '{$update['update_title']}' from project '{$update['project_name']}'"
+            );
+            
+            // Get all admins for notification (check is_archived field)
+            $admins_sql = "SELECT employee_id FROM employees WHERE is_archived = 0 AND employee_id != $employee_id";
+            $admins_result = mysqli_query($conn, $admins_sql);
+            
+            // Send notification to other admins
+            while ($admin = mysqli_fetch_assoc($admins_result)) {
+                create_notification(
                     $conn,
+                    $admin['employee_id'],
                     $employee_id,
                     $employee_name,
-                    'ARCHIVE',
-                    'PROJECT_UPDATE',
-                    $project_id,
-                    $update['update_title'],
-                    "Archived project update: {$update['update_title']}"
+                    'project_update_archived',
+                    'Project Update Archived',
+                    "$employee_name archived update '{$update['update_title']}' from project '{$update['project_name']}'",
+                    "admin-projects-detail.php?id=$project_id",
+                    $project_id
                 );
             }
+            
+            // Send notification to client
+            create_notification(
+                $conn,
+                $update['user_id'],
+                $employee_id,
+                $employee_name,
+                'project_update_archived',
+                'Project Update Archived',
+                "An update has been archived from your project '{$update['project_name']}'",
+                "client-project-details.php?id=$project_id",
+                $project_id
+            );
             
             $_SESSION['success'] = 'Project update archived successfully';
         } else {

@@ -43,7 +43,7 @@ include 'admin-header.php';
         <div class="p-4 inventory-category rounded d-flex justify-content-between align-items-start">
           <div class="inventory-desc">
             <p class="mb-1 fs-14 light-text">Total Accounts</p>
-            <p class="mb-0 fs-24 mobile-fs-22 fw-bold">25</p>
+            <p class="mb-0 fs-24 mobile-fs-22 fw-bold">1</p>
           </div>
           <div class="inventory-icon">
             <i class="fas fa-users fs-20"></i>
@@ -55,7 +55,7 @@ include 'admin-header.php';
         <div class="p-4 inventory-category rounded d-flex justify-content-between align-items-start">
           <div class="inventory-desc">
             <p class="mb-1 fs-14 light-text">Active Accounts</p>
-            <p class="mb-0 fs-24 mobile-fs-22 green-text fw-bold">21</p>
+            <p class="mb-0 fs-24 mobile-fs-22 green-text fw-bold">1</p>
           </div>
           <div class="inventory-icon">
             <i class="fas fa-user-check fs-20 green-text"></i>
@@ -67,7 +67,7 @@ include 'admin-header.php';
         <div class="p-4 inventory-category rounded d-flex justify-content-between align-items-start">
           <div class="inventory-desc">
             <p class="mb-1 fs-14 light-text">Archived Accounts</p>
-            <p class="mb-0 fs-24 mobile-fs-22 text-danger fw-bold">4</p>
+            <p class="mb-0 fs-24 mobile-fs-22 text-danger fw-bold">0</p>
           </div>
           <div class="inventory-icon">
             <i class="fas fa-archive fs-20 text-danger"></i>
@@ -136,7 +136,7 @@ include 'admin-header.php';
   <!-- END OF MAIN -->
 
 
-  <<!-- Account Detail Modal -->
+  <!-- Account Detail Modal -->
 <div class="modal fade" id="viewAccountModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">

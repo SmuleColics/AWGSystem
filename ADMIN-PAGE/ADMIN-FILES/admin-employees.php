@@ -145,10 +145,13 @@ include 'admin-header.php';
         <h1 class="fs-36 mobile-fs-32">Employee Management</h1>
         <p class="admin-top-desc">Manage your team members and their roles</p>
       </div>
+
       <div class="d-flex flex-column flex-md-row gap-2">
-        <button class="btn green-bg text-white add-item-btn d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addEmployeeModal">
-          <i class="fa-solid fa-plus me-1"></i> Add <span class="d-none d-md-block ms-1">Employees</span>
-        </button>
+        <?php if ($is_admin): ?>
+          <button class="btn green-bg text-white add-item-btn d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addEmployeeModal">
+            <i class="fa-solid fa-plus me-1"></i> Add <span class="d-none d-md-block ms-1">Employees</span>
+          </button>
+        <?php endif; ?>
         <a href="admin-archive-employees.php" class="btn btn-danger text-white d-flex align-items-center">
           <i class="fa-solid fa-box-archive me-1"></i> Archived <span class="d-none d-md-block ms-1">Employees</span>
         </a>
@@ -201,9 +204,19 @@ include 'admin-header.php';
                     <?= htmlspecialchars($employee['email']) ?>
                   </p>
                   <div class="emp-btn-con d-flex w-100 gap-2">
-                    <a href="admin-employee-profile.php?id=<?= $employee['employee_id'] ?>" class="btn btn-sm btn-outline-secondary text-nowrap fs-14 w-50">View Profile</a>
-                    <button onclick="openArchiveModal(<?= $employee['employee_id'] ?>)" class="btn btn-sm btn-danger text-nowrap fs-14 w-50">Archive</button>
+                    <a href="admin-employee-profile.php?id=<?= $employee['employee_id'] ?>"
+                      class="btn btn-sm btn-outline-secondary text-nowrap fs-14 <?= $is_admin ? 'w-50' : 'w-100' ?>">
+                      View Profile
+                    </a>
+
+                    <?php if ($is_admin): ?>
+                      <button onclick="openArchiveModal(<?= $employee['employee_id'] ?>)"
+                        class="btn btn-sm btn-danger text-nowrap fs-14 w-50">
+                        Archive
+                      </button>
+                    <?php endif; ?>
                   </div>
+
                 </div>
               <?php endwhile; ?>
             <?php else: ?>

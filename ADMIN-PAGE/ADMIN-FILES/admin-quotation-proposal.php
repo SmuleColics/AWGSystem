@@ -947,6 +947,7 @@ ob_end_flush();
                           <span class="fs-14 light-text">Amount: </span>
                           <p class="mb-2">₱<?= number_format($labor['amount'], 2) ?></p>
                         </div>
+                        <?php if ($is_admin): ?>
                         <div class="col-md-1">
                           <a href="#" class="text-secondary"><i class="fas fa-edit"></i></a>
                         </div>
@@ -957,6 +958,7 @@ ob_end_flush();
                           </a>
                         </div>
                       </div>
+                      <?php endif; ?>
                     <?php endforeach; ?>
                   </div>
                 <?php endif; ?>

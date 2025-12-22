@@ -153,6 +153,13 @@ $projects_result = mysqli_query($conn, $projects_sql);
         <h1 class="fs-36 mobile-fs-32">Projects</h1>
         <p class="admin-top-desc">Create new projects, assign tasks, and monitor progress in real time.</p>
       </div>
+      <div>
+
+        <a href="admin-archive-project.php" class="btn btn-danger text-white d-flex align-items-center">
+          <i class="fa-solid fa-folder me-1"></i> Archived <span class="d-none d-md-block ms-1">Project</span>
+        </a>
+
+      </div>
     </div>
 
     <div class="row g-3 mb-2">
@@ -219,30 +226,34 @@ $projects_result = mysqli_query($conn, $projects_sql);
                       <img class="w-100 img-fluid rounded"
                         src="<?= htmlspecialchars($project['project_image']) ?>"
                         alt="<?= htmlspecialchars($project['project_name']) ?>">
-                      
+
                       <!-- Image Action Buttons -->
-                      <div class="image-actions">
-                        <button class="image-action-btn edit" 
-                                onclick="openEditImageModal(<?= $project['project_id'] ?>)"
-                                title="Change image">
-                          <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="image-action-btn delete" 
-                                onclick="deleteProjectImage(<?= $project['project_id'] ?>)"
-                                title="Delete image">
-                          <i class="fas fa-trash"></i>
-                        </button>
-                      </div>
+                      <?php if ($is_admin): ?>
+                        <div class="image-actions">
+                          <button class="image-action-btn edit"
+                            onclick="openEditImageModal(<?= $project['project_id'] ?>)"
+                            title="Change image">
+                            <i class="fas fa-edit"></i>
+                          </button>
+                          <button class="image-action-btn delete"
+                            onclick="deleteProjectImage(<?= $project['project_id'] ?>)"
+                            title="Delete image">
+                            <i class="fas fa-trash"></i>
+                          </button>
+                        </div>
+                      <?php endif; ?>
                     <?php else: ?>
                       <i class="fa-solid fa-image no-image-placeholder"></i>
                     <?php endif; ?>
 
-                    <div class="upload-overlay" onclick="openUploadModal(<?= $project['project_id'] ?>)">
-                      <div class="text-white text-center">
-                        <i class="fa-solid fa-camera fs-32 mb-2"></i>
-                        <p class="mb-0"><?= !empty($project['project_image']) ? 'Change Image' : 'Upload Image' ?></p>
+                    <?php if ($is_admin): ?>
+                      <div class="upload-overlay" onclick="openUploadModal(<?= $project['project_id'] ?>)">
+                        <div class="text-white text-center">
+                          <i class="fa-solid fa-camera fs-32 mb-2"></i>
+                          <p class="mb-0"><?= !empty($project['project_image']) ? 'Change Image' : 'Upload Image' ?></p>
+                        </div>
                       </div>
-                    </div>
+                    <?php endif; ?>
                   </div>
 
                   <div class="d-flex fs-14 mb-2 gap-1">
@@ -258,6 +269,12 @@ $projects_result = mysqli_query($conn, $projects_sql);
                       class="btn btn-outline-secondary mt-3">
                       View Details
                     </a>
+                    <?php if ($is_admin): ?>
+                      <button onclick="archiveProject(<?= $project['project_id'] ?>, '<?= addslashes($project['project_name']) ?>')"
+                        class="btn btn-danger mt-2">
+                        <i class="fa fa-archive me-1"></i> Archive Project
+                      </button>
+                    <?php endif; ?>
                   </div>
                 </div>
               <?php endwhile; ?>
@@ -346,6 +363,36 @@ $projects_result = mysqli_query($conn, $projects_sql);
     </div>
   </div>
 
+  <!-- Archive Project Confirmation Modal -->
+  <div class="modal fade" id="archiveProjectModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Archive Project</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <form action="process-archive-project.php" method="POST">
+          <input type="hidden" name="project_id" id="archiveProjectId">
+
+          <div class="modal-body">
+            <div class="text-center py-3">
+              <h5 class="fs-24">Are you sure you want to archive this project?</h5>
+              <p class="text-muted">Archived projects can be restored later.</p>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-danger" name="archive_project">
+              <i class="fas fa-box-archive me-1"></i> Archive Project
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <script>
     // Open upload modal and set project ID
     function openUploadModal(projectId) {
@@ -373,7 +420,7 @@ $projects_result = mysqli_query($conn, $projects_sql);
     // Delete project image
     function deleteProjectImage(projectId) {
       event.stopPropagation(); // Prevent triggering parent click
-      
+
       if (confirm('Are you sure you want to delete this project image?')) {
         document.getElementById('deleteProjectId').value = projectId;
         const modal = new bootstrap.Modal(document.getElementById('deleteImageModal'));
@@ -424,6 +471,13 @@ $projects_result = mysqli_query($conn, $projects_sql);
       alert('<?= addslashes($_SESSION['error']) ?>');
       <?php unset($_SESSION['error']); ?>
     <?php endif; ?>
+
+    // Archive project function
+    function archiveProject(projectId, projectName) {
+      document.getElementById('archiveProjectId').value = projectId;
+      const modal = new bootstrap.Modal(document.getElementById('archiveProjectModal'));
+      modal.show();
+    }
   </script>
 
 </body>

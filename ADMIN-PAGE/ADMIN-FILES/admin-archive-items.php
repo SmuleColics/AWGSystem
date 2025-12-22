@@ -254,12 +254,14 @@ if ($result) {
                           data-bs-target="#viewItemModal"
                           style="cursor:pointer"
                           title="View Details"></i>
+                        <?php if ($is_admin): ?>
                         <i class="fa-solid fa-rotate-left text-success mx-2 fs-18 restore-item"
                           data-id="<?= $item['item_id'] ?>"
                           style="cursor:pointer" 
                           data-bs-toggle="modal" 
                           data-bs-target="#restoreItemModal"
                           title="Restore Item"></i>
+                        <?php endif; ?>
                       </td>
                     </tr>
                   <?php endforeach; ?>

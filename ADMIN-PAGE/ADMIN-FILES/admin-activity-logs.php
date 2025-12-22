@@ -163,10 +163,10 @@ $assessment_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activ
                       'UPDATE' => 'badge-pill taskstatus-inprogress',
                       'ACCEPT' => 'badge-pill taskstatus-completed',
                       'REJECT' => 'badge-pill priority-high',
-                      'ARCHIVE' => 'badge-pill bg-secondary text-white',
+                      'ARCHIVE' => 'badge-pill bg-warning text-white',
                       'RESTORE' => 'badge-pill priority-low',
-                      'DELETE' => 'badge-pill bg-danger',
-                      default => 'badge bg-secondary'
+                      'DELETE' => 'badge-pill bg-danger text-white',
+                      default => 'badge-pill bg-secondary text-white'
                     };
                     ?>
                     <span class="<?= $action_class ?>"><?= htmlspecialchars($log['action']) ?></span>

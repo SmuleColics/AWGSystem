@@ -163,6 +163,7 @@ ob_end_flush();
               </div>
 
               <!-- VISIBILITY OPTION -->
+              <?php if ($is_admin): ?>
               <div>
                 <form method="POST" action="update-project-visibility.php" id="visibilityForm">
                   <input type="hidden" name="project_id" value="<?= $project_id ?>">
@@ -172,6 +173,7 @@ ob_end_flush();
                   </select>
                 </form>
               </div>
+              <?php endif; ?>
             </div>
 
             <!-- PROJECT IMAGE -->
@@ -263,12 +265,14 @@ ob_end_flush();
           <div class="card-header mb-4 d-flex justify-content-between align-items-center bg-white px-0">
             <h5 class="mb-0 fw-semibold">Project Updates</h5>
             <div class="d-flex gap-2">
+              <?php if ($is_admin): ?>
               <a href="project-update-archive.php?id=<?= $project_id ?>" class="btn btn-danger btn-sm">
                 <i class="fa fa-box-archive me-1"></i> View Archived
               </a>
               <button class="btn btn-green btn-sm" data-bs-toggle="modal" data-bs-target="#addUpdateModal">
                 <i class="fa fa-plus me-1"></i> Add Update
               </button>
+              <?php endif; ?>
             </div>
           </div>
 
@@ -278,6 +282,7 @@ ob_end_flush();
                 <div class="p-3 mb-3 rounded border bg-white">
                   <div class="d-flex align-items-center justify-content-between">
                     <h6 class="fw-bold mb-1 fs-18"><?= htmlspecialchars($update['update_title']) ?></h6>
+                    <?php if ($is_admin): ?>
                     <div class="update-btns">
                       <button class="btn btn-light border btn-sm me-1"
                         onclick="editUpdate(<?= $update['update_id'] ?>, '<?= addslashes($update['update_title']) ?>', '<?= addslashes($update['update_description']) ?>', <?= $update['progress_percentage'] ?>)">
@@ -288,13 +293,17 @@ ob_end_flush();
                         <i class="fa-solid fa-box-archive fs-16"></i>
                       </button>
                     </div>
+
+                    <?php endif; ?>
                   </div>
                   <p class="text-secondary small mb-2"><?= nl2br(htmlspecialchars($update['update_description'])) ?></p>
 
                   <?php if (!empty($update['update_image']) && file_exists($update['update_image'])): ?>
-                    <img src="<?= htmlspecialchars($update['update_image']) ?>"
-                      class="update-image mt-2 border"
-                      alt="Update image">
+                    <div class="w-100 flex">
+                      <img src="<?= htmlspecialchars($update['update_image']) ?>"
+                        class="update-image mt-2 border"
+                        alt="Update image">
+                    </div>
                   <?php endif; ?>
 
                   <div class="d-flex justify-content-between align-items-center mt-2">
@@ -340,9 +349,15 @@ ob_end_flush();
                 <div class="fw-semibold mb-2">Payment History</div>
                 <?php foreach ($payments as $payment): ?>
                   <p class="light-text small mb-1">
-                    <strong>₱<?= number_format($payment['amount'], 2) ?></strong> -
+                    <strong>₱<?= number_format($payment['payment_amount'], 2) ?></strong> -
                     <?= date('m/d/Y', strtotime($payment['payment_date'])) ?>
                     (<?= htmlspecialchars($payment['payment_method']) ?>)
+                    <?php if (!empty($payment['reference_number'])): ?>
+                      <br><span class="text-muted">Ref: <?= htmlspecialchars($payment['reference_number']) ?></span>
+                    <?php endif; ?>
+                    <?php if (!empty($payment['gcash_number'])): ?>
+                      <br><span class="text-muted">GCash: <?= htmlspecialchars($payment['gcash_number']) ?></span>
+                    <?php endif; ?>
                   </p>
                 <?php endforeach; ?>
               </div>
@@ -377,9 +392,11 @@ ob_end_flush();
           </div>
           <div class="card-footer bg-white">
             <div class="d-grid">
+              <?php if ($is_admin): ?>
               <button class="btn btn-green mb-2" data-bs-toggle="modal" data-bs-target="#processPaymentModal">
                 <i class="fas fa-wallet me-1"></i> Process Payment
               </button>
+              <?php endif; ?>
 
               <a href="admin-quotation-proposal.php?id=<?= $quotation['assessment_id'] ?>&view_only=1"
                 class="btn btn-light border">

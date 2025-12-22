@@ -362,10 +362,11 @@ function updateItemStatus($conn, $item_id) {
           <button class="btn green-bg text-white add-item-btn d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addItemModal">
             <i class="fa-solid fa-plus me-1"></i> Add <span class=" d-none d-md-block ms-1">Item</span>
           </button>
+        <?php endif; ?>
           <a href="admin-archive-items.php" class="btn btn-danger text-white d-flex align-items-center">
             <i class="fa-solid fa-box-archive me-1"></i> Archived <span class="d-none d-md-block ms-1">Items</span>
           </a>
-        <?php endif; ?>
+      
         </div>
     </div>
 

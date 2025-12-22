@@ -1,6 +1,8 @@
 <?php
 session_start();
 require_once '../../INCLUDES/db-con.php';
+require_once '../../INCLUDES/log-activity.php';
+require_once '../../INCLUDES/notifications.php';
 
 // Check if user is logged in
 if (!isset($_SESSION['employee_id'])) {
@@ -56,12 +58,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['process_payment'])) {
     mysqli_begin_transaction($conn);
     
     try {
-        // Insert payment record
+        // Insert payment record (using correct column names)
         $insert_payment_sql = "INSERT INTO project_payments 
-                              (project_id, amount, payment_method, reference_number, notes, payment_date, processed_by, created_at)
+                              (project_id, payment_amount, payment_method, reference_number, payment_notes, payment_date, processed_by, created_at)
                               VALUES ($project_id, $amount, '$payment_method', " .
                               ($reference_number ? "'$reference_number'" : "NULL") . ", " .
-                              ($notes ? "'$notes'" : "NULL") . ", NOW(), $employee_id, NOW())";
+                              ($notes ? "'$notes'" : "NULL") . ", CURDATE(), $employee_id, NOW())";
         
         if (!mysqli_query($conn, $insert_payment_sql)) {
             throw new Exception('Failed to record payment: ' . mysqli_error($conn));
@@ -89,42 +91,128 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['process_payment'])) {
         if ($reference_number) {
             $payment_update_desc .= " Reference: $reference_number";
         }
+        if ($notes) {
+            $payment_update_desc .= " Notes: $notes";
+        }
         
         $insert_update_sql = "INSERT INTO project_updates 
-                             (project_id, update_title, update_description, created_by, created_at)
-                             VALUES ($project_id, '$payment_update_title', '$payment_update_desc', $employee_id, NOW())";
-        mysqli_query($conn, $insert_update_sql);
+                             (project_id, update_title, update_description, created_by, is_archived, created_at)
+                             VALUES ($project_id, '$payment_update_title', '$payment_update_desc', $employee_id, 0, NOW())";
+        
+        if (!mysqli_query($conn, $insert_update_sql)) {
+            throw new Exception('Failed to create payment update: ' . mysqli_error($conn));
+        }
         
         // Log activity
-        if (function_exists('log_activity')) {
+        $payment_description = "Processed payment of ₱" . number_format($amount, 2) . " for project '{$project['project_name']}' via $payment_method";
+        if ($reference_number) {
+            $payment_description .= " (Ref: $reference_number)";
+        }
+        $payment_description .= ". Remaining balance: ₱" . number_format($new_remaining_balance, 2);
+        
+        log_activity(
+            $conn,
+            $employee_id,
+            $employee_name,
+            'CREATE',
+            'PROJECT_PAYMENT',
+            $payment_id,
+            "Payment - {$project['project_name']}",
+            $payment_description
+        );
+        
+        // Get all admins for notification (except the one who processed the payment)
+        $admins_sql = "SELECT employee_id FROM employees WHERE is_archived = 0 AND employee_id != $employee_id";
+        $admins_result = mysqli_query($conn, $admins_sql);
+        
+        // Send notification to other admins
+        while ($admin = mysqli_fetch_assoc($admins_result)) {
+            create_notification(
+                $conn,
+                $admin['employee_id'],
+                $employee_id,
+                $employee_name,
+                'payment_received',
+                'Payment Processed',
+                "$employee_name processed a payment of ₱" . number_format($amount, 2) . " for project '{$project['project_name']}' via $payment_method. Remaining balance: ₱" . number_format($new_remaining_balance, 2),
+                "admin-projects-detail.php?id=$project_id",
+                $project_id
+            );
+        }
+        
+        // Send notification to client/user
+        $user_notification_message = "Your payment of ₱" . number_format($amount, 2) . " for project '{$project['project_name']}' has been successfully processed";
+        if ($new_remaining_balance > 0) {
+            $user_notification_message .= ". Remaining balance: ₱" . number_format($new_remaining_balance, 2);
+        } else {
+            $user_notification_message .= ". Your project is now fully paid!";
+        }
+        
+        create_notification(
+            $conn,
+            $project['user_id'],
+            $employee_id,
+            $employee_name,
+            'payment_received',
+            'Payment Received',
+            $user_notification_message,
+            "client-project-details.php?id=$project_id",
+            $project_id
+        );
+        
+        // Check if project is fully paid and create additional notification
+        if ($new_remaining_balance <= 0) {
+            // Log full payment
             log_activity(
                 $conn,
                 $employee_id,
                 $employee_name,
-                'CREATE',
-                'PROJECT_PAYMENT',
-                $payment_id,
+                'UPDATE',
+                'PROJECT',
+                $project_id,
                 $project['project_name'],
-                "Processed payment of ₱" . number_format($amount, 2) . " for project: {$project['project_name']} via $payment_method"
+                "Project '{$project['project_name']}' is now fully paid"
+            );
+            
+            // Notify all admins about full payment
+            $admins_sql = "SELECT employee_id FROM employees WHERE is_archived = 0 AND employee_id != $employee_id";
+            $admins_result = mysqli_query($conn, $admins_sql);
+            
+            while ($admin = mysqli_fetch_assoc($admins_result)) {
+                create_notification(
+                    $conn,
+                    $admin['employee_id'],
+                    $employee_id,
+                    $employee_name,
+                    'project_fully_paid',
+                    'Project Fully Paid',
+                    "Project '{$project['project_name']}' has been fully paid by the client!",
+                    "admin-projects-detail.php?id=$project_id",
+                    $project_id
+                );
+            }
+            
+            // Notify client about full payment
+            create_notification(
+                $conn,
+                $project['user_id'],
+                $employee_id,
+                $employee_name,
+                'project_fully_paid',
+                'Project Fully Paid!',
+                "Congratulations! Your project '{$project['project_name']}' has been fully paid. Thank you for your payment!",
+                "client-project-details.php?id=$project_id",
+                $project_id
             );
         }
         
-        // Create notification for user
-        $user_id = $project['user_id'];
-        $notif_title = 'Payment Received';
-        $notif_message = "Your payment of ₱" . number_format($amount, 2) . " for project '{$project['project_name']}' has been received. Remaining balance: ₱" . number_format($new_remaining_balance, 2);
-        $notif_link = "user-projects-detail.php?id=$project_id";
-        
-        $notif_sql = "INSERT INTO notifications (recipient_id, type, title, message, link, is_read, created_at)
-                    VALUES ($user_id, 'PAYMENT_RECEIVED', 
-                          '" . mysqli_real_escape_string($conn, $notif_title) . "',
-                          '" . mysqli_real_escape_string($conn, $notif_message) . "',
-                          '" . mysqli_real_escape_string($conn, $notif_link) . "',
-                          0, NOW())";
-        mysqli_query($conn, $notif_sql);
-        
         mysqli_commit($conn);
-        $_SESSION['success'] = 'Payment processed successfully. Amount: ₱' . number_format($amount, 2);
+        
+        $success_message = 'Payment processed successfully! Amount: ₱' . number_format($amount, 2);
+        if ($new_remaining_balance <= 0) {
+            $success_message .= ' - Project is now fully paid!';
+        }
+        $_SESSION['success'] = $success_message;
         
     } catch (Exception $e) {
         mysqli_rollback($conn);

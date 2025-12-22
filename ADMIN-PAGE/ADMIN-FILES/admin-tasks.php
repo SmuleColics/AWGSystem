@@ -16,6 +16,16 @@ if ($employee_result) {
   }
 }
 
+// Fetch all active projects for the dropdown
+$projects = [];
+$project_query = "SELECT project_id, project_name FROM projects WHERE is_archived = 0 ORDER BY project_name ASC";
+$project_result = mysqli_query($conn, $project_query);
+if ($project_result) {
+  while ($proj = mysqli_fetch_assoc($project_result)) {
+    $projects[] = $proj;
+  }
+}
+
 // Handle form submission for ADD TASK
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_task'])) {
 
@@ -28,8 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_task'])) {
   $task_desc = trim($_POST['task_desc'] ?? '');
   $priority = trim($_POST['priority'] ?? '');
   $status = trim($_POST['status'] ?? '');
-  $assigned_to_id = intval($_POST['assigned_to'] ?? 0);  // CONVERT TO INT HERE
-  $project_name = trim($_POST['project_name'] ?? '');
+  $assigned_to_id = intval($_POST['assigned_to'] ?? 0);
+  $project_id = intval($_POST['project_id'] ?? 0);
   $due_date = trim($_POST['due_date'] ?? '');
 
   // Validation
@@ -53,8 +63,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_task'])) {
     $errors['assigned_to'] = 'Assigned to is required';
   }
 
-  if (empty($project_name)) {
-    $errors['project_name'] = 'Project name is required';
+  if ($project_id === 0) {
+    $errors['project_id'] = 'Project is required';
   }
 
   if (empty($due_date)) {
@@ -72,6 +82,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_task'])) {
       }
     }
 
+    // Get project name from projects table
+    $project_name = '';
+    foreach ($projects as $proj) {
+      if ($proj['project_id'] == $project_id) {
+        $project_name = $proj['project_name'];
+        break;
+      }
+    }
+
     $task_title = mysqli_real_escape_string($conn, $task_title);
     $task_desc = mysqli_real_escape_string($conn, $task_desc);
     $priority = mysqli_real_escape_string($conn, $priority);
@@ -85,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_task'])) {
 
     if (mysqli_query($conn, $sql)) {
       $task_id = mysqli_insert_id($conn);
-      
+
       // LOG ACTIVITY
       log_activity(
         $conn,
@@ -101,27 +120,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_task'])) {
       // CREATE NOTIFICATION FOR ASSIGNED EMPLOYEE
       create_notification(
         $conn,
-        $assigned_to_id,           // recipient_id (INTEGER)
-        $employee_id,              // sender_id (INTEGER)
-        $employee_full_name,       // sender_name (STRING)
-        'TASK_ASSIGNED',           // type (STRING)
-        'New Task Assigned',       // title (STRING)
-        "You have been assigned a new task: $task_title", // message (STRING)
-        'admin-tasks.php',         // link (STRING)
-        $task_id                   // related_id (INTEGER)
-      );
-
-      // CREATE NOTIFICATION FOR ADMIN WHO CREATED THE TASK (to confirm creation)
-      create_notification(
-        $conn,
-        $employee_id,              // recipient_id - the admin who created it (INTEGER)
-        $employee_id,              // sender_id (INTEGER)
-        $employee_full_name,       // sender_name (STRING)
-        'TASK_ASSIGNED',           // type (STRING)
-        'Task Created',            // title (STRING)
-        "You created task: $task_title and assigned it to $assigned_employee_name", // message (STRING)
-        'admin-tasks.php',         // link (STRING)
-        $task_id                   // related_id (INTEGER)
+        $assigned_to_id,
+        $employee_id,
+        $employee_full_name,
+        'TASK_ASSIGNED',
+        'New Task Assigned',
+        "You have been assigned a new task: $task_title",
+        'admin-tasks.php',
+        $task_id
       );
 
       $success = true;
@@ -136,7 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_task'])) {
   }
 }
 
-// Handle form submission for EDIT TASK
+// Handle form submission for EDIT TASK (Admin only)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_task'])) {
 
   if (!$is_admin) {
@@ -149,8 +155,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_task'])) {
   $task_desc = trim($_POST['task_desc'] ?? '');
   $priority = trim($_POST['priority'] ?? '');
   $status = trim($_POST['status'] ?? '');
-  $assigned_to_id = intval($_POST['assigned_to'] ?? 0);  // CONVERT TO INT HERE
-  $project_name = trim($_POST['project_name'] ?? '');
+  $assigned_to_id = intval($_POST['assigned_to'] ?? 0);
+  $project_id = intval($_POST['project_id'] ?? 0);
   $due_date = trim($_POST['due_date'] ?? '');
 
   // Validation
@@ -174,8 +180,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_task'])) {
     $errors['assigned_to'] = 'Assigned to is required';
   }
 
-  if (empty($project_name)) {
-    $errors['project_name'] = 'Project name is required';
+  if ($project_id === 0) {
+    $errors['project_id'] = 'Project is required';
   }
 
   if (empty($due_date)) {
@@ -189,6 +195,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_task'])) {
     foreach ($employees as $emp) {
       if ($emp['employee_id'] == $assigned_to_id) {
         $assigned_employee_name = $emp['first_name'] . ' ' . $emp['last_name'];
+        break;
+      }
+    }
+
+    // Get project name from projects table
+    $project_name = '';
+    foreach ($projects as $proj) {
+      if ($proj['project_id'] == $project_id) {
+        $project_name = $proj['project_name'];
         break;
       }
     }
@@ -228,27 +243,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_task'])) {
       // CREATE NOTIFICATION FOR ASSIGNED EMPLOYEE
       create_notification(
         $conn,
-        $assigned_to_id,           // recipient_id (INTEGER)
-        $employee_id,              // sender_id (INTEGER)
-        $employee_full_name,       // sender_name (STRING)
-        'TASK_UPDATED',            // type (STRING)
-        'Task Updated',            // title (STRING)
-        "Task has been updated: $task_title", // message (STRING)
-        'admin-tasks.php',         // link (STRING)
-        $task_id                   // related_id (INTEGER)
-      );
-
-      // CREATE NOTIFICATION FOR ADMIN WHO UPDATED THE TASK
-      create_notification(
-        $conn,
-        $employee_id,              // recipient_id - the admin who updated it (INTEGER)
-        $employee_id,              // sender_id (INTEGER)
-        $employee_full_name,       // sender_name (STRING)
-        'TASK_UPDATED',            // type (STRING)
-        'Task Updated',            // title (STRING)
-        "You updated task: $task_title", // message (STRING)
-        'admin-tasks.php',         // link (STRING)
-        $task_id                   // related_id (INTEGER)
+        $assigned_to_id,
+        $employee_id,
+        $employee_full_name,
+        'TASK_UPDATED',
+        'Task Updated',
+        "Task has been updated: $task_title",
+        'admin-tasks.php',
+        $task_id
       );
 
       echo "<script>
@@ -262,9 +264,89 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_task'])) {
   }
 }
 
+// Handle form submission for UPDATE TASK STATUS (Employee)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_task_status'])) {
+
+  $task_id = intval($_POST['task_id']);
+  $status = trim($_POST['status'] ?? '');
+  $proof_file = $_FILES['proof_of_completion'] ?? null;
+
+  // Validation
+  if (empty($status)) {
+    $errors['status'] = 'Status is required';
+  }
+
+  // Handle file upload
+  $proof_filename = null;
+  if ($proof_file && $proof_file['size'] > 0) {
+    $allowed_extensions = ['jpg', 'jpeg', 'png', 'pdf', 'docx', 'xlsx'];
+    $file_ext = strtolower(pathinfo($proof_file['name'], PATHINFO_EXTENSION));
+
+    if (!in_array($file_ext, $allowed_extensions)) {
+      $errors['proof_of_completion'] = 'Invalid file type. Allowed: jpg, jpeg, png, pdf, docx, xlsx';
+    }
+
+    if ($proof_file['size'] > 5 * 1024 * 1024) { // 5MB limit
+      $errors['proof_of_completion'] = 'File size exceeds 5MB limit';
+    }
+
+    if (empty($errors['proof_of_completion'])) {
+      $upload_dir = '../uploads/task_proofs/';
+      if (!is_dir($upload_dir)) {
+        mkdir($upload_dir, 0755, true);
+      }
+
+      $proof_filename = 'task_' . $task_id . '_' . time() . '.' . $file_ext;
+      if (!move_uploaded_file($proof_file['tmp_name'], $upload_dir . $proof_filename)) {
+        $errors['proof_of_completion'] = 'Failed to upload file';
+      }
+    }
+  }
+
+  // If no errors, update the database
+  if (empty($errors)) {
+    $status = mysqli_real_escape_string($conn, $status);
+    $proof_filename = $proof_filename ? mysqli_real_escape_string($conn, $proof_filename) : null;
+
+    // Build update query
+    if ($proof_filename) {
+      $sql = "UPDATE tasks SET status = '$status', proof_of_completion = '$proof_filename' WHERE task_id = $task_id";
+    } else {
+      $sql = "UPDATE tasks SET status = '$status' WHERE task_id = $task_id";
+    }
+
+    if (mysqli_query($conn, $sql)) {
+      // Get task details for notification
+      $task_query = "SELECT task_title FROM tasks WHERE task_id = $task_id";
+      $task_result = mysqli_query($conn, $task_query);
+      $task = mysqli_fetch_assoc($task_result);
+
+      // LOG ACTIVITY
+      log_activity(
+        $conn,
+        $employee_id,
+        $employee_full_name,
+        'UPDATE',
+        'TASKS',
+        $task_id,
+        $task['task_title'],
+        "Updated task status to '$status'"
+      );
+
+      echo "<script>
+                alert('Task status updated successfully!');
+                window.location = '" . $_SERVER['PHP_SELF'] . "?success=1';
+              </script>";
+      exit;
+    } else {
+      $errors['database'] = 'Database error: ' . mysqli_error($conn);
+    }
+  }
+}
+
 // Handle ARCHIVE
 if (isset($_POST['modal-archive-button'])) {
-  
+
   if (!$is_admin) {
     echo "<script>alert('You do not have permission to archive tasks.'); window.location='" . $_SERVER['PHP_SELF'] . "';</script>";
     exit;
@@ -280,7 +362,6 @@ if (isset($_POST['modal-archive-button'])) {
 
   $sql = "UPDATE tasks SET is_archived = 1 WHERE task_id = $archive_id";
   if (mysqli_query($conn, $sql)) {
-    // LOG ACTIVITY
     log_activity(
       $conn,
       $employee_id,
@@ -299,13 +380,8 @@ if (isset($_POST['modal-archive-button'])) {
   }
 }
 
-// Get statistics (only non-archived tasks)
-$stats = [
-  'total_tasks' => 0,
-  'pending' => 0,
-  'in_progress' => 0,
-  'completed' => 0
-];
+// Get statistics
+$stats = ['total_tasks' => 0, 'pending' => 0, 'in_progress' => 0, 'completed' => 0];
 
 $result = mysqli_query($conn, "SELECT COUNT(*) as count FROM tasks WHERE is_archived = 0");
 if ($result) {
@@ -331,7 +407,7 @@ if ($result) {
   $stats['completed'] = $row['count'];
 }
 
-// Get all tasks (only non-archived)
+// Get all tasks
 $tasks = [];
 $sql = "SELECT * FROM tasks WHERE is_archived = 0 ORDER BY due_date ASC";
 $result = mysqli_query($conn, $sql);
@@ -353,7 +429,6 @@ if ($result) {
   <title>Admin Dashboard - Tasks</title>
   <link rel="stylesheet" href="../ADMIN-CSS/admin-dashboard.css" />
   <link rel="stylesheet" href="../ADMIN-CSS/admin-responsiveness.css" />
-
   <style>
     .sidebar-content-item:nth-child(3) {
       background-color: #f2f2f2 !important;
@@ -367,23 +442,22 @@ if ($result) {
 </head>
 
 <body>
-  <!-- START OF MAIN  -->
   <main id="main" class="container-xxl text-dark px-4 min-vh-100">
     <div class="admin-top-inventory d-flex justify-content-between align-items-center">
       <div>
         <h1 class="fs-36 mobile-fs-32">Tasks</h1>
         <p class="admin-top-desc">Manage and assign tasks to employees</p>
       </div>
-      <?php if ($is_admin): ?>
       <div class="d-flex gap-2 flex-column flex-md-row">
-        <button class="btn green-bg text-white add-item-btn d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addTasksModal">
-          <i class="fa-solid fa-plus me-1"></i> Add <span class="d-none d-md-block ms-1">Task</span>
-        </button>
+        <?php if ($is_admin): ?>
+          <button class="btn green-bg text-white add-item-btn d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addTasksModal">
+            <i class="fa-solid fa-plus me-1"></i> Add <span class="d-none d-md-block ms-1">Task</span>
+          </button>
+        <?php endif; ?>
         <a href="admin-archive-tasks.php" class="btn btn-danger text-white d-flex align-items-center">
           <i class="fa-solid fa-box-archive me-1"></i> Archived <span class="d-none d-md-block ms-1">Tasks</span>
         </a>
       </div>
-      <?php endif; ?>
     </div>
 
     <!-- STATISTICS -->
@@ -399,7 +473,6 @@ if ($result) {
           </div>
         </div>
       </div>
-
       <div class="col-lg-3 col-md-6 col-sm-6">
         <div class="p-4 inventory-category rounded d-flex justify-content-between align-items-center">
           <div class="inventory-desc">
@@ -411,7 +484,6 @@ if ($result) {
           </div>
         </div>
       </div>
-
       <div class="col-lg-3 col-md-6 col-sm-6">
         <div class="p-4 inventory-category rounded d-flex justify-content-between align-items-center">
           <div class="inventory-desc">
@@ -423,7 +495,6 @@ if ($result) {
           </div>
         </div>
       </div>
-
       <div class="col-lg-3 col-md-6 col-sm-6">
         <div class="p-4 inventory-category rounded d-flex justify-content-between align-items-center">
           <div class="inventory-desc">
@@ -458,7 +529,6 @@ if ($result) {
                   <div class="tasks-details w-100">
                     <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
                       <h3 class="fs-18 mb-0"><?= htmlspecialchars($task['task_title']) ?></h3>
-
                       <?php
                       $priority = $task['priority'];
                       $priorityClass = match ($priority) {
@@ -469,7 +539,6 @@ if ($result) {
                       };
                       ?>
                       <span class="<?= $priorityClass ?>"><?= $priority ?> Priority</span>
-
                       <?php
                       $taskStatus = $task['status'];
                       $taskStatusClass = match ($taskStatus) {
@@ -500,27 +569,49 @@ if ($result) {
                     </div>
                   </div>
 
-                  <div class="tasks-actions d-flex flex-column gap-2">
-                    <button class="btn btn-light border edit-task"
-                      data-id="<?= $task['task_id'] ?>"
-                      data-title="<?= htmlspecialchars($task['task_title']) ?>"
-                      data-desc="<?= htmlspecialchars($task['task_desc']) ?>"
-                      data-priority="<?= htmlspecialchars($task['priority']) ?>"
-                      data-status="<?= htmlspecialchars($task['status']) ?>"
-                      data-assigned="<?= $task['assigned_to_id'] ?>"
-                      data-project="<?= htmlspecialchars($task['project_name']) ?>"
-                      data-due="<?= $task['due_date'] ?>"
-                      data-bs-toggle="modal"
-                      data-bs-target="#editTaskModal">
-                      Edit
-                    </button>
+                  <div class="tasks-actions d-flex flex-column gap-2 flex-fill" style="width: 150px;">
                     <?php if ($is_admin): ?>
-                    <button class="btn btn-danger border archive-task"
-                      data-id="<?= $task['task_id'] ?>"
-                      data-bs-toggle="modal"
-                      data-bs-target="#archiveTaskModal">
-                      Archive
-                    </button>
+
+                      <button class="btn btn-light border edit-task w-100"
+                        data-id="<?= $task['task_id'] ?>"
+                        data-title="<?= htmlspecialchars($task['task_title']) ?>"
+                        data-desc="<?= htmlspecialchars($task['task_desc']) ?>"
+                        data-priority="<?= htmlspecialchars($task['priority']) ?>"
+                        data-status="<?= htmlspecialchars($task['status']) ?>"
+                        data-assigned="<?= $task['assigned_to_id'] ?>"
+                        data-project="<?= htmlspecialchars($task['project_name']) ?>"
+                        data-project-id="<?= $task['project_id'] ?? '' ?>"
+                        data-due="<?= $task['due_date'] ?>"
+                        data-bs-toggle="modal"
+                        data-bs-target="#editTaskModal">
+                        Edit
+                      </button>
+
+                      <?php if (!empty($task['proof_of_completion'])): ?>
+                        <button class="btn btn-success border view-proof w-100"
+                          data-id="<?= $task['task_id'] ?>"
+                          data-filename="<?= htmlspecialchars($task['proof_of_completion']) ?>"
+                          data-title="<?= htmlspecialchars($task['task_title']) ?>"
+                          data-bs-toggle="modal"
+                          data-bs-target="#viewProofModal">
+                          <i class="fa-solid fa-file-check me-1"></i> View Proof
+                        </button>
+                      <?php endif; ?>
+                      <button class="btn btn-danger border archive-task"
+                        data-id="<?= $task['task_id'] ?>"
+                        data-bs-toggle="modal"
+                        data-bs-target="#archiveTaskModal">
+                        Archive
+                      </button>
+                    <?php else: ?>
+                      <button class="btn btn-green border update-task-status w-100"
+                        data-id="<?= $task['task_id'] ?>"
+                        data-title="<?= htmlspecialchars($task['task_title']) ?>"
+                        data-status="<?= htmlspecialchars($task['status']) ?>"
+                        data-bs-toggle="modal"
+                        data-bs-target="#updateTaskStatusModal">
+                        Update Status
+                      </button>
                     <?php endif; ?>
                   </div>
                 </div>
@@ -530,15 +621,12 @@ if ($result) {
         </div>
       </div>
     </div>
-
   </main>
-  <!-- END OF MAIN -->
 
   <!-- ADD TASK MODAL -->
   <div class="modal fade" id="addTasksModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content">
-
         <div class="modal-header">
           <h5 class="modal-title">Add New Task</h5>
           <button class="btn-close" data-bs-dismiss="modal"></button>
@@ -546,7 +634,6 @@ if ($result) {
 
         <form method="POST" action="">
           <div class="modal-body">
-
             <div class="mb-3">
               <label class="form-label">Task Title</label>
               <input type="text" name="task_title" class="form-control" placeholder="Install CCTV Cameras" value="<?= $_POST['task_title'] ?? '' ?>">
@@ -609,9 +696,16 @@ if ($result) {
 
               <div class="col-md-6 mb-3">
                 <label class="form-label">Project</label>
-                <input type="text" name="project_name" class="form-control" placeholder="Security System Installation" value="<?= $_POST['project_name'] ?? '' ?>">
-                <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['project_name']) ? 'block' : 'none' ?>">
-                  <?= $errors['project_name'] ?? 'This field is required' ?>
+                <select name="project_id" class="form-select">
+                  <option value="">Select Project</option>
+                  <?php foreach ($projects as $proj): ?>
+                    <option value="<?= $proj['project_id'] ?>" <?= (isset($_POST['project_id']) && $_POST['project_id'] == $proj['project_id']) ? 'selected' : '' ?>>
+                      <?= htmlspecialchars($proj['project_name']) ?>
+                    </option>
+                  <?php endforeach; ?>
+                </select>
+                <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['project_id']) ? 'block' : 'none' ?>">
+                  <?= $errors['project_id'] ?? 'This field is required' ?>
                 </p>
               </div>
             </div>
@@ -623,25 +717,21 @@ if ($result) {
                 <?= $errors['due_date'] ?? 'This field is required' ?>
               </p>
             </div>
-
           </div>
 
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
             <button type="submit" name="add_task" class="btn btn-green text-white">Save Task</button>
           </div>
-
         </form>
-
       </div>
     </div>
   </div>
 
-  <!-- EDIT TASK MODAL -->
+  <!-- EDIT TASK MODAL (Admin only) -->
   <div class="modal fade" id="editTaskModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content">
-
         <div class="modal-header">
           <h5 class="modal-title">Edit Task</h5>
           <button class="btn-close" data-bs-dismiss="modal"></button>
@@ -649,9 +739,7 @@ if ($result) {
 
         <form method="POST" action="">
           <input type="hidden" name="task_id" id="editTaskId">
-
           <div class="modal-body">
-
             <div class="mb-3">
               <label class="form-label">Task Title</label>
               <input type="text" name="task_title" id="editTaskTitle" class="form-control" placeholder="Install CCTV Cameras">
@@ -696,7 +784,13 @@ if ($result) {
 
               <div class="col-md-6 mb-3">
                 <label class="form-label">Project</label>
-                <input type="text" name="project_name" id="editProjectName" class="form-control" placeholder="Security System Installation">
+                <select name="project_id" id="editProjectId" class="form-select">
+                  <?php foreach ($projects as $proj): ?>
+                    <option value="<?= $proj['project_id'] ?>">
+                      <?= htmlspecialchars($proj['project_name']) ?>
+                    </option>
+                  <?php endforeach; ?>
+                </select>
               </div>
             </div>
 
@@ -704,16 +798,94 @@ if ($result) {
               <label class="form-label">Due Date</label>
               <input type="date" name="due_date" id="editDueDate" class="form-control">
             </div>
-
           </div>
 
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
             <button type="submit" name="edit_task" class="btn btn-green text-white">Update Task</button>
           </div>
-
         </form>
+      </div>
+    </div>
+  </div>
 
+  <!-- UPDATE TASK STATUS MODAL (Employee) -->
+  <div class="modal fade" id="updateTaskStatusModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Update Task Status</h5>
+          <button class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <form method="POST" action="" enctype="multipart/form-data">
+          <input type="hidden" name="task_id" id="updateTaskId">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Task Title </label>
+              <input type="text" id="updateTaskTitle" class="form-control" disabled>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Current Status</label>
+              <input type="text" id="updateTaskCurrentStatus" class="form-control" disabled>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Update Status</label>
+              <select name="status" class="form-select">
+                <option value="">Select New Status</option>
+                <option value="Pending">Pending</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+              </select>
+              <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['status']) ? 'block' : 'none' ?>">
+                <?= $errors['status'] ?? 'Status is required' ?>
+              </p>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Proof of Completion</label>
+              <input type="file" name="proof_of_completion" class="form-control" accept=".jpg,.jpeg,.png,.pdf,.docx,.xlsx">
+              <small class="text-muted">Allowed: jpg, jpeg, png, pdf, docx, xlsx (Max 5MB)</small>
+              <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['proof_of_completion']) ? 'block' : 'none' ?>">
+                <?= $errors['proof_of_completion'] ?? 'Invalid file' ?>
+              </p>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" name="update_task_status" class="btn btn-green text-white">Update Status</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW PROOF MODAL (Admin) -->
+  <div class="modal fade" id="viewProofModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Proof of Completion - <span id="proofTaskTitle"></span></h5>
+          <button class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+          <div id="proofContent" class="text-center">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <a id="proofDownloadLink" href="#" class="btn btn-green" download>
+            <i class="fa-solid fa-download me-1"></i> Download
+          </a>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
       </div>
     </div>
   </div>
@@ -745,7 +917,7 @@ if ($result) {
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script>
     $(document).ready(function() {
-      // Edit Task Modal - Populate data
+      // Edit Task Modal - Populate data (Admin)
       $('.edit-task').on('click', function() {
         $('#editTaskId').val($(this).data('id'));
         $('#editTaskTitle').val($(this).data('title'));
@@ -753,8 +925,42 @@ if ($result) {
         $('#editPriority').val($(this).data('priority'));
         $('#editStatus').val($(this).data('status'));
         $('#editAssignedTo').val($(this).data('assigned'));
-        $('#editProjectName').val($(this).data('project'));
+        $('#editProjectId').val($(this).data('project-id'));
         $('#editDueDate').val($(this).data('due'));
+      });
+
+      // View Proof Modal - Display proof file
+      $('.view-proof').on('click', function() {
+        const filename = $(this).data('filename');
+        const taskTitle = $(this).data('title');
+        const taskId = $(this).data('id');
+        const filepath = '../uploads/task_proofs/' + filename;
+        const fileExt = filename.split('.').pop().toLowerCase();
+
+        $('#proofTaskTitle').text(taskTitle);
+        $('#proofDownloadLink').attr('href', filepath).attr('download', filename);
+
+        // Determine how to display the file based on extension
+        let contentHTML = '';
+
+        if (['jpg', 'jpeg', 'png'].includes(fileExt)) {
+          contentHTML = '<img src="' + filepath + '" class="img-fluid" style="max-height: 500px;" />';
+        } else if (fileExt === 'pdf') {
+          contentHTML = '<iframe src="' + filepath + '" style="width: 100%; height: 500px; border: none;"></iframe>';
+        } else if (['docx', 'xlsx'].includes(fileExt)) {
+          contentHTML = '<div class="alert alert-info"><i class="fa-solid fa-file me-2"></i>File: <strong>' + filename + '</strong><br><p class="mb-0 mt-2">Click Download to view the file</p></div>';
+        } else {
+          contentHTML = '<div class="alert alert-warning"><i class="fa-solid fa-file me-2"></i>File: <strong>' + filename + '</strong></div>';
+        }
+
+        $('#proofContent').html(contentHTML);
+      });
+
+      // Update Task Status Modal - Populate data (Employee)
+      $('.update-task-status').on('click', function() {
+        $('#updateTaskId').val($(this).data('id'));
+        $('#updateTaskTitle').val($(this).data('title'));
+        $('#updateTaskCurrentStatus').val($(this).data('status'));
       });
 
       // Archive Task Modal - Set ID
@@ -763,13 +969,11 @@ if ($result) {
         $('#archiveTaskId').val(taskId);
       });
 
-      <?php if (!empty($errors)): ?>
-        // If there are errors, reopen the modal
+      <?php if (!empty($errors) && isset($_POST['add_task'])): ?>
         $('#addTasksModal').modal('show');
       <?php endif; ?>
     });
   </script>
-
 </body>
 
 </html>
