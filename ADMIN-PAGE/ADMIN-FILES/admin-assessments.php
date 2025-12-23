@@ -6,7 +6,7 @@ $sql = "SELECT a.*, u.first_name, u.last_name, u.email, u.phone,
         u.house_no, u.brgy, u.city, u.province, u.zip_code
         FROM assessments a
         LEFT JOIN users u ON a.user_id = u.user_id
-        WHERE is_archived = 0
+        WHERE a.is_archived = 0
         ORDER BY a.created_at DESC";
 
 $result = mysqli_query($conn, $sql);
@@ -17,7 +17,7 @@ if ($result) {
   }
 }
 
-// HANDLE ARCHIVE ASSESSMBENT (INLINE)
+// HANDLE ARCHIVE ASSESSMBENT 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['archive_assessment'])) {
   $assessment_id = intval($_POST['assessment_id']);
 

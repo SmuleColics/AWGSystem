@@ -108,7 +108,7 @@ if (file_exists('../../INCLUDES/notifications.php')) {
                 </div>
               </button>
 
-              <ul class="dropdown-menu mt-1 notif-dropdown" style="transform: translateX(-220px); width: 320px; max-height: 450px; overflow-y: auto;">
+              <ul class="dropdown-menu mt-1 notif-dropdown">
                 <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
                   <p class="fs-5 mb-0 notif-text">Notifications</p>
                   <?php if ($unread_count > 0): ?>

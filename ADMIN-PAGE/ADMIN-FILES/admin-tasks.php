@@ -271,6 +271,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_task_status'])
   $status = trim($_POST['status'] ?? '');
   $proof_file = $_FILES['proof_of_completion'] ?? null;
 
+  // Check if this task is assigned to the current employee
+  $check_query = "SELECT assigned_to_id FROM tasks WHERE task_id = $task_id";
+  $check_result = mysqli_query($conn, $check_query);
+  $task_check = mysqli_fetch_assoc($check_result);
+
+  if ($task_check['assigned_to_id'] != $employee_id) {
+    echo "<script>alert('You can only update tasks assigned to you.'); window.location='" . $_SERVER['PHP_SELF'] . "';</script>";
+    exit;
+  }
+
   // Validation
   if (empty($status)) {
     $errors['status'] = 'Status is required';
@@ -383,33 +393,45 @@ if (isset($_POST['modal-archive-button'])) {
 // Get statistics
 $stats = ['total_tasks' => 0, 'pending' => 0, 'in_progress' => 0, 'completed' => 0];
 
-$result = mysqli_query($conn, "SELECT COUNT(*) as count FROM tasks WHERE is_archived = 0");
+// Modify stats query based on user role
+if ($is_admin) {
+  $stats_condition = "is_archived = 0";
+} else {
+  $stats_condition = "is_archived = 0 AND assigned_to_id = $employee_id";
+}
+
+$result = mysqli_query($conn, "SELECT COUNT(*) as count FROM tasks WHERE $stats_condition");
 if ($result) {
   $row = mysqli_fetch_assoc($result);
   $stats['total_tasks'] = $row['count'];
 }
 
-$result = mysqli_query($conn, "SELECT COUNT(*) as count FROM tasks WHERE status = 'Pending' AND is_archived = 0");
+$result = mysqli_query($conn, "SELECT COUNT(*) as count FROM tasks WHERE status = 'Pending' AND $stats_condition");
 if ($result) {
   $row = mysqli_fetch_assoc($result);
   $stats['pending'] = $row['count'];
 }
 
-$result = mysqli_query($conn, "SELECT COUNT(*) as count FROM tasks WHERE status = 'In Progress' AND is_archived = 0");
+$result = mysqli_query($conn, "SELECT COUNT(*) as count FROM tasks WHERE status = 'In Progress' AND $stats_condition");
 if ($result) {
   $row = mysqli_fetch_assoc($result);
   $stats['in_progress'] = $row['count'];
 }
 
-$result = mysqli_query($conn, "SELECT COUNT(*) as count FROM tasks WHERE status = 'Completed' AND is_archived = 0");
+$result = mysqli_query($conn, "SELECT COUNT(*) as count FROM tasks WHERE status = 'Completed' AND $stats_condition");
 if ($result) {
   $row = mysqli_fetch_assoc($result);
   $stats['completed'] = $row['count'];
 }
 
-// Get all tasks
+// Get all tasks based on role
 $tasks = [];
-$sql = "SELECT * FROM tasks WHERE is_archived = 0 ORDER BY due_date ASC";
+if ($is_admin) {
+  $sql = "SELECT * FROM tasks WHERE is_archived = 0 ORDER BY due_date ASC";
+} else {
+  // Employees only see tasks assigned to them
+  $sql = "SELECT * FROM tasks WHERE is_archived = 0 AND assigned_to_id = $employee_id ORDER BY due_date ASC";
+}
 $result = mysqli_query($conn, $sql);
 
 if ($result) {
@@ -438,6 +460,31 @@ if ($result) {
     .sidebar-content-item:nth-child(3) .sidebar-anchor span {
       color: #16A249 !important;
     }
+
+    .current-proof-container {
+      margin-top: 15px;
+      padding: 10px;
+      background-color: #f8f9fa;
+      border-radius: 5px;
+      border: 1px solid #dee2e6;
+    }
+
+    .current-proof-img {
+      width: 100%;
+      border-radius: 5px;
+      margin-top: 10px;
+    }
+
+    .tasks-actions {
+      width: 100%;
+    }
+
+    @media (min-width: 768px) {
+      .tasks-actions {
+        max-width: 150px;
+        flex-shrink: 0;
+      }
+    }
   </style>
 </head>
 
@@ -465,7 +512,7 @@ if ($result) {
       <div class="col-lg-3 col-md-6 col-sm-6">
         <div class="p-4 inventory-category rounded d-flex justify-content-between align-items-center">
           <div class="inventory-desc">
-            <p class="mb-1 fs-14 light-text">Total Tasks</p>
+            <p class="mb-1 fs-14 light-text"><?= $is_admin ? 'Total Tasks' : 'My Tasks' ?></p>
             <p class="mb-0 fs-24 text-primary"><?= $stats['total_tasks'] ?></p>
           </div>
           <div class="inventory-icon">
@@ -513,14 +560,14 @@ if ($result) {
       <div class="col-12">
         <div class="tasks-container rounded-3 bg-white">
           <div class="tasks-top p-4 border-bottom">
-            <h2 class="fs-24 mobile-fs-22 mb-0">All Tasks</h2>
+            <h2 class="fs-24 mobile-fs-22 mb-0"><?= $is_admin ? 'All Tasks' : 'My Assigned Tasks' ?></h2>
           </div>
 
           <?php if (empty($tasks)): ?>
             <div class="text-center py-5">
               <i class="fa-solid fa-tasks fs-48 text-muted mb-3"></i>
               <h4 class="text-muted">No Tasks Available</h4>
-              <p class="text-muted">Add a new task to get started.</p>
+              <p class="text-muted"><?= $is_admin ? 'Add a new task to get started.' : 'You have no tasks assigned yet.' ?></p>
             </div>
           <?php else: ?>
             <div class="px-4 pb-4 pt-3">
@@ -569,7 +616,7 @@ if ($result) {
                     </div>
                   </div>
 
-                  <div class="tasks-actions d-flex flex-column gap-2 flex-fill" style="width: 150px;">
+                  <div class="tasks-actions d-flex flex-column gap-2 flex-fill">
                     <?php if ($is_admin): ?>
 
                       <button class="btn btn-light border edit-task w-100"
@@ -588,7 +635,7 @@ if ($result) {
                       </button>
 
                       <?php if (!empty($task['proof_of_completion'])): ?>
-                        <button class="btn btn-success border view-proof w-100"
+                        <button class="btn btn-green border view-proof w-100"
                           data-id="<?= $task['task_id'] ?>"
                           data-filename="<?= htmlspecialchars($task['proof_of_completion']) ?>"
                           data-title="<?= htmlspecialchars($task['task_title']) ?>"
@@ -608,10 +655,12 @@ if ($result) {
                         data-id="<?= $task['task_id'] ?>"
                         data-title="<?= htmlspecialchars($task['task_title']) ?>"
                         data-status="<?= htmlspecialchars($task['status']) ?>"
+                        data-proof="<?= htmlspecialchars($task['proof_of_completion'] ?? '') ?>"
                         data-bs-toggle="modal"
                         data-bs-target="#updateTaskStatusModal">
                         Update Status
                       </button>
+                      
                     <?php endif; ?>
                   </div>
                 </div>
@@ -846,11 +895,17 @@ if ($result) {
 
             <div class="mb-3">
               <label class="form-label">Proof of Completion</label>
-              <input type="file" name="proof_of_completion" class="form-control" accept=".jpg,.jpeg,.png,.pdf,.docx,.xlsx">
+              <input type="file" name="proof_of_completion" id="proofFileInput" class="form-control" accept=".jpg,.jpeg,.png,.pdf,.docx,.xlsx">
               <small class="text-muted">Allowed: jpg, jpeg, png, pdf, docx, xlsx (Max 5MB)</small>
               <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['proof_of_completion']) ? 'block' : 'none' ?>">
                 <?= $errors['proof_of_completion'] ?? 'Invalid file' ?>
               </p>
+
+              <!-- Show current proof if exists -->
+              <div id="currentProofContainer" class="current-proof-container" style="display: none;">
+                <p class="mb-2 fw-bold"><i class="fa-solid fa-file-check me-2"></i>Current Proof:</p>
+                <div id="currentProofDisplay" class="w-100"></div>
+              </div>
             </div>
           </div>
 
@@ -863,7 +918,7 @@ if ($result) {
     </div>
   </div>
 
-  <!-- VIEW PROOF MODAL (Admin) -->
+  <!-- VIEW PROOF MODAL (Admin & Employee) -->
   <div class="modal fade" id="viewProofModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content">
@@ -958,9 +1013,35 @@ if ($result) {
 
       // Update Task Status Modal - Populate data (Employee)
       $('.update-task-status').on('click', function() {
-        $('#updateTaskId').val($(this).data('id'));
-        $('#updateTaskTitle').val($(this).data('title'));
-        $('#updateTaskCurrentStatus').val($(this).data('status'));
+        const taskId = $(this).data('id');
+        const taskTitle = $(this).data('title');
+        const currentStatus = $(this).data('status');
+        const currentProof = $(this).data('proof');
+
+        $('#updateTaskId').val(taskId);
+        $('#updateTaskTitle').val(taskTitle);
+        $('#updateTaskCurrentStatus').val(currentStatus);
+
+        // Clear file input
+        $('#proofFileInput').val('');
+
+        // Show current proof if exists
+        if (currentProof && currentProof !== '') {
+          const filepath = '../uploads/task_proofs/' + currentProof;
+          const fileExt = currentProof.split('.').pop().toLowerCase();
+          let proofHTML = '';
+
+          if (['jpg', 'jpeg', 'png'].includes(fileExt)) {
+            proofHTML = '<img src="' + filepath + '" class="current-proof-img" />';
+          } else {
+            proofHTML = '<p class="mb-0"><i class="fa-solid fa-file me-2"></i>' + currentProof + '</p>';
+          }
+
+          $('#currentProofDisplay').html(proofHTML);
+          $('#currentProofContainer').show();
+        } else {
+          $('#currentProofContainer').hide();
+        }
       });
 
       // Archive Task Modal - Set ID
@@ -971,6 +1052,10 @@ if ($result) {
 
       <?php if (!empty($errors) && isset($_POST['add_task'])): ?>
         $('#addTasksModal').modal('show');
+      <?php endif; ?>
+
+      <?php if (!empty($errors) && isset($_POST['update_task_status'])): ?>
+        $('#updateTaskStatusModal').modal('show');
       <?php endif; ?>
     });
   </script>

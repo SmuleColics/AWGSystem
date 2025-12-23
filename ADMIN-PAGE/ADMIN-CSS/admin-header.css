@@ -215,6 +215,13 @@ body {
   animation: pulse 2s infinite;
 }
 
+.notif-dropdown {
+  transform: translateX(-220px) !important; 
+  width: 320px !important; 
+  max-height: 450px !important; 
+  overflow-y: auto !important;
+}
+
 @keyframes pulse {
   0% {
     transform: scale(1);
@@ -338,13 +345,14 @@ body {
     display: none;
   }
   body {
-    margin-left: 0 !important;
+    padding-top: 0 !important;
+    padding-left: 0 !important;
     background-color: green;
   }
 }
 
 /* =============================
-   HEADER RESPONSIVE (< 991px)
+  HEADER RESPONSIVE (< 991px)
 ============================= */
 @media (max-width: 991px) {
 
@@ -398,12 +406,15 @@ body {
   .header-user .fa-user {
     font-size: 16px !important;
   }
-
-  /* Dropdown aligns better on small screens */
-  .notif-dropdown,
+  
   .profile-dropdown {
     transform: translateX(-120px) !important;
   }
+
+  .notif-dropdown {
+    transform: translateX(-220px) !important; 
+  }
+
 
 }
 

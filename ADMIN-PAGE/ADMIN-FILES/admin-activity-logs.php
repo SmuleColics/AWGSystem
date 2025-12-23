@@ -12,6 +12,11 @@ $date_to = $_GET['date_to'] ?? '';
 // Build SQL query with filters
 $where_conditions = [];
 
+// If employee (non-admin), only show their own activities
+if (!$is_admin) {
+  $where_conditions[] = "employee_id = $employee_id";
+}
+
 if ($module_filter !== 'ALL') {
   $where_conditions[] = "module = '" . mysqli_real_escape_string($conn, $module_filter) . "'";
 }
@@ -34,11 +39,23 @@ $where_clause = count($where_conditions) > 0 ? 'WHERE ' . implode(' AND ', $wher
 $sql = "SELECT * FROM activity_logs $where_clause ORDER BY created_at DESC LIMIT 500";
 $logs_result = mysqli_query($conn, $sql);
 
-// Get statistics
-$total_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activity_logs"));
-$today_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activity_logs WHERE DATE(created_at) = CURDATE()"));
-$inventory_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activity_logs WHERE module = 'INVENTORY'"));
-$assessment_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activity_logs WHERE module = 'ASSESSMENTS'"));
+// Get statistics based on user role
+if ($is_admin) {
+  $total_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activity_logs"));
+  $today_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activity_logs WHERE DATE(created_at) = CURDATE()"));
+  $inventory_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activity_logs WHERE module = 'INVENTORY'"));
+  $assessment_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activity_logs WHERE module = 'ASSESSMENTS'"));
+  $task_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activity_logs WHERE module = 'TASKS'"));
+  $project_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activity_logs WHERE module = 'PROJECTS'"));
+} else {
+  // Employee only sees their own stats
+  $total_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activity_logs WHERE employee_id = $employee_id"));
+  $today_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activity_logs WHERE employee_id = $employee_id AND DATE(created_at) = CURDATE()"));
+  $inventory_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activity_logs WHERE employee_id = $employee_id AND module = 'INVENTORY'"));
+  $assessment_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activity_logs WHERE employee_id = $employee_id AND module = 'ASSESSMENTS'"));
+  $task_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activity_logs WHERE employee_id = $employee_id AND module = 'TASKS'"));
+  $project_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activity_logs WHERE employee_id = $employee_id AND module = 'PROJECTS'"));
+}
 ?>
 
 <!DOCTYPE html>
@@ -56,45 +73,62 @@ $assessment_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activ
 
     <div class="d-flex justify-content-between align-items-center mb-3">
       <div>
-        <h1 class="fs-36 mobile-fs-32">Activity Logs</h1>
-        <p class="admin-top-desc">Track all system activities and changes</p>
+        <h1 class="fs-36 mobile-fs-32"><?= $is_admin ? 'Activity Logs' : 'My Activity Logs' ?></h1>
+        <p class="admin-top-desc"><?= $is_admin ? 'Track all system activities and changes' : 'Track your activities and actions' ?></p>
       </div>
     </div>
 
     <!-- Statistics Cards -->
     <div class="row g-3 mb-4">
-      <div class="col-md-3">
+      <div class="col-md-4">
         <div class="p-4 inventory-category rounded">
-          <p class="light-text fs-14 mb-0">Total Activities</p>
+          <p class="light-text fs-14 mb-0"><?= $is_admin ? 'Total Activities' : 'My Total Activities' ?></p>
           <p class="fw-bold fs-24 mb-0"><?= number_format($total_logs) ?></p>
         </div>
       </div>
-      <div class="col-md-3">
+
+      <div class="col-md-4">
         <div class="p-4 inventory-category rounded">
           <p class="light-text fs-14 mb-0">Today's Activities</p>
           <p class="fw-bold fs-24 mb-0 text-primary"><?= number_format($today_logs) ?></p>
         </div>
       </div>
-      <div class="col-md-3">
+
+
+      <div class="col-md-4">
         <div class="p-4 inventory-category rounded">
           <p class="light-text fs-14 mb-0">Inventory Activities</p>
           <p class="fw-bold fs-24 mb-0 green-text"><?= number_format($inventory_logs) ?></p>
         </div>
       </div>
-      <div class="col-md-3">
+
+      <div class="col-md-4">
         <div class="p-4 inventory-category rounded">
           <p class="light-text fs-14 mb-0">Assessment Activities</p>
           <p class="fw-bold fs-24 mb-0 text-info"><?= number_format($assessment_logs) ?></p>
         </div>
       </div>
+
+      <div class="col-md-4">
+        <div class="p-4 inventory-category rounded">
+          <p class="light-text fs-14 mb-0">Task Activities</p>
+          <p class="fw-bold fs-24 mb-0 text-warning"><?= number_format($task_logs) ?></p>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="p-4 inventory-category rounded">
+          <p class="light-text fs-14 mb-0">Project Activities</p>
+          <p class="fw-bold fs-24 mb-0 text-purple"><?= number_format($project_logs) ?></p>
+        </div>
+      </div>
     </div>
 
-    <!-- Activity Logs Table -->
     <div class="border bg-white rounded-3">
       <div class="table-responsive p-4">
         <table id="logsTable" class="table table-hover mb-0">
           <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
-            <p class="fs-24 mobile-fs-22 mb-0">Activity Logs</p>
+            <p class="fs-24 mobile-fs-22 mb-0"><?= $is_admin ? 'Activity Logs' : 'My Activity Logs' ?></p>
             <div class="d-flex gap-2 flex-wrap">
               <form method="GET" class="d-flex gap-2 flex-wrap" id="filterForm">
 
@@ -136,7 +170,9 @@ $assessment_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activ
             <tr>
               <th>#</th>
               <th>Timestamp</th>
-              <th>User Name</th>
+              <?php if ($is_admin): ?>
+                <th>User Name</th>
+              <?php endif; ?>
               <th>Action</th>
               <th>Module</th>
               <th>Subject</th>
@@ -153,7 +189,9 @@ $assessment_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activ
                     <small><?= date('M d, Y', strtotime($log['created_at'])) ?></small><br>
                     <small class="text-muted"><?= date('h:i A', strtotime($log['created_at'])) ?></small>
                   </td>
-                  <td><?= htmlspecialchars($log['employee_name']) ?></td>
+                  <?php if ($is_admin): ?>
+                    <td><?= htmlspecialchars($log['employee_name']) ?></td>
+                  <?php endif; ?>
                   <td>
                     <?php
                     $action_class = match ($log['action']) {
@@ -178,9 +216,9 @@ $assessment_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activ
               <?php endwhile; ?>
             <?php else: ?>
               <tr>
-                <td colspan="7" class="text-center py-5">
+                <td colspan="<?= $is_admin ? '7' : '6' ?>" class="text-center py-5">
                   <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
-                  <p class="text-muted">No activity logs found</p>
+                  <p class="text-muted"><?= $is_admin ? 'No activity logs found' : 'You have no activity logs yet' ?></p>
                 </td>
               </tr>
             <?php endif; ?>
@@ -211,7 +249,7 @@ $assessment_logs = mysqli_num_rows(mysqli_query($conn, "SELECT log_id FROM activ
         ],
         pageLength: 25,
         language: {
-          emptyTable: "No activity logs found"
+          emptyTable: "<?= $is_admin ? 'No activity logs found' : 'You have no activity logs yet' ?>"
         }
       });
     });
