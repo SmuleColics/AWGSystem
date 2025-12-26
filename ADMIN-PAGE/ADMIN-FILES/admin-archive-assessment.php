@@ -50,11 +50,9 @@ if (isset($_POST['modal-restore-button'])) {
         window.location = '{$_SERVER['PHP_SELF']}';
       </script>";
       exit;
-
     } else {
       echo "<script>alert('Restore failed.');</script>";
     }
-
   } else {
     echo "<script>alert('Assessment not found.');</script>";
   }
@@ -99,12 +97,16 @@ if ($result) {
   $stats['completed'] = $row['count'];
 }
 
-// Get all ARCHIVED assessments only
+// Get all ARCHIVED assessments with assigned employees
 $assessments = [];
 $sql = "SELECT a.*, u.first_name, u.last_name, u.email, u.phone, 
-        u.house_no, u.brgy, u.city, u.province, u.zip_code
+        u.house_no, u.brgy, u.city, u.province, u.zip_code,
+        e1.first_name as employee1_first_name, e1.last_name as employee1_last_name,
+        e2.first_name as employee2_first_name, e2.last_name as employee2_last_name
         FROM assessments a
         LEFT JOIN users u ON a.user_id = u.user_id
+        LEFT JOIN employees e1 ON a.assigned_to_id = e1.employee_id
+        LEFT JOIN employees e2 ON a.assigned_to_id_2 = e2.employee_id
         WHERE a.is_archived = 1
         ORDER BY a.created_at DESC";
 
@@ -136,23 +138,54 @@ if ($result) {
     .sidebar-content-item:nth-child(4) .sidebar-anchor span {
       color: #16A249 !important;
     }
+
+    .assessment-status-badge {
+      font-size: 12px;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-weight: 500;
+    }
+
+    .assessment-completed-badge {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .assessment-pending-badge {
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeaa7;
+    }
+
+    .assigned-team-badge {
+      display: inline-block;
+      background-color: #e7f3ff;
+      color: #004085;
+      padding: 3px 8px;
+      border-radius: 8px;
+      font-size: 12px;
+      margin-right: 4px;
+      margin-bottom: 4px;
+    }
   </style>
 </head>
 
 <body>
 
   <!-- START OF MAIN  -->
-  <main id="main" class="container-xxl text-dark px-4  py-5 min-vh-100">
-    <!-- BACK BUTTON -->
-    <a href="admin-assessments.php" class="btn btn-outline-secondary mb-3">
+  <main id="main" class="container-xxl text-dark px-4 py-5 min-vh-100">
+
+    <a href="admin-assessments.php" class="btn btn-outline-secondary mb-2">
       <i class="fa fa-arrow-left me-2"></i> Back to Assessments
     </a>
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center gap-4 mb-4">
       <div>
         <h1 class="fs-36 mobile-fs-32">Archived Assessments</h1>
         <p class="admin-top-desc">View and restore archived assessment requests</p>
       </div>
+
     </div>
 
     <div class="row g-3 mb-4">
@@ -211,10 +244,30 @@ if ($result) {
 
       <div class="col-12">
         <div class="assessment-container rounded-3 bg-white">
-          <div class="assessment-top p-4">
+          <div class="assessment-top p-4 d-flex justify-content-between align-items-center flex-column flex-md-row gap-3">
             <h2 class="fs-24 mobile-fs-22 mb-0">All Archived Assessments (<?= count($assessments) ?>)</h2>
+            <div class="d-flex gap-2">
+              <div>
+                <select id="serviceFilter" class="form-select">
+                  <option value="all">All Services</option>
+                  <option value="cctv">CCTV</option>
+                  <option value="solar">Solar</option>
+                  <option value="renovation">Renovation</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div>
+                <select id="assessmentFilter" class="form-select">
+                  <option value="all">Show All</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Accepted">Accepted</option>
+                  <option value="Rejected">Rejected</option>
+                  <option value="Completed">Completed</option>
+                </select>
+              </div>
+            </div>
           </div>
-          
+
           <div class="px-4 pb-4 d-flex flex-column gap-4">
 
             <?php if (empty($assessments)): ?>
@@ -224,96 +277,150 @@ if ($result) {
                 <p class="text-muted">All your assessments are active.</p>
               </div>
             <?php else: ?>
-              <?php foreach ($assessments as $assessment): ?>
-                <?php
-                $user_full_name = $assessment['first_name'] . ' ' . $assessment['last_name'];
-                $location = trim($assessment['city'] . ', ' . $assessment['province']);
-                $formatted_date = date('m/d/Y', strtotime($assessment['preferred_date']));
+              <!-- Empty State (for filtering) -->
+              <div id="assessmentEmptyState" class="text-center py-5 d-none">
+                <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+                <p class="text-muted">No assessments found for this filter</p>
+              </div>
 
-                // Status badge classes
-                $statusClass = match ($assessment['status']) {
-                  "Pending"      => "badge-pill taskstatus-pending",
-                  "Accepted"     => "badge-pill taskstatus-inprogress",
-                  "Completed"    => "badge-pill taskstatus-completed",
-                  "Rejected"     => "badge-pill priority-high",
-                  default        => "badge-pill"
-                };
-                ?>
+              <!-- Assessment Cards Container -->
+              <div id="assessmentCardsContainer">
+                <?php foreach ($assessments as $assessment): ?>
+                  <?php
+                  $user_full_name = $assessment['first_name'] . ' ' . $assessment['last_name'];
+                  $location = trim($assessment['city'] . ', ' . $assessment['province']);
+                  $formatted_date = date('m/d/Y', strtotime($assessment['preferred_date']));
 
-                <div class="assessment-con d-flex flex-md-row flex-column border p-3 rounded-3 gap-4">
-                  <div class="w-100">
-                    <div class="d-flex align-items-center gap-3 mb-2">
-                      <h3 class="fs-18 mb-0">
-                        <?= htmlspecialchars($user_full_name) ?>
-                        <span class="fs-14 light-text">(<?= htmlspecialchars($assessment['email']) ?>)</span>
-                      </h3>
-                      <span class="<?= $statusClass ?>"><?= htmlspecialchars($assessment['status']) ?></span>
-                      <span class="badge-pill priority-high">Archived</span>
-                    </div>
+                  $assigned_employees = [];
+                  if ($assessment['assigned_to_id']) {
+                    $assigned_employees[] = $assessment['employee1_first_name'] . ' ' . $assessment['employee1_last_name'];
+                  }
+                  if ($assessment['assigned_to_id_2']) {
+                    $assigned_employees[] = $assessment['employee2_first_name'] . ' ' . $assessment['employee2_last_name'];
+                  }
 
-                    <div class="row mt-1">
-                      <div class="col-md-6">
-                        <p class="fs-14 mb-2">
-                          <span class="light-text">Service: </span>
-                          <?= htmlspecialchars($assessment['service_type']) ?>
-                        </p>
-                        <p class="fs-14 mb-2">
-                          <span class="light-text">Time: </span>
-                          <?= htmlspecialchars($assessment['preferred_time']) ?>
-                        </p>
-                        <p class="fs-14 mb-2">
-                          <span class="light-text">Location: </span>
-                          <?= htmlspecialchars($location) ?>
-                        </p>
-                        <?php if (!empty($assessment['notes'])): ?>
-                          <p class="fs-14 mb-0">
-                            <span class="light-text">Notes: </span><br />
-                            <?= htmlspecialchars($assessment['notes']) ?>
-                          </p>
+                  // Status badge classes
+                  $statusClass = match ($assessment['status']) {
+                    "Pending"      => "badge-pill taskstatus-pending",
+                    "Accepted"     => "badge-pill taskstatus-inprogress",
+                    "Completed"    => "badge-pill taskstatus-completed",
+                    "Rejected"     => "badge-pill priority-high",
+                    default        => "badge-pill"
+                  };
+                  ?>
+
+                  <div class="assessment-con d-flex flex-md-row flex-column border p-3 rounded-3 gap-4 mb-3"
+                    data-status="<?= htmlspecialchars($assessment['status']) ?>"
+                    data-service="<?= strtolower(str_replace(' ', '_', $assessment['service_type'])) ?>">
+
+                    <div class="w-100">
+                      <div class="d-flex align-items-center gap-3 mb-2 flex-wrap">
+                        <h3 class="fs-18 mb-0">
+                          <?= htmlspecialchars($user_full_name) ?>
+                          <span class="fs-14 light-text">(<?= htmlspecialchars($assessment['email']) ?>)</span>
+                        </h3>
+                        <span class="<?= $statusClass ?>"><?= htmlspecialchars($assessment['status']) ?></span>
+                        <span class="badge-pill priority-high">Archived</span>
+
+                        <?php if ($assessment['status'] === 'Accepted'): ?>
+                          <?php if ($assessment['assessment_completed']): ?>
+                            <span class="assessment-status-badge assessment-completed-badge">
+                              <i class="fas fa-check-circle me-1"></i>Assessment Done
+                            </span>
+                          <?php else: ?>
+                            <span class="assessment-status-badge assessment-pending-badge">
+                              <i class="fas fa-clock me-1"></i>Assessment Pending
+                            </span>
+                          <?php endif; ?>
                         <?php endif; ?>
                       </div>
 
-                      <div class="col-md-6">
-                        <p class="fs-14 mb-2">
-                          <span class="light-text">Date: </span>
-                          <?= $formatted_date ?>
-                        </p>
-                        <p class="fs-14 mb-2">
-                          <span class="light-text">Phone: </span>
-                          <?= htmlspecialchars($assessment['phone']) ?>
-                        </p>
-                        <?php if (!empty($assessment['estimated_budget'])): ?>
+                      <div class="row mt-1">
+                        <div class="col-md-6">
                           <p class="fs-14 mb-2">
-                            <span class="light-text">Estimated Budget: </span>
-                            ₱<?= number_format($assessment['estimated_budget'], 2) ?>
+                            <span class="light-text">Service: </span>
+                            <?= htmlspecialchars($assessment['service_type']) ?>
                           </p>
-                        <?php endif; ?>
-                        <p class="fs-14 mb-2">
-                          <span class="light-text">Requested: </span>
-                          <?= date('M d, Y h:i A', strtotime($assessment['created_at'])) ?>
-                        </p>
+                          <p class="fs-14 mb-2">
+                            <span class="light-text">Time: </span>
+                            <?= htmlspecialchars($assessment['preferred_time']) ?>
+                          </p>
+                          <p class="fs-14 mb-2">
+                            <span class="light-text">Location: </span>
+                            <?= htmlspecialchars($location) ?>
+                          </p>
+                          <?php if (!empty($assigned_employees)): ?>
+                            <p class="fs-14 mb-2">
+                              <span class="light-text">Assigned Team: </span><br>
+                              <?php foreach ($assigned_employees as $emp_name): ?>
+                                <span class="assigned-team-badge">
+                                  <i class="fas fa-user me-1"></i><?= htmlspecialchars($emp_name) ?>
+                                </span>
+                              <?php endforeach; ?>
+                            </p>
+                          <?php endif; ?>
+                          <?php if (!empty($assessment['notes'])): ?>
+                            <p class="fs-14 mb-0">
+                              <span class="light-text">Notes: </span><br />
+                              <?= htmlspecialchars($assessment['notes']) ?>
+                            </p>
+                          <?php endif; ?>
+                        </div>
+
+                        <div class="col-md-6">
+                          <p class="fs-14 mb-2">
+                            <span class="light-text">Date: </span>
+                            <?= $formatted_date ?>
+                          </p>
+                          <p class="fs-14 mb-2">
+                            <span class="light-text">Phone: </span>
+                            <?= htmlspecialchars($assessment['phone']) ?>
+                          </p>
+                          <?php if (!empty($assessment['estimated_budget'])): ?>
+                            <p class="fs-14 mb-2">
+                              <span class="light-text">Estimated Budget: </span>
+                              ₱<?= number_format($assessment['estimated_budget'], 2) ?>
+                            </p>
+                          <?php endif; ?>
+                          <p class="fs-14 mb-2">
+                            <span class="light-text">Requested: </span>
+                            <?= date('M d, Y h:i A', strtotime($assessment['created_at'])) ?>
+                          </p>
+                          <?php if ($assessment['assessment_completed'] && $assessment['assessment_completed_at']): ?>
+                            <p class="fs-14 mb-2">
+                              <span class="light-text">Completed: </span>
+                              <?= date('M d, Y h:i A', strtotime($assessment['assessment_completed_at'])) ?>
+                            </p>
+                          <?php endif; ?>
+                        </div>
                       </div>
+
                     </div>
 
+                    <div class="assessment-actions d-flex flex-column gap-2">
+                      <?php if ($is_admin): ?>
+                        <!-- Restore button -->
+                        <button
+                          type="button"
+                          class="btn btn-success flex w-100 restore-assessment"
+                          data-id="<?= $assessment['assessment_id'] ?>"
+                          data-bs-toggle="modal"
+                          data-bs-target="#restoreAssessmentModal">
+                          <i class="fa-solid fa-rotate-left me-1"></i>
+                          Restore
+                        </button>
+                      <?php else: ?>
+                        <!-- Non-admin view -->
+                        <button class="btn btn-secondary border flex w-100" disabled>
+                          <i class="fa-solid fa-box-archive me-1"></i>
+                          Archived
+                        </button>
+                      <?php endif; ?>
+                    </div>
                   </div>
 
-                  <div class="assessment-actions d-flex flex-column gap-2">
-                    <?php if ($is_admin): ?>
-                      <!-- Restore button -->
-                      <button
-                        type="button"
-                        class="btn btn-success flex w-100 restore-assessment"
-                        data-id="<?= $assessment['assessment_id'] ?>"
-                        data-bs-toggle="modal"
-                        data-bs-target="#restoreAssessmentModal">
-                        <i class="fa-solid fa-rotate-left me-1"></i>
-                        Restore
-                      </button>
-                    <?php endif; ?>
-                  </div>
-                </div>
-
-              <?php endforeach; ?>
+                <?php endforeach; ?>
+              </div>
             <?php endif; ?>
 
           </div>
@@ -364,6 +471,42 @@ if ($result) {
       const assessmentId = this.getAttribute('data-id');
       document.getElementById('restoreAssessmentId').value = assessmentId;
     });
+  });
+
+  // Filter functionality
+  document.addEventListener('DOMContentLoaded', function() {
+    const statusFilter = document.getElementById('assessmentFilter');
+    const serviceFilter = document.getElementById('serviceFilter');
+    const assessmentCons = document.querySelectorAll('.assessment-con');
+    const emptyStateMessage = document.getElementById('assessmentEmptyState');
+
+    function applyFilters() {
+      const selectedStatus = statusFilter.value;
+      const selectedService = serviceFilter.value;
+      let visibleCount = 0;
+
+      assessmentCons.forEach(card => {
+        const cardStatus = card.dataset.status;
+        const cardService = card.dataset.service;
+
+        const statusMatch = selectedStatus === 'all' || cardStatus === selectedStatus;
+        const serviceMatch = selectedService === 'all' || cardService.includes(selectedService);
+
+        if (statusMatch && serviceMatch) {
+          card.classList.remove('d-none');
+          visibleCount++;
+        } else {
+          card.classList.add('d-none');
+        }
+      });
+
+      if (emptyStateMessage) {
+        emptyStateMessage.classList.toggle('d-none', visibleCount !== 0);
+      }
+    }
+
+    statusFilter.addEventListener('change', applyFilters);
+    serviceFilter.addEventListener('change', applyFilters);
   });
 </script>
 

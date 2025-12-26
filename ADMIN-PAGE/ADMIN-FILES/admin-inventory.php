@@ -5,6 +5,72 @@ include 'admin-header.php'; // Includes authentication and sets $is_admin variab
 $errors = [];
 $success = false;
 
+// ========== GENERATE WEEKLY REPORT ========== //
+if (isset($_GET['report']) && $_GET['report'] === 'weekly' && $is_admin) {
+  $report_type = 'weekly';
+  $date_from = date('Y-m-d', strtotime('-7 days'));
+  $date_to = date('Y-m-d');
+
+  // Get inventory items
+  $sql = "SELECT * FROM inventory_items WHERE is_archived = 0 ORDER BY category, item_name";
+  $result = mysqli_query($conn, $sql);
+  $report_items = [];
+  if ($result) {
+    while ($row = mysqli_fetch_assoc($result)) {
+      $report_items[] = $row;
+    }
+  }
+
+  // Get activity logs for the period
+  $log_sql = "SELECT * FROM activity_logs 
+              WHERE module = 'INVENTORY' 
+              AND created_at BETWEEN '$date_from 00:00:00' AND '$date_to 23:59:59'
+              ORDER BY created_at DESC";
+  $log_result = mysqli_query($conn, $log_sql);
+  $activity_logs = [];
+  if ($log_result) {
+    while ($row = mysqli_fetch_assoc($log_result)) {
+      $activity_logs[] = $row;
+    }
+  }
+
+  include 'inventory-report-template.php';
+  exit;
+}
+
+// ========== GENERATE MONTHLY REPORT ========== //
+if (isset($_GET['report']) && $_GET['report'] === 'monthly' && $is_admin) {
+  $report_type = 'monthly';
+  $date_from = date('Y-m-01'); // First day of current month
+  $date_to = date('Y-m-d'); // Today
+
+  // Get inventory items
+  $sql = "SELECT * FROM inventory_items WHERE is_archived = 0 ORDER BY category, item_name";
+  $result = mysqli_query($conn, $sql);
+  $report_items = [];
+  if ($result) {
+    while ($row = mysqli_fetch_assoc($result)) {
+      $report_items[] = $row;
+    }
+  }
+
+  // Get activity logs for the period
+  $log_sql = "SELECT * FROM activity_logs 
+              WHERE module = 'INVENTORY' 
+              AND created_at BETWEEN '$date_from 00:00:00' AND '$date_to 23:59:59'
+              ORDER BY created_at DESC";
+  $log_result = mysqli_query($conn, $log_sql);
+  $activity_logs = [];
+  if ($log_result) {
+    while ($row = mysqli_fetch_assoc($log_result)) {
+      $activity_logs[] = $row;
+    }
+  }
+
+  include 'inventory-report-template.php';
+  exit;
+}
+
 // ========== ONLY ADMINS CAN ADD ITEMS ========== //
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
 
@@ -70,7 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
     } else {
       $status = 'In Stock';
     }
-    
+
     $status_esc = mysqli_real_escape_string($conn, $status);
 
     $sql = "INSERT INTO inventory_items (item_name, category, quantity, quantity_unit, price, selling_price, status, location, supplier, warranty_years, warranty_months, warranty_days, is_archived) 
@@ -169,7 +235,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_item'])) {
     } else {
       $status = 'In Stock';
     }
-    
+
     $status_esc = mysqli_real_escape_string($conn, $status);
 
     $sql = "UPDATE inventory_items SET 
@@ -294,15 +360,16 @@ if ($result) {
 }
 
 // ========== AUTO-UPDATE STATUS BASED ON QUANTITY ========== //
-function updateItemStatus($conn, $item_id) {
+function updateItemStatus($conn, $item_id)
+{
   // Get current quantity
   $sql = "SELECT quantity FROM inventory_items WHERE item_id = $item_id";
   $result = mysqli_query($conn, $sql);
-  
+
   if ($result && $row = mysqli_fetch_assoc($result)) {
     $quantity = $row['quantity'];
     $new_status = '';
-    
+
     if ($quantity <= 0) {
       $new_status = 'Out of Stock';
     } elseif ($quantity <= 10) {
@@ -310,14 +377,14 @@ function updateItemStatus($conn, $item_id) {
     } else {
       $new_status = 'In Stock';
     }
-    
+
     // Update status
     $update_sql = "UPDATE inventory_items SET status = '$new_status' WHERE item_id = $item_id";
     mysqli_query($conn, $update_sql);
-    
+
     return $new_status;
   }
-  
+
   return null;
 }
 
@@ -363,11 +430,31 @@ function updateItemStatus($conn, $item_id) {
             <i class="fa-solid fa-plus me-1"></i> Add <span class=" d-none d-md-block ms-1">Item</span>
           </button>
         <?php endif; ?>
-          <a href="admin-archive-items.php" class="btn btn-danger text-white d-flex align-items-center">
-            <i class="fa-solid fa-box-archive me-1"></i> Archived <span class="d-none d-md-block ms-1">Items</span>
-          </a>
-      
+        <a href="admin-archive-items.php" class="btn btn-danger text-white d-flex align-items-center">
+          <i class="fa-solid fa-box-archive me-1"></i> Archived <span class="d-none d-md-block ms-1">Items</span>
+        </a>
+        <?php if ($is_admin): ?>
+          <div class="btn-group">
+            <button type="button" class="btn btn-primary text-white dropdown-toggle d-flex align-items-center" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="fa-solid fa-file-lines me-1"></i> Generate <span class="d-none d-md-block ms-1">Report</span>
+            </button>
+            <ul class="dropdown-menu">
+              <li>
+                <a class="dropdown-item" href="javascript:void(0)" onclick="generateWeeklyPDF()">
+                  <i class="fa-solid fa-calendar-week me-2"></i>Weekly Report
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="javascript:void(0)" onclick="generateMonthlyPDF()">
+                  <i class="fa-solid fa-calendar-days me-2"></i>Monthly Report
+                </a>
+              </li>
+            </ul>
+          </div>
+        <?php endif; ?>
         </div>
+
+    </div>
     </div>
 
     <div class="row g-3 mb-2">
@@ -514,7 +601,6 @@ function updateItemStatus($conn, $item_id) {
   </main>
   <!-- END OF MAIN -->
 
-  <?php if ($is_admin): ?>
     <!-- ADD ITEM MODAL -->
     <div class="modal fade" id="addItemModal" tabindex="-1" aria-labelledby="addItemModalLabel" aria-hidden="true">
       <div class="modal-dialog modal-lg">
@@ -674,227 +760,10 @@ function updateItemStatus($conn, $item_id) {
       </div>
     </div>
 
-    <!-- EDIT ITEM MODAL -->
-    <div class="modal fade" id="editItemModal" tabindex="-1" aria-labelledby="editItemModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-
-          <div class="modal-header">
-            <h5 class="modal-title" id="editItemModalLabel">Edit Inventory Item</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-
-          <div class="modal-body">
-            <form id="editItemForm" method="POST" action="">
-              <input type="hidden" name="item_id" id="editItemId">
-
-              <div class="row g-3">
-
-                <div class="col-md-6">
-                  <label class="form-label">Item Name</label>
-                  <input type="text" name="item_name" id="editItemName" class="form-control" placeholder="4MP CCTV Camera">
-                </div>
-
-                <div class="col-md-6">
-                  <label class="form-label">Category</label>
-                  <select name="category" id="editCategory" class="form-select">
-                    <option value="CCTV Project">CCTV Project</option>
-                    <option value="Solar Project">Solar Project</option>
-                    <option value="Room Renovation">Room Renovation</option>
-                  </select>
-                </div>
-
-                <div class="col-md-4">
-                  <div class="d-flex gap-2">
-                    <div class="flex-fill" style="width: 130px;">
-                      <label class="form-label">Quantity</label>
-                      <input type="number" name="quantity" id="editQuantity" class="form-control" placeholder="10">
-                    </div>
-                    <div class="flex-fill">
-                      <label class="form-label">Unit</label>
-                      <select name="quantity_unit" id="editQuantityUnit" class="form-select">
-                        <option value="piece">Piece</option>
-                        <option value="unit">Unit</option>
-                        <option value="set">Set</option>
-                        <option value="roll">Roll</option>
-                        <option value="box">Box</option>
-                        <option value="meter">Meter</option>
-                        <option value="liter">Liter</option>
-                        <option value="pack">Pack</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-
-                <div class="col-md-4">
-                  <label class="form-label">Price (₱)</label>
-                  <input type="number" name="price" id="editPrice" class="form-control" placeholder="1500">
-                </div>
-
-                <div class="col-md-4">
-                  <label class="form-label">Selling Price (₱)</label>
-                  <input type="number" name="selling_price" id="editSellingPrice" class="form-control" placeholder="2000">
-                </div>
-
-                <div class="col-md-6">
-                  <label class="form-label">Status</label>
-                  <select name="status" id="editStatus" class="form-select">
-                    <option value="In Stock">In Stock</option>
-                    <option value="Low Stock">Low Stock</option>
-                    <option value="Out of Stock">Out of Stock</option>
-                    <option value="To Be Delivered">To Be Delivered</option>
-                  </select>
-                </div>
-
-                <div class="col-md-6">
-                  <label class="form-label">Location</label>
-                  <input type="text" name="location" id="editLocation" class="form-control" placeholder="Storage Room A">
-                </div>
-
-                <div class="col-6">
-                  <label class="form-label">Supplier</label>
-                  <input type="text" name="supplier" id="editSupplier" class="form-control" placeholder="Hikvision GMA">
-                </div>
-
-                <!-- WARRANTY SECTION -->
-                <div class="col-6">
-                  <label class="form-label fw-semibold">Warranty Duration</label>
-                  <div class="row g-2">
-
-                    <div class="col-md-4">
-                      <input type="number" name="warranty_years" id="editWarrantyYears" class="form-control" placeholder="0">
-                      <small class="text-muted">Years</small>
-                    </div>
-
-                    <div class="col-md-4">
-                      <input type="number" name="warranty_months" id="editWarrantyMonths" class="form-control" placeholder="0">
-                      <small class="text-muted">Months</small>
-                    </div>
-
-                    <div class="col-md-4">
-                      <input type="number" name="warranty_days" id="editWarrantyDays" class="form-control" placeholder="0">
-                      <small class="text-muted">Days</small>
-                    </div>
-
-                  </div>
-                </div>
-
-              </div>
-
-              <div class="modal-footer mt-3">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="submit" name="edit_item" class="btn btn-green text-white">Update Item</button>
-              </div>
-
-            </form>
-          </div>
-
-        </div>
-      </div>
-    </div>
-  <?php endif; ?>
-
-  <!-- VIEW ITEM MODAL -->
-  <div class="modal fade" id="viewItemModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-
-        <div class="modal-header">
-          <h5 class="modal-title">View Inventory Item</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-
-        <div class="modal-body">
-          <form>
-
-            <div class="row g-3">
-
-              <div class="col-md-6">
-                <label class="form-label">Item Name</label>
-                <input type="text" class="form-control" id="viewItemName" readonly>
-              </div>
-
-              <div class="col-md-6">
-                <label class="form-label">Category</label>
-                <input type="text" class="form-control" id="viewCategory" readonly>
-              </div>
-
-
-              <div class="col-md-4">
-                <label class="form-label">Quantity</label>
-                <input type="text" class="form-control" id="viewQuantity" readonly>
-              </div>
-
-              <div class="col-md-4">
-                <label class="form-label">Price (₱)</label>
-                <input type="text" class="form-control" id="viewPrice" readonly>
-              </div>
-
-              <div class="col-md-4">
-                <label class="form-label">Selling Price (₱)</label>
-                <input type="text" class="form-control" id="viewSellingPrice" readonly>
-              </div>
-
-              <div class="col-md-6">
-                <label class="form-label">Status</label>
-                <input type="text" class="form-control" id="viewStatus" readonly>
-              </div>
-
-              <div class="col-md-6">
-                <label class="form-label">Location</label>
-                <input type="text" class="form-control" id="viewLocation" readonly>
-              </div>
 
 
 
-              <div class="col-6">
-                <label class="form-label">Supplier</label>
-                <input type="text" class="form-control" id="viewSupplier" readonly>
-              </div>
 
-              <div class="col-6">
-                <label class="form-label">Warranty Duration</label>
-                <input type="text" class="form-control" id="viewWarranty" readonly>
-              </div>
-
-            </div>
-
-          </form>
-        </div>
-
-        <div class="modal-footer">
-          <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        </div>
-
-      </div>
-    </div>
-  </div>
-
-  <!-- ARCHIVE MODAL -->
-  <div class="modal fade" id="archiveItemModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
-    aria-labelledby="archiveItemLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header d-flex justify-content-between">
-          <h1 class="modal-title fs-5" id="archiveItemLabel">Archive Inventory Item</h1>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-
-        <form action="" method="post">
-          <input type="hidden" name="archive_id" id="archiveItemId">
-          <div class="modal-body">
-            <h3 class="fs-24 text-center m-0 py-4">Are you sure you want to archive this item?</h3>
-            <p class="text-center text-muted">Archived items can be restored later.</p>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            <button type="submit" name="modal-archive-button" class="btn btn-danger">Archive</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
 
   <!-- DATATABLES -->
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
@@ -904,72 +773,115 @@ function updateItemStatus($conn, $item_id) {
 </body>
 
 <script>
-  $(document).ready(function() {
-    // Initialize DataTable
-    $('#inventoryTable').DataTable({
-      paging: true,
-      searching: true,
-      ordering: true,
-      info: true,
-      autoWidth: false,
-      columnDefs: [{
-        orderable: false,
-        targets: [5]
-      }]
+  // Function to generate Weekly Report PDF
+  async function generateWeeklyPDF() {
+    const reportWindow = window.open('?report=weekly&auto=1', '_blank', 'width=1200,height=800');
+
+    reportWindow.addEventListener('load', function() {
+      setTimeout(async function() {
+        try {
+          const {
+            jsPDF
+          } = reportWindow.jspdf;
+          const content = reportWindow.document.getElementById('report-content');
+
+          const canvas = await reportWindow.html2canvas(content, {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff'
+          });
+
+          const imgData = canvas.toDataURL('image/png');
+          const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a4'
+          });
+
+          const imgWidth = 210;
+          const pageHeight = 297;
+          const imgHeight = (canvas.height * imgWidth) / canvas.width;
+          let heightLeft = imgHeight;
+          let position = 0;
+
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
+
+          while (heightLeft > 0) {
+            position = heightLeft - imgHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+          }
+
+          const filename = 'Weekly_Inventory_Report_' + new Date().toISOString().split('T')[0] + '.pdf';
+          pdf.save(filename);
+
+          reportWindow.close();
+        } catch (error) {
+          console.error('Error generating PDF:', error);
+          alert('Error generating PDF. Please try again.');
+          reportWindow.close();
+        }
+      });
     });
+  }
 
-    // View Item Modal - Populate data
-    $('.view-item').on('click', function() {
-      $('#viewItemName').val($(this).data('name'));
-      $('#viewCategory').val($(this).data('category'));
-      $('#viewStatus').val($(this).data('status'));
-      $('#viewLocation').val($(this).data('location'));
-      $('#viewQuantity').val($(this).data('quantity') + ' ' + $(this).data('quantity-unit')); // UPDATED
-      $('#viewPrice').val($(this).data('price'));
-      $('#viewSellingPrice').val($(this).data('selling'));
-      $('#viewSupplier').val($(this).data('supplier'));
+  // Function to generate Monthly Report PDF
+  async function generateMonthlyPDF() {
+    const reportWindow = window.open('?report=monthly', '_blank', 'width=1200,height=800');
 
-      // Format warranty
-      let warrantyYears = $(this).data('warranty-years');
-      let warrantyMonths = $(this).data('warranty-months');
-      let warrantyDays = $(this).data('warranty-days');
-      let warranty = '';
+    reportWindow.addEventListener('load', function() {
+      setTimeout(async function() {
+        try {
+          const {
+            jsPDF
+          } = reportWindow.jspdf;
+          const content = reportWindow.document.getElementById('report-content');
 
-      if (warrantyYears > 0) warranty += warrantyYears + ' years ';
-      if (warrantyMonths > 0) warranty += warrantyMonths + ' months ';
-      if (warrantyDays > 0) warranty += warrantyDays + ' days';
+          const canvas = await reportWindow.html2canvas(content, {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff'
+          });
 
-      $('#viewWarranty').val(warranty.trim() || 'No warranty');
+          const imgData = canvas.toDataURL('image/png');
+          const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a4'
+          });
+
+          const imgWidth = 210;
+          const pageHeight = 297;
+          const imgHeight = (canvas.height * imgWidth) / canvas.width;
+          let heightLeft = imgHeight;
+          let position = 0;
+
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
+
+          while (heightLeft > 0) {
+            position = heightLeft - imgHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+          }
+
+          const filename = 'Monthly_Inventory_Report_' + new Date().toISOString().split('T')[0] + '.pdf';
+          pdf.save(filename);
+
+          reportWindow.close();
+        } catch (error) {
+          console.error('Error generating PDF:', error);
+          alert('Error generating PDF. Please try again.');
+          reportWindow.close();
+        }
+      });
     });
-
-    // Edit Item Modal - Populate data
-    $('.edit-item').on('click', function() {
-      $('#editItemId').val($(this).data('id'));
-      $('#editItemName').val($(this).data('name'));
-      $('#editCategory').val($(this).data('category'));
-      $('#editStatus').val($(this).data('status'));
-      $('#editLocation').val($(this).data('location'));
-      $('#editQuantity').val($(this).data('quantity'));
-      $('#editQuantityUnit').val($(this).data('quantity-unit')); // ADD THIS LINE
-      $('#editPrice').val($(this).data('price'));
-      $('#editSellingPrice').val($(this).data('selling'));
-      $('#editSupplier').val($(this).data('supplier'));
-      $('#editWarrantyYears').val($(this).data('warranty-years'));
-      $('#editWarrantyMonths').val($(this).data('warranty-months'));
-      $('#editWarrantyDays').val($(this).data('warranty-days'));
-    });
-
-    // Archive Item with confirmation
-    $('.archive-item').on('click', function() {
-      let itemId = $(this).data('id');
-      $('#archiveItemId').val(itemId);
-    });
-
-    <?php if (!empty($errors)): ?>
-      // If there are errors, reopen the modal
-      $('#addItemModal').modal('show');
-    <?php endif; ?>
-  });
+  }
 </script>
 
 </html>
