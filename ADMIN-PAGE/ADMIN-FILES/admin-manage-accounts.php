@@ -190,8 +190,7 @@ $accounts_result = $conn->query($accounts_query);
                                 data-bs-target="#viewAccountModal">
                           <i class="fa-solid fa-eye me-1"></i> View
                         </button>
-
-                        <!-- Archive button now opens a modal and submits via POST (no JSON/AJAX) -->
+                        <?php if ($is_admin): ?>
                         <button class="btn btn-sm btn-danger text-white archive-account-btn"
                                 data-id="<?= $account['user_id'] ?>"
                                 data-name="<?= $full_name ?>"
@@ -199,6 +198,7 @@ $accounts_result = $conn->query($accounts_query);
                                 data-bs-target="#archiveAccountModal">
                           <i class="fa-solid fa-box-archive me-1"></i> Archive
                         </button>
+                        <?php endif; ?>
                       </td>
                     </tr>
                   <?php endwhile; ?>

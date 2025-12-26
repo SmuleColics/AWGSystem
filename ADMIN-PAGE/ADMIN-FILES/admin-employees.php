@@ -203,11 +203,25 @@ include 'admin-header.php';
                     <i class="fas fa-envelope me-1"></i>
                     <?= htmlspecialchars($employee['email']) ?>
                   </p>
+                  
                   <div class="emp-btn-con d-flex w-100 gap-2">
-                    <a href="admin-employee-profile.php?id=<?= $employee['employee_id'] ?>"
-                      class="btn btn-sm btn-outline-secondary text-nowrap fs-14 <?= $is_admin ? 'w-50' : 'w-100' ?>">
-                      View Profile
-                    </a>
+                    <?php
+                    // Check if current user is viewing their own profile
+                    $is_own_profile = ($employee['employee_id'] == $_SESSION['employee_id']);
+
+                    // Only show View Profile button if admin OR it's their own profile
+                    if ($is_admin || $is_own_profile):
+                    ?>
+                      <a href="my-profile.php?id=<?= $employee['employee_id'] ?>"
+                        class="btn btn-sm btn-outline-secondary text-nowrap fs-14 <?= $is_admin ? 'w-50' : 'w-100' ?>">
+                        <?= $is_own_profile ? 'My Profile' : 'View Profile' ?>
+                      </a>
+                    <?php else: ?>
+                      <!-- For regular employees viewing others: show disabled button or nothing -->
+                      <button class="btn btn-sm btn-outline-secondary text-nowrap fs-14 w-100" disabled>
+                        <i class="fas fa-lock me-1"></i> Private
+                      </button>
+                    <?php endif; ?>
 
                     <?php if ($is_admin): ?>
                       <button onclick="openArchiveModal(<?= $employee['employee_id'] ?>)"

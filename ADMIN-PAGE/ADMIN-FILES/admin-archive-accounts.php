@@ -180,8 +180,7 @@ $accounts_result = $conn->query($accounts_query);
                                 data-bs-target="#viewAccountModal">
                           <i class="fa-solid fa-eye me-1"></i> View
                         </button>
-
-                        <!-- Restore via modal POST (no JSON) -->
+                        <?php if ($is_admin): ?>
                         <button class="btn btn-sm btn-success text-white restore-account-btn" 
                                 data-id="<?= $account['user_id'] ?>"
                                 data-name="<?= $full_name ?>"
@@ -189,6 +188,7 @@ $accounts_result = $conn->query($accounts_query);
                                 data-bs-target="#restoreAccountModal">
                           <i class="fa-solid fa-rotate-left me-1"></i> Return
                         </button>
+                        <?php endif; ?>
                       </td>
                     </tr>
                   <?php endwhile; ?>

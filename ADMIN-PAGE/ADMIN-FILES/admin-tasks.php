@@ -592,13 +592,15 @@ if ($result) {
                         "Pending"      => "badge-pill taskstatus-pending",
                         "In Progress"  => "badge-pill taskstatus-inprogress",
                         "Completed"    => "badge-pill taskstatus-completed",
-                        default        => "badge-pill"
+                        default        => "badge-pill bg-secondary text-white"
                       };
                       ?>
                       <span class="<?= $taskStatusClass ?>"><?= $taskStatus ?></span>
                     </div>
 
-                    <p class="light-text mb-3"><?= htmlspecialchars($task['task_desc']) ?></p>
+                    <p class="light-text mb-3">
+                      <?= str_replace(['&lt;br&gt;', '&lt;br/&gt;'], '<br>', htmlspecialchars($task['task_desc'])) ?>
+                    </p>
 
                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                       <p class="fs-14 mb-0">
@@ -660,7 +662,7 @@ if ($result) {
                         data-bs-target="#updateTaskStatusModal">
                         Update Status
                       </button>
-                      
+
                     <?php endif; ?>
                   </div>
                 </div>

@@ -26,50 +26,53 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   // CHECK USER OR EMPLOYEE
   if (empty($errors)) {
     $emailEsc = mysqli_real_escape_string($conn, $email);
-    
+
     // First, check EMPLOYEES table
-    $employee_query = "SELECT * FROM employees WHERE email = '$emailEsc' AND is_archived = 0 LIMIT 1";
+    $employee_query = "SELECT * FROM employees WHERE email = '$emailEsc' LIMIT 1";
     $employee_result = $conn->query($employee_query);
 
     if ($employee_result && $employee_result->num_rows === 1) {
-      // EMPLOYEE LOGIN
       $employee = $employee_result->fetch_assoc();
 
-      if (password_verify($password, $employee['password'])) {
-        // Set employee session
-        $_SESSION['employee_id'] = $employee['employee_id'];
-        $_SESSION['first_name'] = $employee['first_name'];
-        $_SESSION['last_name'] = $employee['last_name'];
-        $_SESSION['email'] = $employee['email'];
-        $_SESSION['position'] = $employee['position'];
-        $_SESSION['user_type'] = 'employee';
-
-        $employee_full_name = $employee['first_name'] . ' ' . $employee['last_name'];
-
-        // LOG LOGIN ACTIVITY
-        log_activity(
-          $conn, 
-          $employee['employee_id'], 
-          $employee_full_name, 
-          'LOGIN', 
-          'SYSTEM', 
-          null, 
-          null, 
-          'Employee logged in as ' . $employee['position']
-        );
-
-        echo "<script>
-          alert('Welcome back, " . htmlspecialchars($employee['first_name']) . "!');
-          window.location.href = '../../ADMIN-PAGE/ADMIN-FILES/admin-dashboard.php';
-        </script>";
-        exit();
+      // CHECK IF ARCHIVED
+      if ((int)$employee['is_archived'] === 1) {
+        $errors['email'] = "This account has been archived. Please contact support for assistance.";
       } else {
-        $errors['password'] = "Incorrect password";
-      }
+        // VERIFY PASSWORD
+        if (password_verify($password, $employee['password'])) {
 
+          $_SESSION['employee_id'] = $employee['employee_id'];
+          $_SESSION['first_name'] = $employee['first_name'];
+          $_SESSION['last_name'] = $employee['last_name'];
+          $_SESSION['email'] = $employee['email'];
+          $_SESSION['position'] = $employee['position'];
+          $_SESSION['user_type'] = 'employee';
+
+          $employee_full_name = $employee['first_name'] . ' ' . $employee['last_name'];
+
+          log_activity(
+            $conn,
+            $employee['employee_id'],
+            $employee_full_name,
+            'LOGIN',
+            'SYSTEM',
+            null,
+            null,
+            'Employee logged in as ' . $employee['position']
+          );
+
+          echo "<script>
+        alert('Welcome back, " . htmlspecialchars($employee['first_name']) . "!');
+        window.location.href = '../../ADMIN-PAGE/ADMIN-FILES/admin-dashboard.php';
+      </script>";
+          exit();
+        } else {
+          $errors['password'] = "Incorrect password";
+        }
+      }
     } else {
-      // If not employee, check USERS table
-      $user_query = "SELECT * FROM users WHERE email = '$emailEsc' LIMIT 1";
+      // If not employee, check USERS table (only non-archived users)
+      $user_query = "SELECT * FROM users WHERE email = '$emailEsc' AND is_archived = 0 LIMIT 1";
       $user_result = $conn->query($user_query);
 
       if ($user_result && $user_result->num_rows === 1) {
@@ -88,13 +91,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
           // LOG USER LOGIN ACTIVITY
           log_activity(
-            $conn, 
-            $user['user_id'], 
-            $user_full_name, 
-            'LOGIN', 
-            'SYSTEM', 
-            null, 
-            null, 
+            $conn,
+            $user['user_id'],
+            $user_full_name,
+            'LOGIN',
+            'SYSTEM',
+            null,
+            null,
             'User logged in | Email: ' . $user['email']
           );
 
@@ -107,7 +110,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
           $errors['password'] = "Incorrect password";
         }
       } else {
-        $errors['email'] = "Account not found";
+        // Check if account exists but is archived
+        $archived_check_query = "SELECT * FROM users WHERE email = '$emailEsc' AND is_archived = 1 LIMIT 1";
+        $archived_check_result = $conn->query($archived_check_query);
+
+        if ($archived_check_result && $archived_check_result->num_rows === 1) {
+          $errors['email'] = "This account has been archived. Please contact support for assistance.";
+        } else {
+          $errors['email'] = "Account not found";
+        }
       }
     }
   }
@@ -124,7 +135,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   <link rel="icon" href="../../INCLUDES/LP-IMAGES/awegreen-logo.png" type="image/png" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
-  
+
   <link rel="stylesheet" href="../../INCLUDES/general-CSS.css">
   <link rel="stylesheet" href="../LOGS-CSS/login.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.2/css/all.min.css">
@@ -136,7 +147,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     <h1 class="text-white fs-30 fw-bold mb-0 mt-2">A We Green Enterprise</h1>
     <p class="semi-light-text">Building a sustainable future</p>
   </div>
-  
+
   <div class="h-full">
     <div class="flex">
       <div class="bg-white p-4 rounded-3 login-container">
@@ -145,7 +156,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
           <h2 class="fs-24 mb-0">Welcome Back</h2>
           <p class="fs-14 light-text">Enter your credentials to access your account</p>
         </div>
-        
+
         <form action="" method="POST">
 
           <!-- EMAIL -->
@@ -172,7 +183,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
               id="login-pword"
               placeholder="••••••••"
               required>
-            
+
             <?php if (isset($errors['password'])): ?>
               <p class="fs-14 text-danger mb-0 mt-1"><?= $errors['password'] ?></p>
             <?php endif; ?>
@@ -191,14 +202,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
           <div class="mb-4 text-center">
             <a href="forgot-pass.php" class="text-decoration-none text-dark forgot-pass">Forgot password?</a>
           </div>
-          
+
           <div class="divider mb-4"></div>
-          
+
           <div class="d-flex justify-content-center gap-2 fs-14">
             <p class="light-text">Don't have an account?</p>
             <a class="green-text text-decoration-none signup" href="signup.php">Sign up</a>
           </div>
-          
+
           <div class="fs-14 -mt-2 light-text text-center back-to-home">
             <i class="fa-solid fa-arrow-left"></i>
             <a href="../../LANDING-PAGE/LP-FILES/LandingPage.php" class="text-decoration-none light-text">Back to Home</a>
@@ -209,7 +220,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
       </div>
     </div>
   </div>
-  
+
   <div class="mt-4 text-center fs-14 semi-light-text">
     <p>By continuing, you agree to our Terms of Service and Privacy Policy</p>
   </div>
