@@ -14,7 +14,7 @@ if (isset($_POST['modal-restore-button'])) {
   // Restore the item by setting is_archived = 0
   $sql = "UPDATE inventory_items SET is_archived = 0 WHERE item_id = $restore_id";
   if (mysqli_query($conn, $sql)) {
-    
+
     // LOG ACTIVITY
     log_activity(
       $conn,
@@ -176,7 +176,7 @@ if ($result) {
       </div>
 
 
-    <div class="col-lg-3 col-md-6 col-sm-6">
+      <div class="col-lg-3 col-md-6 col-sm-6">
         <div class="p-4 inventory-category rounded d-flex justify-content-between align-items-center">
           <div class="inventory-desc">
             <p class="mb-1 fs-14 light-text">In Stock</p>
@@ -247,20 +247,17 @@ if ($result) {
                           data-price="<?= $item['price'] ?>"
                           data-selling="<?= $item['selling_price'] ?>"
                           data-supplier="<?= htmlspecialchars($item['supplier']) ?>"
-                          data-warranty-years="<?= $item['warranty_years'] ?>"
-                          data-warranty-months="<?= $item['warranty_months'] ?>"
-                          data-warranty-days="<?= $item['warranty_days'] ?>"
                           data-bs-toggle="modal"
                           data-bs-target="#viewItemModal"
                           style="cursor:pointer"
                           title="View Details"></i>
                         <?php if ($is_admin): ?>
-                        <i class="fa-solid fa-rotate-left text-success mx-2 fs-18 restore-item"
-                          data-id="<?= $item['item_id'] ?>"
-                          style="cursor:pointer" 
-                          data-bs-toggle="modal" 
-                          data-bs-target="#restoreItemModal"
-                          title="Restore Item"></i>
+                          <i class="fa-solid fa-rotate-left text-success mx-2 fs-18 restore-item"
+                            data-id="<?= $item['item_id'] ?>"
+                            style="cursor:pointer"
+                            data-bs-toggle="modal"
+                            data-bs-target="#restoreItemModal"
+                            title="Restore Item"></i>
                         <?php endif; ?>
                       </td>
                     </tr>
@@ -289,10 +286,6 @@ if ($result) {
         </div>
 
         <div class="modal-body">
-          <div class="alert alert-warning">
-            <i class="fa-solid fa-info-circle me-2"></i>
-            This item is archived. Restore it to make changes.
-          </div>
 
           <form>
 
@@ -306,16 +299,6 @@ if ($result) {
               <div class="col-md-6">
                 <label class="form-label">Category</label>
                 <input type="text" class="form-control" id="viewCategory" readonly>
-              </div>
-
-              <div class="col-md-6">
-                <label class="form-label">Status</label>
-                <input type="text" class="form-control" id="viewStatus" readonly>
-              </div>
-
-              <div class="col-md-6">
-                <label class="form-label">Location</label>
-                <input type="text" class="form-control" id="viewLocation" readonly>
               </div>
 
               <div class="col-md-4">
@@ -333,15 +316,21 @@ if ($result) {
                 <input type="text" class="form-control" id="viewSellingPrice" readonly>
               </div>
 
-              <div class="col-6">
+              <div class="col-md-4">
+                <label class="form-label">Status</label>
+                <input type="text" class="form-control" id="viewStatus" readonly>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label">Location</label>
+                <input type="text" class="form-control" id="viewLocation" readonly>
+              </div>
+
+              <div class="col-md-4">
                 <label class="form-label">Supplier</label>
                 <input type="text" class="form-control" id="viewSupplier" readonly>
               </div>
 
-              <div class="col-6">
-                <label class="form-label">Warranty Duration</label>
-                <input type="text" class="form-control" id="viewWarranty" readonly>
-              </div>
 
             </div>
 
@@ -422,17 +411,6 @@ if ($result) {
       $('#viewSellingPrice').val('₱' + parseFloat($(this).data('selling')).toLocaleString());
       $('#viewSupplier').val($(this).data('supplier'));
 
-      // Format warranty
-      let warrantyYears = $(this).data('warranty-years');
-      let warrantyMonths = $(this).data('warranty-months');
-      let warrantyDays = $(this).data('warranty-days');
-      let warranty = '';
-
-      if (warrantyYears > 0) warranty += warrantyYears + ' year' + (warrantyYears > 1 ? 's' : '') + ' ';
-      if (warrantyMonths > 0) warranty += warrantyMonths + ' month' + (warrantyMonths > 1 ? 's' : '') + ' ';
-      if (warrantyDays > 0) warranty += warrantyDays + ' day' + (warrantyDays > 1 ? 's' : '');
-
-      $('#viewWarranty').val(warranty.trim() || 'No warranty');
     });
 
     // Restore Item Modal - Set ID

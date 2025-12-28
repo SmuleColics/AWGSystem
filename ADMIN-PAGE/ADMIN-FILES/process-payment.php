@@ -18,8 +18,9 @@ $employee_name = $_SESSION['first_name'] . ' ' . $_SESSION['last_name'];
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['process_payment'])) {
     $project_id = intval($_POST['project_id']);
     $amount = floatval($_POST['amount']);
-    $payment_method = mysqli_real_escape_string($conn, trim($_POST['payment_method']));
+    $payment_method = isset($_POST['payment_method']) ? mysqli_real_escape_string($conn, trim($_POST['payment_method'])) : '';
     $reference_number = isset($_POST['reference_number']) ? mysqli_real_escape_string($conn, trim($_POST['reference_number'])) : null;
+    $gcash_number = isset($_POST['gcash_number']) ? mysqli_real_escape_string($conn, trim($_POST['gcash_number'])) : null;
     $notes = isset($_POST['notes']) ? mysqli_real_escape_string($conn, trim($_POST['notes'])) : null;
     
     // Validate inputs
@@ -29,8 +30,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['process_payment'])) {
         exit;
     }
     
-    if (empty($payment_method)) {
-        $_SESSION['error'] = 'Payment method is required';
+    if (empty($payment_method) || !in_array($payment_method, ['Cash', 'GCash'])) {
+        $_SESSION['error'] = 'Invalid payment method selected';
         header("Location: admin-projects-detail.php?id=$project_id");
         exit;
     }
@@ -55,15 +56,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['process_payment'])) {
         exit;
     }
     
-    mysqli_begin_transaction($conn);
+    // Validate GCash details if GCash is selected
+    if ($payment_method === 'GCash') {
+        if (empty($gcash_number)) {
+            $_SESSION['error'] = 'GCash number is required for GCash payments';
+            header("Location: admin-projects-detail.php?id=$project_id");
+            exit;
+        }
+        
+        if (!preg_match('/^[0-9]{11}$/', $gcash_number)) {
+            $_SESSION['error'] = 'GCash number must be exactly 11 digits';
+            header("Location: admin-projects-detail.php?id=$project_id");
+            exit;
+        }
+        
+        if (empty($reference_number)) {
+            $_SESSION['error'] = 'Reference number is required for GCash payments';
+            header("Location: admin-projects-detail.php?id=$project_id");
+            exit;
+        }
+    }
+    
+    if (!mysqli_begin_transaction($conn)) {
+        $_SESSION['error'] = 'Database transaction error';
+        header("Location: admin-projects-detail.php?id=$project_id");
+        exit;
+    }
     
     try {
-        // Insert payment record (using correct column names)
+        // Insert payment record with gcash_number support
         $insert_payment_sql = "INSERT INTO project_payments 
-                              (project_id, payment_amount, payment_method, reference_number, payment_notes, payment_date, processed_by, created_at)
-                              VALUES ($project_id, $amount, '$payment_method', " .
-                              ($reference_number ? "'$reference_number'" : "NULL") . ", " .
-                              ($notes ? "'$notes'" : "NULL") . ", CURDATE(), $employee_id, NOW())";
+                              (project_id, payment_amount, payment_method, reference_number, gcash_number, payment_notes, payment_date, processed_by, created_at)
+                              VALUES (
+                                  $project_id, 
+                                  $amount, 
+                                  '$payment_method', 
+                                  " . ($reference_number ? "'$reference_number'" : "NULL") . ", 
+                                  " . ($gcash_number ? "'$gcash_number'" : "NULL") . ", 
+                                  " . ($notes ? "'$notes'" : "NULL") . ", 
+                                  CURDATE(), 
+                                  $employee_id, 
+                                  NOW()
+                              )";
         
         if (!mysqli_query($conn, $insert_payment_sql)) {
             throw new Exception('Failed to record payment: ' . mysqli_error($conn));
@@ -126,18 +160,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['process_payment'])) {
         $admins_result = mysqli_query($conn, $admins_sql);
         
         // Send notification to other admins
-        while ($admin = mysqli_fetch_assoc($admins_result)) {
-            create_notification(
-                $conn,
-                $admin['employee_id'],
-                $employee_id,
-                $employee_name,
-                'payment_received',
-                'Payment Processed',
-                "$employee_name processed a payment of ₱" . number_format($amount, 2) . " for project '{$project['project_name']}' via $payment_method. Remaining balance: ₱" . number_format($new_remaining_balance, 2),
-                "admin-projects-detail.php?id=$project_id",
-                $project_id
-            );
+        if ($admins_result) {
+            while ($admin = mysqli_fetch_assoc($admins_result)) {
+                create_notification(
+                    $conn,
+                    $admin['employee_id'],
+                    $employee_id,
+                    $employee_name,
+                    'payment_received',
+                    'Payment Processed',
+                    "$employee_name processed a payment of ₱" . number_format($amount, 2) . " for project '{$project['project_name']}' via $payment_method. Remaining balance: ₱" . number_format($new_remaining_balance, 2),
+                    "admin-projects-detail.php?id=$project_id",
+                    $project_id
+                );
+            }
         }
         
         // Send notification to client/user
@@ -156,7 +192,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['process_payment'])) {
             'payment_received',
             'Payment Received',
             $user_notification_message,
-            "client-project-details.php?id=$project_id",
+            "user-project-details.php?id=$project_id",
             $project_id
         );
         
@@ -178,18 +214,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['process_payment'])) {
             $admins_sql = "SELECT employee_id FROM employees WHERE is_archived = 0 AND employee_id != $employee_id";
             $admins_result = mysqli_query($conn, $admins_sql);
             
-            while ($admin = mysqli_fetch_assoc($admins_result)) {
-                create_notification(
-                    $conn,
-                    $admin['employee_id'],
-                    $employee_id,
-                    $employee_name,
-                    'project_fully_paid',
-                    'Project Fully Paid',
-                    "Project '{$project['project_name']}' has been fully paid by the client!",
-                    "admin-projects-detail.php?id=$project_id",
-                    $project_id
-                );
+            if ($admins_result) {
+                while ($admin = mysqli_fetch_assoc($admins_result)) {
+                    create_notification(
+                        $conn,
+                        $admin['employee_id'],
+                        $employee_id,
+                        $employee_name,
+                        'project_fully_paid',
+                        'Project Fully Paid',
+                        "Project '{$project['project_name']}' has been fully paid by the client!",
+                        "admin-projects-detail.php?id=$project_id",
+                        $project_id
+                    );
+                }
             }
             
             // Notify client about full payment
@@ -201,7 +239,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['process_payment'])) {
                 'project_fully_paid',
                 'Project Fully Paid!',
                 "Congratulations! Your project '{$project['project_name']}' has been fully paid. Thank you for your payment!",
-                "client-project-details.php?id=$project_id",
+                "user-project-details.php?id=$project_id",
                 $project_id
             );
         }

@@ -1,11 +1,105 @@
+<?php
+include 'admin-header.php';
+
+if (!isset($_SESSION['employee_id']) || $_SESSION['position'] !== 'Admin') {
+  header('Location: ../index.php');
+  exit;
+}
+
+$employee_id = $_SESSION['employee_id'];
+$employee_full_name = $_SESSION['first_name'] . ' ' . $_SESSION['last_name'];
+
+// Get filter parameters
+$date_from = $_GET['date_from'] ?? date('Y-m-01');
+$date_to = $_GET['date_to'] ?? date('Y-m-d');
+$status_filter = $_GET['status_filter'] ?? 'all';
+$employee_filter = $_GET['employee_filter'] ?? 'all';
+$auto_generate = isset($_GET['auto']) && $_GET['auto'] === '1';
+
+// Build query based on filters
+$where_conditions = ["is_archived = 0"];
+
+if (!empty($date_from) && !empty($date_to)) {
+  $where_conditions[] = "DATE(due_date) BETWEEN '$date_from' AND '$date_to'";
+}
+
+if ($status_filter !== 'all') {
+  $status_filter_escaped = mysqli_real_escape_string($conn, $status_filter);
+  $where_conditions[] = "status = '$status_filter_escaped'";
+}
+
+if ($employee_filter !== 'all') {
+  $employee_filter = intval($employee_filter);
+  $where_conditions[] = "assigned_to_id = $employee_filter";
+}
+
+$where_clause = implode(' AND ', $where_conditions);
+
+// Fetch tasks
+$report_tasks = [];
+$query = "SELECT * FROM tasks WHERE $where_clause ORDER BY due_date DESC";
+$result = mysqli_query($conn, $query);
+
+if ($result) {
+  while ($row = mysqli_fetch_assoc($result)) {
+    $report_tasks[] = $row;
+  }
+}
+
+// Fetch activity logs related to these tasks
+$activity_logs = [];
+if (!empty($report_tasks)) {
+  $task_ids = array_column($report_tasks, 'task_id');
+  $task_ids_str = implode(',', $task_ids);
+  
+  $log_query = "SELECT * FROM activity_logs 
+                WHERE module = 'TASKS' 
+                AND item_id IN ($task_ids_str)
+                ORDER BY created_at DESC";
+  $log_result = mysqli_query($conn, $log_query);
+  
+  if ($log_result) {
+    while ($log = mysqli_fetch_assoc($log_result)) {
+      $activity_logs[] = $log;
+    }
+  }
+}
+
+// Get filter display names
+$status_display = $status_filter === 'all' ? 'All Status' : $status_filter;
+$employee_display = 'All Employees';
+if ($employee_filter !== 'all' && is_numeric($employee_filter)) {
+  $emp_query = "SELECT first_name, last_name FROM employees WHERE employee_id = $employee_filter";
+  $emp_result = mysqli_query($conn, $emp_query);
+  if ($emp_result && $emp_row = mysqli_fetch_assoc($emp_result)) {
+    $employee_display = $emp_row['first_name'] . ' ' . $emp_row['last_name'];
+  }
+}
+
+// Log activity
+if (!$auto_generate) {
+  log_activity(
+    $conn,
+    $employee_id,
+    $employee_full_name,
+    'GENERATE REPORT',
+    'TASKS',
+    NULL,
+    'Task Completion Report',
+    "Generated task completion report from $date_from to $date_to - Status: $status_display, Employee: $employee_display"
+  );
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><?= ucfirst($report_type) ?> Inventory Report - A We Green Enterprise</title>
+  <title>Task Completion Report - A We Green Enterprise</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     @media print {
       .no-print {
@@ -62,22 +156,32 @@
       display: inline-block;
     }
 
-    .status-instock {
-      background-color: #d4edda;
-      color: #155724;
-    }
-
-    .status-lowstock {
+    .taskstatus-pending {
       background-color: #fff3cd;
       color: #856404;
     }
 
-    .status-outstock {
+    .taskstatus-inprogress {
+      background-color: #cfe2ff;
+      color: #084298;
+    }
+
+    .taskstatus-completed {
+      background-color: #d1e7dd;
+      color: #0f5132;
+    }
+
+    .priority-high {
       background-color: #f8d7da;
       color: #721c24;
     }
 
-    .status-delivered {
+    .priority-medium {
+      background-color: #fff3cd;
+      color: #856404;
+    }
+
+    .priority-low {
       background-color: #d1ecf1;
       color: #0c5460;
     }
@@ -111,14 +215,6 @@
       border-left-color: #dc3545;
     }
 
-    .activity-restore {
-      border-left-color: #17a2b8;
-    }
-
-    .activity-delete {
-      border-left-color: #6c757d;
-    }
-
     footer {
       margin-top: 30px;
       padding-top: 15px;
@@ -141,6 +237,26 @@
     .btn-generate-pdf:hover {
       background-color: #bb2d3b;
     }
+
+    .task-section {
+      margin-bottom: 25px;
+      padding: 15px;
+      background-color: #fff;
+      border: 1px solid #dee2e6;
+      border-radius: 5px;
+    }
+
+    .task-header {
+      border-bottom: 2px solid #e9ecef;
+      padding-bottom: 10px;
+      margin-bottom: 15px;
+    }
+
+    <?php if ($auto_generate): ?>
+    .no-print {
+      display: none !important;
+    }
+    <?php endif; ?>
   </style>
 </head>
 
@@ -182,8 +298,10 @@
       <!-- REPORT INFO -->
       <div class="row mb-3">
         <div class="col-md-12">
-          <h2 class="h4 text-uppercase"><?= ucfirst($report_type) ?> Inventory Report</h2>
+          <h2 class="h4 text-uppercase">Task Completion Report</h2>
           <p class="mb-1"><span class="info-label">Report Period:</span> <?= date('F d, Y', strtotime($date_from)) ?> - <?= date('F d, Y', strtotime($date_to)) ?></p>
+          <p class="mb-1"><span class="info-label">Status Filter:</span> <?= htmlspecialchars($status_display) ?></p>
+          <p class="mb-1"><span class="info-label">Employee Filter:</span> <?= htmlspecialchars($employee_display) ?></p>
           <p class="mb-1"><span class="info-label">Generated On:</span> <?= date('F d, Y h:i A') ?></p>
           <p class="mb-1"><span class="info-label">Generated By:</span> <?= htmlspecialchars($employee_full_name) ?></p>
         </div>
@@ -194,95 +312,88 @@
         <h3 class="h6 mb-3"><i class="fa-solid fa-chart-pie me-2"></i>Summary Statistics</h3>
         <div class="row">
           <div class="col-md-3">
-            <p class="mb-1 text-muted small">Total Items</p>
-            <h4 class="h5 text-primary mb-0"><?= count($report_items) ?></h4>
+            <p class="mb-1 text-muted small">Total Tasks</p>
+            <h4 class="h5 text-primary mb-0"><?= count($report_tasks) ?></h4>
           </div>
           <div class="col-md-3">
-            <p class="mb-1 text-muted small">In Stock</p>
-            <h4 class="h5 text-success mb-0">
-              <?= count(array_filter($report_items, fn($item) => $item['status'] === 'In Stock')) ?>
-            </h4>
-          </div>
-          <div class="col-md-3">
-            <p class="mb-1 text-muted small">Low Stock</p>
+            <p class="mb-1 text-muted small">Pending</p>
             <h4 class="h5 text-warning mb-0">
-              <?= count(array_filter($report_items, fn($item) => $item['status'] === 'Low Stock')) ?>
+              <?= count(array_filter($report_tasks, fn($task) => $task['status'] === 'Pending')) ?>
             </h4>
           </div>
           <div class="col-md-3">
-            <p class="mb-1 text-muted small">Out of Stock</p>
-            <h4 class="h5 text-danger mb-0">
-              <?= count(array_filter($report_items, fn($item) => $item['status'] === 'Out of Stock')) ?>
+            <p class="mb-1 text-muted small">In Progress</p>
+            <h4 class="h5 text-info mb-0">
+              <?= count(array_filter($report_tasks, fn($task) => $task['status'] === 'In Progress')) ?>
+            </h4>
+          </div>
+          <div class="col-md-3">
+            <p class="mb-1 text-muted small">Completed</p>
+            <h4 class="h5 text-success mb-0">
+              <?= count(array_filter($report_tasks, fn($task) => $task['status'] === 'Completed')) ?>
             </h4>
           </div>
         </div>
       </div>
 
-      <!-- INVENTORY ITEMS TABLE -->
+      <!-- TASKS TABLE -->
       <div class="mb-4">
-        <h3 class="h6 mb-3"><i class="fa-solid fa-boxes-stacked me-2"></i>Inventory Items Details</h3>
-
-        <?php if (empty($report_items)): ?>
+        <h3 class="h6 mb-3"><i class="fa-solid fa-tasks me-2"></i>Task Details</h3>
+        
+        <?php if (empty($report_tasks)): ?>
           <div class="alert alert-info text-center">
             <i class="fa-solid fa-info-circle me-2"></i>
-            No inventory items found for the selected filters.
+            No tasks found for the selected filters.
           </div>
         <?php else: ?>
           <div class="table-responsive">
             <table class="table table-bordered table-sm">
               <thead class="table-header">
                 <tr>
-                  <th style="width: 4%;">#</th>
-                  <th style="width: 20%;">Item Name</th>
-                  <th style="width: 14%;">Category</th>
-                  <th style="width: 8%;">Quantity</th>
-                  <th style="width: 10%;">Price (₱)</th>
-                  <th style="width: 10%;">Selling (₱)</th>
-                  <th style="width: 12%;">Status</th>
-                  <th style="width: 11%;">Location</th>
-                  <th style="width: 11%;">Supplier</th>
+                  <th style="width: 3%;">#</th>
+                  <th style="width: 20%;">Task Title</th>
+                  <th style="width: 25%;">Description</th>
+                  <th style="width: 12%;">Assigned To</th>
+                  <th style="width: 12%;">Project</th>
+                  <th style="width: 8%;">Priority</th>
+                  <th style="width: 10%;">Status</th>
+                  <th style="width: 10%;">Due Date</th>
                 </tr>
-
               </thead>
               <tbody>
-                <?php
-                $total_value = 0;
-                foreach ($report_items as $index => $item):
-                  $item_value = $item['quantity'] * $item['price'];
-                  $total_value += $item_value;
-
-                ?>
+                <?php foreach ($report_tasks as $index => $task): ?>
                   <tr>
                     <td><?= $index + 1 ?></td>
-                    <td><?= htmlspecialchars($item['item_name']) ?></td>
-                    <td><?= htmlspecialchars($item['category']) ?></td>
-                    <td><?= $item['quantity'] ?> <?= htmlspecialchars($item['quantity_unit']) ?></td>
-                    <td>₱<?= number_format($item['price'], 2) ?></td>
-                    <td>₱<?= number_format($item['selling_price'], 2) ?></td>
+                    <td><?= htmlspecialchars($task['task_title']) ?></td>
+                    <td><?= htmlspecialchars(substr($task['task_desc'], 0, 100)) ?><?= strlen($task['task_desc']) > 100 ? '...' : '' ?></td>
+                    <td><?= htmlspecialchars($task['assigned_to']) ?></td>
+                    <td><?= htmlspecialchars($task['project_name']) ?></td>
                     <td>
                       <?php
-                      $status = $item['status'];
-                      $class = match ($status) {
-                        "In Stock"       => "status-badge status-instock",
-                        "Low Stock"      => "status-badge status-lowstock",
-                        "Out of Stock"   => "status-badge status-outstock",
-                        "To Be Delivered" => "status-badge status-delivered",
-                        default          => "status-badge"
+                      $priority_class = match($task['priority']) {
+                        'High' => 'priority-high',
+                        'Medium' => 'priority-medium',
+                        'Low' => 'priority-low',
+                        default => ''
                       };
                       ?>
-                      <span class="<?= $class ?>"><?= htmlspecialchars($status) ?></span>
+                      <span class="status-badge <?= $priority_class ?>"><?= htmlspecialchars($task['priority']) ?></span>
                     </td>
-                    <td><?= htmlspecialchars($item['location']) ?></td>
-                    <td><?= htmlspecialchars($item['supplier']) ?></td>
+                    <td>
+                      <?php
+                      $status_class = match($task['status']) {
+                        'Pending' => 'taskstatus-pending',
+                        'In Progress' => 'taskstatus-inprogress',
+                        'Completed' => 'taskstatus-completed',
+                        default => ''
+                      };
+                      ?>
+                      <span class="status-badge <?= $status_class ?>"><?= htmlspecialchars($task['status']) ?></span>
+                    </td>
+                    <td><?= date('m/d/Y', strtotime($task['due_date'])) ?></td>
                   </tr>
                 <?php endforeach; ?>
               </tbody>
-              <tfoot>
-                <tr class="table-light fw-bold">
-                  <td colspan="3" class="text-end">Total Inventory Value:</td>
-                  <td colspan="7">₱<?= number_format($total_value, 2) ?></td>
-                </tr>
-              </tfoot>
             </table>
           </div>
         <?php endif; ?>
@@ -291,17 +402,15 @@
       <!-- ACTIVITY LOGS -->
       <?php if (!empty($activity_logs)): ?>
         <div class="mb-4">
-          <h3 class="h6 mb-3"><i class="fa-solid fa-history me-2"></i>Recent Activity Logs</h3>
-
-          <?php
+          <h3 class="h6 mb-3"><i class="fa-solid fa-history me-2"></i>Activity Logs</h3>
+          
+          <?php 
           $displayed_logs = array_slice($activity_logs, 0, 20);
-          foreach ($displayed_logs as $log):
-            $action_class = match ($log['action']) {
+          foreach ($displayed_logs as $log): 
+            $action_class = match($log['action']) {
               'CREATE' => 'activity-create',
               'UPDATE' => 'activity-update',
               'ARCHIVE' => 'activity-archive',
-              'RESTORE' => 'activity-restore',
-              'DELETE' => 'activity-delete',
               default => ''
             };
           ?>
@@ -319,16 +428,12 @@
               <?php endif; ?>
             </div>
           <?php endforeach; ?>
-
-          <?php if (count($activity_logs) > 20): ?>
-            <p class="text-muted text-center mt-2 mb-0"><em>Showing last 20 activities. Total activities: <?= count($activity_logs) ?></em></p>
-          <?php endif; ?>
         </div>
       <?php endif; ?>
 
       <!-- FOOTER -->
       <footer class="text-center">
-        <p class="mb-1">This is a system-generated report from A We Green Enterprise Inventory Management System</p>
+        <p class="mb-1">This is a system-generated report from A We Green Enterprise Task Management System</p>
         <p class="mb-0">For inquiries, please contact us at awegreenenterprise@gmail.com</p>
         <p class="mt-2 mb-0">
           <strong>A We Green Enterprise</strong> |
@@ -338,9 +443,6 @@
     </div>
 
   </div>
-
-  <!-- Font Awesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
   <!-- jsPDF and html2canvas for PDF generation -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -354,10 +456,10 @@
       const content = document.getElementById('report-content');
 
       // Show loading message
-      const originalButton = event.target;
-      const originalText = originalButton.innerHTML;
-      originalButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating PDF...';
-      originalButton.disabled = true;
+      const buttons = document.querySelectorAll('.btn-generate-pdf');
+      const originalText = buttons[0].innerHTML;
+      buttons[0].innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating PDF...';
+      buttons[0].disabled = true;
 
       try {
         // Convert HTML to canvas
@@ -396,18 +498,18 @@
         }
 
         // Save PDF
-        const filename = '<?= ucfirst($report_type) ?>_Inventory_Report_<?= date("Y-m-d") ?>.pdf';
+        const filename = 'Task_Report_<?= date("Y-m-d") ?>.pdf';
         pdf.save(filename);
 
         // Reset button
-        originalButton.innerHTML = originalText;
-        originalButton.disabled = false;
+        buttons[0].innerHTML = originalText;
+        buttons[0].disabled = false;
 
       } catch (error) {
         console.error('Error generating PDF:', error);
         alert('Error generating PDF. Please try using the Print button instead.');
-        originalButton.innerHTML = originalText;
-        originalButton.disabled = false;
+        buttons[0].innerHTML = originalText;
+        buttons[0].disabled = false;
       }
     }
   </script>

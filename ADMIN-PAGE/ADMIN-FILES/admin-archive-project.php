@@ -2,18 +2,46 @@
 ob_start();
 include 'admin-header.php';
 
-// Get archived project statistics
+// Get filter parameters
+$date_from = isset($_GET['date_from']) ? $_GET['date_from'] : '';
+$date_to = isset($_GET['date_to']) ? $_GET['date_to'] : '';
+$budget_min = isset($_GET['budget_min']) ? $_GET['budget_min'] : '';
+$budget_max = isset($_GET['budget_max']) ? $_GET['budget_max'] : '';
+
+// Build WHERE clause for filters
+$filter_conditions = ["p.is_archived = 1"];
+
+if (!empty($date_from)) {
+  $filter_conditions[] = "p.start_date >= '" . mysqli_real_escape_string($conn, $date_from) . "'";
+}
+
+if (!empty($date_to)) {
+  $filter_conditions[] = "p.start_date <= '" . mysqli_real_escape_string($conn, $date_to) . "'";
+}
+
+if (!empty($budget_min) && is_numeric($budget_min)) {
+  $filter_conditions[] = "p.total_budget >= " . floatval($budget_min);
+}
+
+if (!empty($budget_max) && is_numeric($budget_max)) {
+  $filter_conditions[] = "p.total_budget <= " . floatval($budget_max);
+}
+
+$where_clause = implode(" AND ", $filter_conditions);
+
+// Get archived project statistics with filters
 $stats_sql = "SELECT 
     COUNT(*) as total_archived,
     SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as completed,
     SUM(CASE WHEN status = 'In Progress' THEN 1 ELSE 0 END) as in_progress,
-    SUM(CASE WHEN status = 'Cancelled' THEN 1 ELSE 0 END) as cancelled
-    FROM projects 
-    WHERE is_archived = 1";
+    SUM(CASE WHEN status = 'Cancelled' THEN 1 ELSE 0 END) as cancelled,
+    SUM(total_budget) as total_budget_sum
+    FROM projects p
+    WHERE $where_clause";
 $stats_result = mysqli_query($conn, $stats_sql);
 $stats = mysqli_fetch_assoc($stats_result);
 
-// Get all archived projects with user info
+// Get all archived projects with user info and filters
 $projects_sql = "SELECT 
     p.project_id,
     p.project_name,
@@ -21,6 +49,8 @@ $projects_sql = "SELECT
     p.location AS project_location,
     p.status,
     p.project_image,
+    p.start_date,
+    p.total_budget,
     p.created_at,
     p.updated_at,
     u.first_name,
@@ -35,7 +65,7 @@ $projects_sql = "SELECT
     )) AS user_location
 FROM projects p
 JOIN users u ON p.user_id = u.user_id
-WHERE p.is_archived = 1
+WHERE $where_clause
 ORDER BY p.updated_at DESC";
 $projects_result = mysqli_query($conn, $projects_sql);
 ?>
@@ -87,6 +117,20 @@ $projects_result = mysqli_query($conn, $projects_sql);
       opacity: 0.85;
     }
 
+    .filter-card {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 0.375rem;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .filter-label {
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #495057;
+    }
   </style>
 </head>
 
@@ -99,15 +143,14 @@ $projects_result = mysqli_query($conn, $projects_sql);
     </a>
     
     <div class="d-flex">
-    
-    .<div>
+      <div>
         <h1 class="fs-36 mobile-fs-32">Archived Projects</h1>
         <p class="admin-top-desc">View and restore archived projects.</p>
       </div>
-      
     </div>
 
-    <div class="row g-3 mb-2">
+    <!-- STATISTICS -->
+    <div class="row g-3 mb-4">
       <div class="col-md-3">
         <div class="p-4 inventory-category rounded">
           <p class="light-text fs-14 mb-0">Total Archived</p>
@@ -128,17 +171,70 @@ $projects_result = mysqli_query($conn, $projects_sql);
       </div>
       <div class="col-md-3">
         <div class="p-4 inventory-category rounded">
-          <p class="light-text fs-14 mb-0">Cancelled</p>
-          <p class="fw-bold fs-24 mobile-fs-22 mb-0"><?= $stats['cancelled'] ?? 0 ?></p>
+          <p class="light-text fs-14 mb-0">Total Budget</p>
+          <p class="fw-bold fs-24 mobile-fs-22 mb-0">₱<?= number_format($stats['total_budget_sum'] ?? 0, 2) ?></p>
         </div>
       </div>
     </div>
 
-    <div class="row g-3 mt-2 pb-5">
+    <!-- FILTER SECTION -->
+    <div class="filter-card bg-white mb-1">
+      <form method="GET" action="" id="filterForm">
+        <div class="row g-3">
+          <!-- Date Range Filter -->
+          <div class="col-md-3">
+            <label class="filter-label">
+              <i class="fas fa-calendar-alt me-1"></i> Start Date From
+            </label>
+            <input type="date" name="date_from" class="form-control" value="<?= htmlspecialchars($date_from) ?>">
+          </div>
+
+          <div class="col-md-3">
+            <label class="filter-label">
+              <i class="fas fa-calendar-alt me-1"></i> Start Date To
+            </label>
+            <input type="date" name="date_to" class="form-control" value="<?= htmlspecialchars($date_to) ?>">
+          </div>
+
+          <!-- Budget Range Filter -->
+          <div class="col-md-3">
+            <label class="filter-label">
+              <i class="fas fa-peso-sign me-1"></i> Min Budget (₱)
+            </label>
+            <input type="number" name="budget_min" class="form-control" placeholder="0"
+              value="<?= htmlspecialchars($budget_min) ?>" step="0.01" min="0">
+          </div>
+
+          <div class="col-md-3">
+            <label class="filter-label">
+              <i class="fas fa-peso-sign me-1"></i> Max Budget (₱)
+            </label>
+            <input type="number" name="budget_max" class="form-control" placeholder="999999"
+              value="<?= htmlspecialchars($budget_max) ?>" step="0.01" min="0">
+          </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-3">
+          <button type="submit" class="btn btn-green">
+            <i class="fas fa-filter me-1"></i> Apply Filters
+          </button>
+          <a href="admin-archive-project.php" class="btn btn-secondary">
+            <i class="fas fa-redo me-1"></i> Clear Filters
+          </a>
+        </div>
+      </form>
+    </div>
+
+    <div class="row g-3 pb-5">
       <div class="col-12">
         <div class="border bg-white rounded-3 mt-0 p-4">
           <div class="d-flex align-items-center justify-content-between gap-3">
-            <p class="fs-24 mobile-fs-22 mb-0">Archived Projects</p>
+            <p class="fs-24 mobile-fs-22 mb-0">
+              Archived Projects
+              <?php if (!empty($date_from) || !empty($date_to) || !empty($budget_min) || !empty($budget_max)): ?>
+                <span class="badge-pill taskstatus-completed fs-14">Filtered</span>
+              <?php endif; ?>
+            </p>
           </div>
           <div class="divider my-3"></div>
 
@@ -193,25 +289,47 @@ $projects_result = mysqli_query($conn, $projects_sql);
                     <span class="light-text">Location:</span>
                     <span><?= htmlspecialchars($location) ?></span>
                   </div>
+                  <div class="d-flex gap-1 fs-14 mb-2">
+                    <span class="light-text">Budget:</span>
+                    <span class="fw-bold text-success">₱<?= number_format($project['total_budget'], 2) ?></span>
+                  </div>
+                  <?php if (!empty($project['start_date'])): ?>
+                    <div class="d-flex gap-1 fs-14 mb-2">
+                      <span class="light-text">Start Date:</span>
+                      <span><?= date('M d, Y', strtotime($project['start_date'])) ?></span>
+                    </div>
+                  <?php endif; ?>
                   <div class="d-flex gap-1 fs-14 mb-3">
                     <span class="light-text">Archived:</span>
                     <span><?= date('M d, Y', strtotime($project['updated_at'])) ?></span>
                   </div>
                   <?php if ($is_admin): ?>
-                  <div class="d-grid">
-                    <button onclick="restoreProject(<?= $project['project_id'] ?>, '<?= addslashes($project['project_name']) ?>')"
-                      class="btn btn-success">
-                      <i class="fa fa-rotate-left me-1"></i> Restore Project
-                    </button>
-                  </div>
+                    <div class="d-grid">
+                      <button onclick="restoreProject(<?= $project['project_id'] ?>, '<?= addslashes($project['project_name']) ?>')"
+                        class="btn btn-success">
+                        <i class="fa fa-rotate-left me-1"></i> Restore Project
+                      </button>
+                    </div>
                   <?php endif; ?>
                 </div>
               <?php endwhile; ?>
             <?php else: ?>
               <div class="text-center py-5 w-100">
                 <i class="fa-solid fa-box-open fs-64 text-secondary mb-3"></i>
-                <h3 class="fs-24">No Archived Projects</h3>
-                <p class="text-muted">Archived projects will appear here.</p>
+                <h3 class="fs-24">
+                  <?php if (!empty($date_from) || !empty($date_to) || !empty($budget_min) || !empty($budget_max)): ?>
+                    No Archived Projects Found
+                  <?php else: ?>
+                    No Archived Projects
+                  <?php endif; ?>
+                </h3>
+                <p class="text-muted">
+                  <?php if (!empty($date_from) || !empty($date_to) || !empty($budget_min) || !empty($budget_max)): ?>
+                    Try adjusting your filters to see more results.
+                  <?php else: ?>
+                    Archived projects will appear here.
+                  <?php endif; ?>
+                </p>
               </div>
             <?php endif; ?>
 

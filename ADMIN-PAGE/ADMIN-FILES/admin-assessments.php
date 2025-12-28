@@ -41,62 +41,85 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accept_and_assign']))
   $assigned_to_id = intval($_POST['assigned_employee_1']);
   $assigned_to_id_2 = intval($_POST['assigned_employee_2']);
 
-  if ($assigned_to_id > 0 && $assigned_to_id_2 > 0) {
-    // Check if same employee is selected twice
-    if ($assigned_to_id === $assigned_to_id_2) {
-      echo "<script>alert('Please select two different employees.');</script>";
-    } else {
-      // Update assessment status and assign both employees
+  // Validation: At least one employee must be selected
+  if ($assigned_to_id === 0 && $assigned_to_id_2 === 0) {
+    echo "<script>alert('Please select at least one employee to assign.');</script>";
+  }
+  // Validation: Cannot select the same employee twice
+  elseif ($assigned_to_id > 0 && $assigned_to_id_2 > 0 && $assigned_to_id === $assigned_to_id_2) {
+    echo "<script>alert('Please select two different employees.');</script>";
+  } else {
+    // Valid assignment - proceed
+
+    // Build update SQL based on how many employees are assigned
+    if ($assigned_to_id > 0 && $assigned_to_id_2 > 0) {
+      // Both employees assigned
       $accept_sql = "UPDATE assessments 
-            SET status = 'Accepted', 
-                assigned_to_id = $assigned_to_id,
-                assigned_to_id_2 = $assigned_to_id_2
-            WHERE assessment_id = $assessment_id";
+                    SET status = 'Accepted', 
+                        assigned_to_id = $assigned_to_id,
+                        assigned_to_id_2 = $assigned_to_id_2
+                    WHERE assessment_id = $assessment_id";
+    } elseif ($assigned_to_id > 0) {
+      // Only first employee assigned
+      $accept_sql = "UPDATE assessments 
+                    SET status = 'Accepted', 
+                        assigned_to_id = $assigned_to_id,
+                        assigned_to_id_2 = NULL
+                    WHERE assessment_id = $assessment_id";
+    } else {
+      // Only second employee assigned (move to first position)
+      $accept_sql = "UPDATE assessments 
+                    SET status = 'Accepted', 
+                        assigned_to_id = $assigned_to_id_2,
+                        assigned_to_id_2 = NULL
+                    WHERE assessment_id = $assessment_id";
+    }
 
-      if (mysqli_query($conn, $accept_sql)) {
-        // Get assessment and employee details - INCLUDE USER ADDRESS FIELDS
-        $assessment_info = mysqli_fetch_assoc(mysqli_query($conn, "SELECT a.*, 
-              u.first_name, u.last_name, u.house_no, u.brgy, u.city, u.province, u.zip_code
-              FROM assessments a 
-              LEFT JOIN users u ON a.user_id = u.user_id 
-              WHERE assessment_id = $assessment_id"));
+    if (mysqli_query($conn, $accept_sql)) {
+      // Get assessment and user details
+      $assessment_info = mysqli_fetch_assoc(mysqli_query($conn, "SELECT a.*, 
+            u.first_name, u.last_name, u.house_no, u.brgy, u.city, u.province, u.zip_code
+            FROM assessments a 
+            LEFT JOIN users u ON a.user_id = u.user_id 
+            WHERE assessment_id = $assessment_id"));
 
+      $user_name = $assessment_info['first_name'] . ' ' . $assessment_info['last_name'];
+      $service_type = $assessment_info['service_type'];
+      $preferred_date = $assessment_info['preferred_date'];
+      $user_id = $assessment_info['user_id'];
+
+      // Build task details
+      $task_title = "Assessment: " . $service_type . " - " . $user_name;
+
+      // Build full address
+      $address_parts = array_filter([
+        $assessment_info['house_no'],
+        $assessment_info['brgy'],
+        $assessment_info['city'],
+        $assessment_info['province'],
+        $assessment_info['zip_code']
+      ]);
+      $location = !empty($address_parts) ? implode(', ', $address_parts) : 'Address not provided';
+
+      $task_desc  = "Conduct on-site assessment for " . $user_name . "<br>";
+      $task_desc .= "Location: " . $location . "<br>";
+      $task_desc .= "Preferred time: " . $assessment_info['preferred_time'] . "<br>";
+
+      if (!empty($assessment_info['notes'])) {
+        $task_desc .= "Notes: " . $assessment_info['notes'];
+      }
+
+      $assigned_employee_names = [];
+
+      // Create task for first employee
+      if ($assigned_to_id > 0) {
         $employee1_info = mysqli_fetch_assoc(mysqli_query($conn, "SELECT first_name, last_name 
               FROM employees 
               WHERE employee_id = $assigned_to_id"));
-        $employee2_info = mysqli_fetch_assoc(mysqli_query($conn, "SELECT first_name, last_name 
-              FROM employees 
-              WHERE employee_id = $assigned_to_id_2"));
 
-        $user_name = $assessment_info['first_name'] . ' ' . $assessment_info['last_name'];
         $employee1_name = $employee1_info['first_name'] . ' ' . $employee1_info['last_name'];
-        $employee2_name = $employee2_info['first_name'] . ' ' . $employee2_info['last_name'];
-        $service_type = $assessment_info['service_type'];
-        $preferred_date = $assessment_info['preferred_date'];
-        $user_id = $assessment_info['user_id'];
+        $assigned_employee_names[] = $employee1_name;
 
-        // CREATE TASKS FOR BOTH EMPLOYEES
-        $task_title = "Assessment: " . $service_type . " - " . $user_name;
-
-        // BUILD FULL ADDRESS FROM USER TABLE
-        $address_parts = array_filter([
-          $assessment_info['house_no'],
-          $assessment_info['brgy'],
-          $assessment_info['city'],
-          $assessment_info['province'],
-          $assessment_info['zip_code']
-        ]);
-        $location = !empty($address_parts) ? implode(', ', $address_parts) : 'Address not provided';
-
-        $task_desc  = "Conduct on-site assessment for " . $user_name . "<br>";
-        $task_desc .= "Location: " . $location . "<br>";
-        $task_desc .= "Preferred time: " . $assessment_info['preferred_time'] . "<br>";
-
-        if (!empty($assessment_info['notes'])) {
-          $task_desc .= "Notes: " . $assessment_info['notes'];
-        }
-
-        // Task for Employee 1
         $task1_sql = "INSERT INTO tasks (
                         task_title, 
                         task_desc, 
@@ -111,15 +134,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accept_and_assign']))
                         '" . mysqli_real_escape_string($conn, $task_title) . "',
                         '" . mysqli_real_escape_string($conn, $task_desc) . "',
                         'High',
-                        'Assigned',
+                        'Pending',
                         $assigned_to_id,
                         '" . mysqli_real_escape_string($conn, $employee1_name) . "',
                         'Assessment - $service_type',
                         '$preferred_date',
                         0
                       )";
+        mysqli_query($conn, $task1_sql);
 
-        // Task for Employee 2
+        // Create notification for first employee
+        create_notification(
+          $conn,
+          $assigned_to_id,
+          $employee_id,
+          $employee_name,
+          'ASSESSMENT_ASSIGNED',
+          'New Assessment Assigned',
+          "You have been assigned to an assessment: $service_type for $user_name",
+          'admin-assessments.php',
+          $assessment_id
+        );
+      }
+
+      // Create task for second employee (if assigned)
+      if ($assigned_to_id_2 > 0) {
+        $employee2_info = mysqli_fetch_assoc(mysqli_query($conn, "SELECT first_name, last_name 
+              FROM employees 
+              WHERE employee_id = $assigned_to_id_2"));
+
+        $employee2_name = $employee2_info['first_name'] . ' ' . $employee2_info['last_name'];
+        $assigned_employee_names[] = $employee2_name;
+
         $task2_sql = "INSERT INTO tasks (
                         task_title, 
                         task_desc, 
@@ -134,42 +180,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accept_and_assign']))
                         '" . mysqli_real_escape_string($conn, $task_title) . "',
                         '" . mysqli_real_escape_string($conn, $task_desc) . "',
                         'High',
-                        'Assigned',
+                        'Pending',
                         $assigned_to_id_2,
                         '" . mysqli_real_escape_string($conn, $employee2_name) . "',
                         'Assessment - $service_type',
                         '$preferred_date',
                         0
                       )";
-
-        mysqli_query($conn, $task1_sql);
         mysqli_query($conn, $task2_sql);
 
-        // Log activity
-        log_activity(
-          $conn,
-          $employee_id,
-          $employee_name,
-          'ACCEPT',
-          'ASSESSMENTS',
-          $assessment_id,
-          $service_type,
-          "Accepted assessment from $user_name and assigned to $employee1_name and $employee2_name | Service: $service_type"
-        );
-
-        // CREATE NOTIFICATIONS FOR BOTH ASSIGNED EMPLOYEES
-        create_notification(
-          $conn,
-          $assigned_to_id,
-          $employee_id,
-          $employee_name,
-          'ASSESSMENT_ASSIGNED',
-          'New Assessment Assigned',
-          "You have been assigned to an assessment: $service_type for $user_name",
-          'admin-assessments.php',
-          $assessment_id
-        );
-
+        // Create notification for second employee
         create_notification(
           $conn,
           $assigned_to_id_2,
@@ -181,60 +201,77 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accept_and_assign']))
           'admin-assessments.php',
           $assessment_id
         );
-
-        // CREATE NOTIFICATION FOR USER (CLIENT SIDE)
-        $user_notif_title = 'Assessment Request Accepted';
-        $user_notif_message = 'Hello ' . $user_name . ', your ' . $service_type . ' assessment request has been accepted. Our team will conduct the assessment soon.';
-        $user_notif_link = 'user-assessments.php';
-
-        $user_notif_sql = "INSERT INTO notifications (recipient_id, sender_id, sender_name, type, title, message, link, related_id, is_read) 
-                          VALUES ($user_id, $employee_id, 
-                                '" . mysqli_real_escape_string($conn, $employee_name) . "',
-                                'ASSESSMENT_ACCEPTED', 
-                                '" . mysqli_real_escape_string($conn, $user_notif_title) . "',
-                                '" . mysqli_real_escape_string($conn, $user_notif_message) . "',
-                                '" . mysqli_real_escape_string($conn, $user_notif_link) . "',
-                                $assessment_id,
-                                0)";
-        mysqli_query($conn, $user_notif_sql);
-
-        // CREATE NOTIFICATION FOR ADMIN (ADMIN SIDE) - Only if current user is not admin
-        if (!$is_admin) {
-          // Get all admin employee IDs
-          $admin_query = "SELECT employee_id FROM employees WHERE position IN ('Admin', 'Admin/Secretary') AND is_archived = 0 AND employee_id != $employee_id";
-          $admin_result = mysqli_query($conn, $admin_query);
-
-          while ($admin_row = mysqli_fetch_assoc($admin_result)) {
-            $admin_id = $admin_row['employee_id'];
-
-            $admin_notif_title = 'Assessment Accepted';
-            $admin_notif_message = $user_name . '\'s ' . $service_type . ' assessment request has been accepted and assigned to ' . $employee1_name . ' and ' . $employee2_name . '.';
-            $admin_notif_link = 'admin-assessments.php';
-
-            $admin_notif_sql = "INSERT INTO notifications (recipient_id, sender_id, sender_name, type, title, message, link, related_id, is_read) 
-                              VALUES ($admin_id, $employee_id,
-                                    '" . mysqli_real_escape_string($conn, $employee_name) . "',
-                                    'ASSESSMENT_ACCEPTED_ADMIN', 
-                                    '" . mysqli_real_escape_string($conn, $admin_notif_title) . "',
-                                    '" . mysqli_real_escape_string($conn, $admin_notif_message) . "',
-                                    '" . mysqli_real_escape_string($conn, $admin_notif_link) . "',
-                                    $assessment_id,
-                                    0)";
-            mysqli_query($conn, $admin_notif_sql);
-          }
-        }
-
-        echo "<script>
-          alert('Assessment accepted and assigned to both employees successfully! Tasks have been created.');
-          window.location.href = 'admin-assessments.php';
-        </script>";
-        exit;
-      } else {
-        echo "<script>alert('Error accepting assessment.');</script>";
       }
+
+      // Build assigned employees string for activity log
+      $assigned_names_str = implode(' and ', $assigned_employee_names);
+
+      // Log activity
+      log_activity(
+        $conn,
+        $employee_id,
+        $employee_name,
+        'ACCEPT',
+        'ASSESSMENTS',
+        $assessment_id,
+        $service_type,
+        "Accepted assessment from $user_name and assigned to $assigned_names_str | Service: $service_type"
+      );
+
+      // Create notification for user (client side)
+      $user_notif_title = 'Assessment Request Accepted';
+      $user_notif_message = 'Hello ' . $user_name . ', your ' . $service_type . ' assessment request has been accepted. Our team will conduct the assessment soon.';
+      $user_notif_link = 'user-assessments.php';
+
+      $user_notif_sql = "INSERT INTO notifications (recipient_id, sender_id, sender_name, type, title, message, link, related_id, is_read) 
+                        VALUES ($user_id, $employee_id, 
+                              '" . mysqli_real_escape_string($conn, $employee_name) . "',
+                              'ASSESSMENT_ACCEPTED', 
+                              '" . mysqli_real_escape_string($conn, $user_notif_title) . "',
+                              '" . mysqli_real_escape_string($conn, $user_notif_message) . "',
+                              '" . mysqli_real_escape_string($conn, $user_notif_link) . "',
+                              $assessment_id,
+                              0)";
+      mysqli_query($conn, $user_notif_sql);
+
+      // Create notification for admin (if current user is not admin)
+      if (!$is_admin) {
+        $admin_query = "SELECT employee_id FROM employees WHERE position IN ('Admin', 'Admin/Secretary') AND is_archived = 0 AND employee_id != $employee_id";
+        $admin_result = mysqli_query($conn, $admin_query);
+
+        while ($admin_row = mysqli_fetch_assoc($admin_result)) {
+          $admin_id = $admin_row['employee_id'];
+
+          $admin_notif_title = 'Assessment Accepted';
+          $admin_notif_message = $user_name . '\'s ' . $service_type . ' assessment request has been accepted and assigned to ' . $assigned_names_str . '.';
+          $admin_notif_link = 'admin-assessments.php';
+
+          $admin_notif_sql = "INSERT INTO notifications (recipient_id, sender_id, sender_name, type, title, message, link, related_id, is_read) 
+                            VALUES ($admin_id, $employee_id,
+                                  '" . mysqli_real_escape_string($conn, $employee_name) . "',
+                                  'ASSESSMENT_ACCEPTED_ADMIN', 
+                                  '" . mysqli_real_escape_string($conn, $admin_notif_title) . "',
+                                  '" . mysqli_real_escape_string($conn, $admin_notif_message) . "',
+                                  '" . mysqli_real_escape_string($conn, $admin_notif_link) . "',
+                                  $assessment_id,
+                                  0)";
+          mysqli_query($conn, $admin_notif_sql);
+        }
+      }
+
+      $employee_count = count($assigned_employee_names);
+      $success_message = $employee_count === 1
+        ? "Assessment accepted and assigned to {$assigned_employee_names[0]} successfully! Task has been created."
+        : "Assessment accepted and assigned to both employees successfully! Tasks have been created.";
+
+      echo "<script>
+        alert('$success_message');
+        window.location.href = 'admin-assessments.php';
+      </script>";
+      exit;
+    } else {
+      echo "<script>alert('Error accepting assessment.');</script>";
     }
-  } else {
-    echo "<script>alert('Please select both employees to assign.');</script>";
   }
 }
 
@@ -243,16 +280,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_assessment']
   $assessment_id = intval($_POST['assessment_id']);
 
   $complete_sql = "UPDATE assessments 
-                   SET assessment_completed = 1,
-                       assessment_completed_at = NOW()
-                   WHERE assessment_id = $assessment_id";
+                  SET assessment_completed = 1,
+                      assessment_completed_at = NOW()
+                  WHERE assessment_id = $assessment_id";
 
   if (mysqli_query($conn, $complete_sql)) {
     // Get assessment details
     $assessment_info = mysqli_fetch_assoc(mysqli_query($conn, "SELECT a.*, u.first_name, u.last_name 
-                                                                 FROM assessments a 
-                                                                 LEFT JOIN users u ON a.user_id = u.user_id 
-                                                                 WHERE assessment_id = $assessment_id"));
+                                                                FROM assessments a 
+                                                                LEFT JOIN users u ON a.user_id = u.user_id 
+                                                                WHERE assessment_id = $assessment_id"));
 
     $user_name = $assessment_info['first_name'] . ' ' . $assessment_info['last_name'];
     $service_type = $assessment_info['service_type'];
@@ -285,9 +322,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['archive_assessment'])
 
   // Get assessment details before archiving
   $assessment_info = mysqli_fetch_assoc(mysqli_query($conn, "SELECT a.*, u.first_name, u.last_name 
-                                                               FROM assessments a 
-                                                               LEFT JOIN users u ON a.user_id = u.user_id 
-                                                               WHERE assessment_id = $assessment_id"));
+                                                              FROM assessments a 
+                                                              LEFT JOIN users u ON a.user_id = u.user_id 
+                                                              WHERE assessment_id = $assessment_id"));
 
   $user_full_name = $assessment_info['first_name'] . ' ' . $assessment_info['last_name'];
   $service_type = $assessment_info['service_type'];
@@ -705,14 +742,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['archive_assessment'])
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
 
-        <form method="POST">
+        <form method="POST" id="assignAssessmentForm">
           <div class="modal-body">
-            <p class="text-muted mb-3">Select two employees to handle this assessment</p>
+            <p class="text-muted mb-3">Select one or two employees to handle this assessment</p>
 
             <div class="mb-3">
-              <label class="form-label">First Employee *</label>
-              <select class="form-select" name="assigned_employee_1" id="assignedEmployee1" required>
-                <option value="">Select First Employee</option>
+              <label class="form-label">First Employee</label>
+              <select class="form-select" name="assigned_employee_1" id="assignedEmployee1">
+                <option value="">-- Select Employee --</option>
                 <?php foreach ($employees as $emp): ?>
                   <option value="<?= $emp['employee_id'] ?>">
                     <?= htmlspecialchars($emp['first_name'] . ' ' . $emp['last_name']) ?>
@@ -723,9 +760,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['archive_assessment'])
             </div>
 
             <div class="mb-3">
-              <label class="form-label">Second Employee *</label>
-              <select class="form-select" name="assigned_employee_2" id="assignedEmployee2" required>
-                <option value="">Select Second Employee</option>
+              <label class="form-label">Second Employee</label>
+              <select class="form-select" name="assigned_employee_2" id="assignedEmployee2">
+                <option value="">-- Select Employee --</option>
                 <?php foreach ($employees as $emp): ?>
                   <option value="<?= $emp['employee_id'] ?>">
                     <?= htmlspecialchars($emp['first_name'] . ' ' . $emp['last_name']) ?>
@@ -733,6 +770,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['archive_assessment'])
                   </option>
                 <?php endforeach; ?>
               </select>
+            </div>
+
+            <div class="alert alert-info d-flex align-items-center" role="alert">
+              <i class="fas fa-info-circle me-2"></i>
+              <small>At least one employee must be selected</small>
             </div>
 
             <input type="hidden" name="assessment_id" id="assignAssessmentId" value="">
@@ -751,6 +793,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['archive_assessment'])
       </div>
     </div>
   </div>
+
 
   <!-- Complete Assessment Modal -->
   <div class="modal fade" id="completeAssessmentModal" tabindex="-1" aria-hidden="true">
@@ -928,6 +971,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['archive_assessment'])
 
       statusFilter.addEventListener('change', applyFilters);
       serviceFilter.addEventListener('change', applyFilters);
+
+      const assignForm = document.getElementById('assignAssessmentForm');
+
+      if (assignForm) {
+        assignForm.addEventListener('submit', function(e) {
+          const employee1 = document.getElementById('assignedEmployee1').value;
+          const employee2 = document.getElementById('assignedEmployee2').value;
+
+          // Check if at least one employee is selected
+          if (!employee1 && !employee2) {
+            e.preventDefault();
+            alert('Please select at least one employee to assign.');
+            return false;
+          }
+
+          // Check if same employee is selected twice
+          if (employee1 && employee2 && employee1 === employee2) {
+            e.preventDefault();
+            alert('Please select two different employees.');
+            return false;
+          }
+
+          return true;
+        });
+      }
     });
   </script>
 

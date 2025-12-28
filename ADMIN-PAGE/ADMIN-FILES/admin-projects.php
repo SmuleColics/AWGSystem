@@ -2,17 +2,45 @@
 ob_start();
 include 'admin-header.php';
 
-// Get project statistics
+// Get filter parameters
+$date_from = isset($_GET['date_from']) ? $_GET['date_from'] : '';
+$date_to = isset($_GET['date_to']) ? $_GET['date_to'] : '';
+$budget_min = isset($_GET['budget_min']) ? $_GET['budget_min'] : '';
+$budget_max = isset($_GET['budget_max']) ? $_GET['budget_max'] : '';
+
+// Build WHERE clause for filters
+$filter_conditions = ["p.is_archived = 0"];
+
+if (!empty($date_from)) {
+  $filter_conditions[] = "p.start_date >= '" . mysqli_real_escape_string($conn, $date_from) . "'";
+}
+
+if (!empty($date_to)) {
+  $filter_conditions[] = "p.start_date <= '" . mysqli_real_escape_string($conn, $date_to) . "'";
+}
+
+if (!empty($budget_min) && is_numeric($budget_min)) {
+  $filter_conditions[] = "p.total_budget >= " . floatval($budget_min);
+}
+
+if (!empty($budget_max) && is_numeric($budget_max)) {
+  $filter_conditions[] = "p.total_budget <= " . floatval($budget_max);
+}
+
+$where_clause = implode(" AND ", $filter_conditions);
+
+// Get project statistics with filters
 $stats_sql = "SELECT 
     COUNT(*) as total_projects,
     SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as completed,
-    SUM(CASE WHEN status = 'In Progress' THEN 1 ELSE 0 END) as in_progress
-    FROM projects 
-    WHERE is_archived = 0";
+    SUM(CASE WHEN status = 'In Progress' THEN 1 ELSE 0 END) as in_progress,
+    SUM(total_budget) as total_budget_sum
+    FROM projects p
+    WHERE $where_clause";
 $stats_result = mysqli_query($conn, $stats_sql);
 $stats = mysqli_fetch_assoc($stats_result);
 
-// Get all projects with user info
+// Get all projects with user info and filters
 $projects_sql = "SELECT 
     p.project_id,
     p.project_name,
@@ -20,6 +48,8 @@ $projects_sql = "SELECT
     p.location AS project_location,
     p.status,
     p.project_image,
+    p.start_date,
+    p.total_budget,
     p.created_at,
     u.first_name,
     u.last_name,
@@ -33,7 +63,7 @@ $projects_sql = "SELECT
     )) AS user_location
 FROM projects p
 JOIN users u ON p.user_id = u.user_id
-WHERE p.is_archived = 0
+WHERE $where_clause
 ORDER BY p.created_at DESC";
 $projects_result = mysqli_query($conn, $projects_sql);
 ?>
@@ -142,6 +172,27 @@ $projects_result = mysqli_query($conn, $projects_sql);
     .image-action-btn.edit {
       color: #0d6efd;
     }
+
+    .filter-card {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 0.375rem;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .filter-input-group {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .filter-label {
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #495057;
+    }
   </style>
 </head>
 
@@ -154,40 +205,100 @@ $projects_result = mysqli_query($conn, $projects_sql);
         <p class="admin-top-desc">Create new projects, assign tasks, and monitor progress in real time.</p>
       </div>
       <div>
-
         <a href="admin-archive-project.php" class="btn btn-danger text-white d-flex align-items-center">
           <i class="fa-solid fa-folder me-1"></i> Archived <span class="d-none d-md-block ms-1">Project</span>
         </a>
-
       </div>
     </div>
 
-    <div class="row g-3 mb-2">
-      <div class="col-md-4">
+    <!-- STATISTICS -->
+    <div class="row g-3 mb-4">
+      <div class="col-md-3">
         <div class="p-4 inventory-category rounded">
           <p class="light-text fs-14 mb-0">Total Projects</p>
           <p class="fw-bold fs-24 mobile-fs-22 mb-0"><?= $stats['total_projects'] ?? 0 ?></p>
         </div>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <div class="p-4 inventory-category rounded">
           <p class="light-text fs-14 mb-0">Completed</p>
           <p class="fw-bold fs-24 mobile-fs-22 mb-0"><?= $stats['completed'] ?? 0 ?></p>
         </div>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <div class="p-4 inventory-category rounded">
           <p class="light-text fs-14 mb-0">In Progress</p>
           <p class="fw-bold fs-24 mobile-fs-22 mb-0"><?= $stats['in_progress'] ?? 0 ?></p>
         </div>
       </div>
+      <div class="col-md-3">
+        <div class="p-4 inventory-category rounded">
+          <p class="light-text fs-14 mb-0">Total Budget</p>
+          <p class="fw-bold fs-24 mobile-fs-22 mb-0">₱<?= number_format($stats['total_budget_sum'] ?? 0, 2) ?></p>
+        </div>
+      </div>
     </div>
 
-    <div class="row g-3 mt-2 pb-5">
+    <!-- FILTER SECTION -->
+    <div class="filter-card bg-white mb-1">
+      <form method="GET" action="" id="filterForm">
+        <div class="row g-3">
+          <!-- Date Range Filter -->
+          <div class="col-md-3">
+            <label class="filter-label">
+              <i class="fas fa-calendar-alt me-1"></i> Start Date From
+            </label>
+            <input type="date" name="date_from" class="form-control" value="<?= htmlspecialchars($date_from) ?>">
+          </div>
+
+          <div class="col-md-3">
+            <label class="filter-label">
+              <i class="fas fa-calendar-alt me-1"></i> Start Date To
+            </label>
+            <input type="date" name="date_to" class="form-control" value="<?= htmlspecialchars($date_to) ?>">
+          </div>
+
+          <!-- Budget Range Filter -->
+          <div class="col-md-3">
+            <label class="filter-label">
+              <i class="fas fa-peso-sign me-1"></i> Min Budget (₱)
+            </label>
+            <input type="number" name="budget_min" class="form-control" placeholder="0"
+              value="<?= htmlspecialchars($budget_min) ?>" step="0.01" min="0">
+          </div>
+
+          <div class="col-md-3">
+            <label class="filter-label">
+              <i class="fas fa-peso-sign me-1"></i> Max Budget (₱)
+            </label>
+            <input type="number" name="budget_max" class="form-control" placeholder="999999"
+              value="<?= htmlspecialchars($budget_max) ?>" step="0.01" min="0">
+          </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-3">
+          <button type="submit" class="btn btn-green">
+            <i class="fas fa-filter me-1"></i> Apply Filters
+          </button>
+          <a href="admin-projects.php" class="btn btn-secondary">
+            <i class="fas fa-redo me-1"></i> Clear Filters
+          </a>
+        </div>
+      </form>
+    </div>
+
+    <div class="row g-3 pb-5">
       <div class="col-12">
         <div class="border bg-white rounded-3 mt-0 p-4">
-          <div class="d-flex align-items-center justify-content-between gap-3">
-            <p class="fs-24 mobile-fs-22 mb-0">All Projects</p>
+          <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+            <div>
+              <p class="fs-24 mobile-fs-22 mb-0">
+                All Projects
+                <?php if (!empty($date_from) || !empty($date_to) || !empty($budget_min) || !empty($budget_max)): ?>
+                  <span class="badge-pill taskstatus-completed fs-14">Filtered</span>
+                <?php endif; ?>
+              </p>
+            </div>
           </div>
           <div class="divider my-3"></div>
 
@@ -227,7 +338,6 @@ $projects_result = mysqli_query($conn, $projects_sql);
                         src="<?= htmlspecialchars($project['project_image']) ?>"
                         alt="<?= htmlspecialchars($project['project_name']) ?>">
 
-                      <!-- Image Action Buttons -->
                       <?php if ($is_admin): ?>
                         <div class="image-actions">
                           <button class="image-action-btn edit"
@@ -264,6 +374,16 @@ $projects_result = mysqli_query($conn, $projects_sql);
                     <span class="light-text">Location:</span>
                     <span><?= htmlspecialchars($location) ?></span>
                   </div>
+                  <div class="d-flex gap-1 fs-14 mb-2">
+                    <span class="light-text">Budget:</span>
+                    <span class="fw-bold text-success">₱<?= number_format($project['total_budget'], 2) ?></span>
+                  </div>
+                  <?php if (!empty($project['start_date'])): ?>
+                    <div class="d-flex gap-1 fs-14 mb-2">
+                      <span class="light-text">Start Date:</span>
+                      <span><?= date('M d, Y', strtotime($project['start_date'])) ?></span>
+                    </div>
+                  <?php endif; ?>
                   <div class="d-grid">
                     <a href="admin-projects-detail.php?id=<?= $project['project_id'] ?>"
                       class="btn btn-outline-secondary mt-3">
@@ -281,8 +401,20 @@ $projects_result = mysqli_query($conn, $projects_sql);
             <?php else: ?>
               <div class="text-center py-5 w-100">
                 <i class="fa-solid fa-folder-open fs-64 text-secondary mb-3"></i>
-                <h3 class="fs-24">No Projects Yet</h3>
-                <p class="text-muted">Projects will appear here once quotations are approved.</p>
+                <h3 class="fs-24">
+                  <?php if (!empty($date_from) || !empty($date_to) || !empty($budget_min) || !empty($budget_max)): ?>
+                    No Projects Found
+                  <?php else: ?>
+                    No Projects Yet
+                  <?php endif; ?>
+                </h3>
+                <p class="text-muted">
+                  <?php if (!empty($date_from) || !empty($date_to) || !empty($budget_min) || !empty($budget_max)): ?>
+                    Try adjusting your filters to see more results.
+                  <?php else: ?>
+                    Projects will appear here once quotations are approved.
+                  <?php endif; ?>
+                </p>
               </div>
             <?php endif; ?>
 
@@ -294,6 +426,7 @@ $projects_result = mysqli_query($conn, $projects_sql);
   </main>
   <!-- END OF MAIN -->
 
+  <!-- Keep all your existing modals here -->
   <!-- Upload/Edit Project Image Modal -->
   <div class="modal fade" id="uploadProjectImageModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -314,7 +447,6 @@ $projects_result = mysqli_query($conn, $projects_sql);
               <small class="text-muted">Accepted formats: JPG, PNG, WEBP (Max 5MB)</small>
             </div>
 
-            <!-- Image Preview -->
             <div id="imagePreview" class="d-none">
               <label class="form-label fw-semibold">Preview:</label>
               <img id="previewImage" class="img-fluid rounded border" style="max-height: 300px; width: 100%; object-fit: cover;">
@@ -394,7 +526,7 @@ $projects_result = mysqli_query($conn, $projects_sql);
   </div>
 
   <script>
-    // Open upload modal and set project ID
+    // Keep all your existing JavaScript functions
     function openUploadModal(projectId) {
       document.getElementById('uploadModalTitle').textContent = 'Upload Project Image';
       document.getElementById('uploadProjectId').value = projectId;
@@ -405,9 +537,8 @@ $projects_result = mysqli_query($conn, $projects_sql);
       modal.show();
     }
 
-    // Open edit modal (same as upload but different title)
     function openEditImageModal(projectId) {
-      event.stopPropagation(); // Prevent triggering parent click
+      event.stopPropagation();
       document.getElementById('uploadModalTitle').textContent = 'Change Project Image';
       document.getElementById('uploadProjectId').value = projectId;
       document.getElementById('projectImageInput').value = '';
@@ -417,9 +548,8 @@ $projects_result = mysqli_query($conn, $projects_sql);
       modal.show();
     }
 
-    // Delete project image
     function deleteProjectImage(projectId) {
-      event.stopPropagation(); // Prevent triggering parent click
+      event.stopPropagation();
 
       if (confirm('Are you sure you want to delete this project image?')) {
         document.getElementById('deleteProjectId').value = projectId;
@@ -428,11 +558,9 @@ $projects_result = mysqli_query($conn, $projects_sql);
       }
     }
 
-    // Image preview before upload
     document.getElementById('projectImageInput')?.addEventListener('change', function(e) {
       const file = e.target.files[0];
       if (file) {
-        // Validate file size (5MB)
         if (file.size > 5 * 1024 * 1024) {
           alert('File size must be less than 5MB');
           this.value = '';
@@ -440,7 +568,6 @@ $projects_result = mysqli_query($conn, $projects_sql);
           return;
         }
 
-        // Validate file type
         const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
         if (!allowedTypes.includes(file.type)) {
           alert('Please select a valid image file (JPG, PNG, or WEBP)');
@@ -449,7 +576,6 @@ $projects_result = mysqli_query($conn, $projects_sql);
           return;
         }
 
-        // Show preview
         const reader = new FileReader();
         reader.onload = function(event) {
           document.getElementById('previewImage').src = event.target.result;
@@ -461,7 +587,6 @@ $projects_result = mysqli_query($conn, $projects_sql);
       }
     });
 
-    // Show success/error messages
     <?php if (isset($_SESSION['success'])): ?>
       alert('<?= addslashes($_SESSION['success']) ?>');
       <?php unset($_SESSION['success']); ?>
@@ -472,7 +597,6 @@ $projects_result = mysqli_query($conn, $projects_sql);
       <?php unset($_SESSION['error']); ?>
     <?php endif; ?>
 
-    // Archive project function
     function archiveProject(projectId, projectName) {
       document.getElementById('archiveProjectId').value = projectId;
       const modal = new bootstrap.Modal(document.getElementById('archiveProjectModal'));

@@ -44,7 +44,10 @@ $quotation_result = mysqli_query($conn, $quotation_sql);
 $quotation = mysqli_fetch_assoc($quotation_result);
 
 // Fetch quotation items
-$items_sql = "SELECT * FROM quotation_items WHERE assessment_id = $assessment_id ORDER BY created_at ASC";
+$items_sql = "SELECT qi.*
+              FROM quotation_items qi 
+              WHERE qi.assessment_id = $assessment_id 
+              ORDER BY qi.created_at ASC";
 $items_result = mysqli_query($conn, $items_sql);
 $quotation_items = [];
 if ($items_result) {
@@ -64,7 +67,7 @@ if ($labor_result) {
 }
 
 // Fetch inventory items for dropdown
-$inventory_sql = "SELECT item_id, item_name, selling_price, quantity, quantity_unit, status 
+$inventory_sql = "SELECT item_id, item_name, selling_price, quantity, quantity_unit, status
                   FROM inventory_items 
                   WHERE status IN ('In Stock', 'Low Stock')
                   ORDER BY item_name ASC";
@@ -161,16 +164,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_item'])) {
   $unit_price = floatval($_POST['edit_unit_price']);
   $total = $quantity * $unit_price;
 
-  // Get old quantity to restore inventory
   $old_item_sql = "SELECT * FROM quotation_items WHERE item_id = $edit_item_id";
   $old_item_result = mysqli_query($conn, $old_item_sql);
   $old_item = mysqli_fetch_assoc($old_item_result);
 
   if ($old_item && $old_item['inventory_item_id']) {
-    // Calculate quantity difference
     $qty_diff = $quantity - $old_item['quantity'];
-
-    // Update inventory quantity AND selling price
     $update_inv_sql = "UPDATE inventory_items 
                       SET quantity = quantity - $qty_diff,
                           selling_price = $unit_price
@@ -178,10 +177,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_item'])) {
     mysqli_query($conn, $update_inv_sql);
   }
 
-  // Update quotation item
   $update_sql = "UPDATE quotation_items 
                 SET quantity = $quantity, 
-                    unit_price = $unit_price, 
+                    unit_price = $unit_price,
                     total = $total 
                 WHERE item_id = $edit_item_id";
 
@@ -198,7 +196,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_item'])) {
     );
 
     echo "<script>
-      alert('Item updated successfully and inventory synced');
+      alert('Item updated successfully');
       window.location.href = 'admin-quotation-proposal.php?id=$assessment_id';
     </script>";
     exit;
@@ -237,8 +235,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
   $quantity = floatval($_POST['quantity']);
   $unit_type = mysqli_real_escape_string($conn, trim($_POST['unit_type']));
 
-  // For existing inventory items: use unit_price
-  // For new items: use selling_price as unit_price in quotation
   if ($inventory_item_id !== null) {
     $unit_price = floatval($_POST['unit_price']);
   } else {
@@ -272,21 +268,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
   if (empty($errors)) {
     $new_inventory_id = null;
 
-    // If item exists in inventory, reduce its quantity
     if ($inventory_item_id !== null) {
-      // Get current inventory quantity
       $inv_check_sql = "SELECT quantity FROM inventory_items WHERE item_id = $inventory_item_id";
       $inv_check_result = mysqli_query($conn, $inv_check_sql);
       $inv_check = mysqli_fetch_assoc($inv_check_result);
 
       if ($inv_check) {
         $new_quantity = $inv_check['quantity'] - $quantity;
-
-        // Update inventory quantity (allow negative)
         $update_inv_sql = "UPDATE inventory_items SET quantity = $new_quantity WHERE item_id = $inventory_item_id";
         mysqli_query($conn, $update_inv_sql);
 
-        // Update status based on new quantity
         $new_status = '';
         if ($new_quantity <= 0) {
           $new_status = 'Out of Stock';
@@ -298,13 +289,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
 
         $update_status_sql = "UPDATE inventory_items SET status = '$new_status' WHERE item_id = $inventory_item_id";
         mysqli_query($conn, $update_status_sql);
-
         $new_inventory_id = $inventory_item_id;
       }
     } else {
-      // If no item_id selected, add new item to inventory with NEGATIVE quantity
-      // This indicates the deficit/need for this item
-      $negative_quantity = -$quantity; // Set as negative to show deficit
+      $negative_quantity = -$quantity;
       $service_type = mysqli_real_escape_string($conn, $assessment['service_type']);
       $insert_inventory_sql = "INSERT INTO inventory_items (item_name, category, quantity, quantity_unit, price, selling_price, status, location, supplier, is_archived, created_at)
                               VALUES ('$item_name', '$service_type', $negative_quantity, '$unit_type', '$item_cost', '$item_selling_price', 'Out of Stock', '', '', 0, NOW())";
@@ -314,14 +302,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
       }
     }
 
-    // Add item to quotation items table - FIXED: removed item_id from INSERT
+    // Add item to quotation_items
     $insert_sql = "INSERT INTO quotation_items (assessment_id, inventory_item_id, item_name, quantity, unit_type, unit_price, total, created_at)
                   VALUES ($assessment_id, " . ($new_inventory_id ? $new_inventory_id : "NULL") . ", '$item_name', $quantity, '$unit_type', $unit_price, $total, NOW())";
 
     if (mysqli_query($conn, $insert_sql)) {
-      // Activity Log
       if ($inventory_item_id !== null) {
-        // Item from inventory
         log_activity(
           $conn,
           $employee_id,
@@ -333,7 +319,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
           "Added quotation item from inventory: $item_name (Qty: $quantity, Unit Price: ₱$unit_price) to assessment #$assessment_id"
         );
       } else {
-        // New item created with negative quantity (deficit)
         log_activity(
           $conn,
           $employee_id,
@@ -347,7 +332,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
       }
 
       echo "<script>
-        alert('Item added successfully and inventory updated');
+        alert('Item added successfully');
         window.location.href = 'admin-quotation-proposal.php?id=$assessment_id';
       </script>";
       exit;
@@ -417,6 +402,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_project_details'
     $errors['date_range'] = 'Start date must be before end date';
   }
 
+  // Show validation errors if any
+  if (!empty($errors)) {
+    $error_messages = [];
+    foreach ($errors as $field => $message) {
+      $error_messages[] = $message;
+    }
+    echo "<script>alert('" . implode("\\n", array_map('addslashes', $error_messages)) . "');</script>";
+  }
+
   if (empty($errors)) {
     if ($quotation) {
       // Update existing quotation
@@ -439,7 +433,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_project_details'
           'QUOTATIONS',
           $assessment_id,
           $project_name,
-          "Updated project details for assessment #$assessment_id - Project: $project_name, Cost: ₱$estimated_cost"
+          "Updated project details for assessment #$assessment_id - Project: $project_name"
         );
 
         echo "<script>
@@ -469,7 +463,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_project_details'
           'QUOTATIONS',
           $assessment_id,
           $project_name,
-          "Created new quotation for assessment #$assessment_id - Project: $project_name, Cost: ₱$estimated_cost"
+          "Created new quotation for assessment #$assessment_id - Project: $project_name"
         );
 
         echo "<script>
@@ -483,7 +477,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_project_details'
     }
   }
 }
-
 // Handle Create Quotation (Complete)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_quotation'])) {
   // Validate that we have at least project details and items
@@ -544,6 +537,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_quotation'])
       if (mysqli_num_rows($check_project_result) == 0) {
         // Get user location
         $user_location = '';
+
         $location_sql = "SELECT CONCAT_WS(', ', house_no, brgy, city, province, zip_code) as location 
                         FROM users WHERE user_id = {$assessment['user_id']}";
         $location_result = mysqli_query($conn, $location_sql);
@@ -690,7 +684,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_quotation'])
         window.location.href = 'admin-projects.php';
       </script>";
       exit;
-      
     } catch (Exception $e) {
       // Rollback on error
       mysqli_rollback($conn);
@@ -948,18 +941,18 @@ ob_end_flush();
                           <p class="mb-2">₱<?= number_format($labor['amount'], 2) ?></p>
                         </div>
                         <?php if ($is_admin): ?>
-                        <div class="col-md-1">
-                          <a href="#" class="text-secondary"><i class="fas fa-edit"></i></a>
-                        </div>
-                        <div class="col-md-1">
-                          <a href="?id=<?= $assessment_id ?>&delete_labor=<?= $labor['labor_id'] ?>" class="text-danger"
-                            onclick="return confirm('Are you sure you want to delete this labor charge?')">
-                            <i class="fas fa-trash"></i>
-                          </a>
-                        </div>
+                          <div class="col-md-1">
+                            <a href="#" class="text-secondary"><i class="fas fa-edit"></i></a>
+                          </div>
+                          <div class="col-md-1">
+                            <a href="?id=<?= $assessment_id ?>&delete_labor=<?= $labor['labor_id'] ?>" class="text-danger"
+                              onclick="return confirm('Are you sure you want to delete this labor charge?')">
+                              <i class="fas fa-trash"></i>
+                            </a>
+                          </div>
                       </div>
-                      <?php endif; ?>
-                    <?php endforeach; ?>
+                    <?php endif; ?>
+                  <?php endforeach; ?>
                   </div>
                 <?php endif; ?>
               </div>

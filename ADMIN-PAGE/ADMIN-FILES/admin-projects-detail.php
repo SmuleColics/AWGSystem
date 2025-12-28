@@ -122,6 +122,7 @@ ob_end_flush();
       position: sticky;
       top: 90px;
     }
+
   </style>
 </head>
 
@@ -130,9 +131,20 @@ ob_end_flush();
   <div class="container-xxl px-4 py-5 min-vh-100">
 
     <!-- BACK BUTTON -->
-    <a href="admin-projects.php" class="btn btn-outline-secondary mb-4">
-      <i class="fa fa-arrow-left me-2"></i> Back to Projects
-    </a>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <a href="admin-projects.php" class="btn d-block btn-outline-secondary ">
+          <i class="fa fa-arrow-left me-2"></i> Back to Projects
+        </a>
+      </div>
+      <div>
+        <?php if ($is_admin): ?>
+          <button class="btn btn-primary" onclick="generateProjectReport(<?= $project_id ?>)">
+            <i class="fa-solid fa-file-lines me-1"></i> Generate Progress Report
+          </button>
+        <?php endif; ?>
+      </div>
+    </div>
 
     <div class="row g-4">
 
@@ -164,15 +176,15 @@ ob_end_flush();
 
               <!-- VISIBILITY OPTION -->
               <?php if ($is_admin): ?>
-              <div>
-                <form method="POST" action="update-project-visibility.php" id="visibilityForm">
-                  <input type="hidden" name="project_id" value="<?= $project_id ?>">
-                  <select class="form-select form-select-sm" name="visibility" onchange="this.form.submit()">
-                    <option value="Private" <?= $project['visibility'] === 'Private' ? 'selected' : '' ?>>Private</option>
-                    <option value="Public" <?= $project['visibility'] === 'Public' ? 'selected' : '' ?>>Public</option>
-                  </select>
-                </form>
-              </div>
+                <div>
+                  <form method="POST" action="update-project-visibility.php" id="visibilityForm">
+                    <input type="hidden" name="project_id" value="<?= $project_id ?>">
+                    <select class="form-select form-select-sm" name="visibility" onchange="this.form.submit()">
+                      <option value="Private" <?= $project['visibility'] === 'Private' ? 'selected' : '' ?>>Private</option>
+                      <option value="Public" <?= $project['visibility'] === 'Public' ? 'selected' : '' ?>>Public</option>
+                    </select>
+                  </form>
+                </div>
               <?php endif; ?>
             </div>
 
@@ -266,12 +278,12 @@ ob_end_flush();
             <h5 class="mb-0 fw-semibold">Project Updates</h5>
             <div class="d-flex gap-2">
               <?php if ($is_admin): ?>
-              <a href="project-update-archive.php?id=<?= $project_id ?>" class="btn btn-danger btn-sm">
-                <i class="fa fa-box-archive me-1"></i> View Archived
-              </a>
-              <button class="btn btn-green btn-sm" data-bs-toggle="modal" data-bs-target="#addUpdateModal">
-                <i class="fa fa-plus me-1"></i> Add Update
-              </button>
+                <a href="project-update-archive.php?id=<?= $project_id ?>" class="btn btn-danger btn-sm">
+                  <i class="fa fa-box-archive me-1"></i> View Archived
+                </a>
+                <button class="btn btn-green btn-sm" data-bs-toggle="modal" data-bs-target="#addUpdateModal">
+                  <i class="fa fa-plus me-1"></i> Add Update
+                </button>
               <?php endif; ?>
             </div>
           </div>
@@ -283,16 +295,16 @@ ob_end_flush();
                   <div class="d-flex align-items-center justify-content-between">
                     <h6 class="fw-bold mb-1 fs-18"><?= htmlspecialchars($update['update_title']) ?></h6>
                     <?php if ($is_admin): ?>
-                    <div class="update-btns">
-                      <button class="btn btn-light border btn-sm me-1"
-                        onclick="editUpdate(<?= $update['update_id'] ?>, '<?= addslashes($update['update_title']) ?>', '<?= addslashes($update['update_description']) ?>', <?= $update['progress_percentage'] ?>)">
-                        <i class="fa-solid fa-pen"></i>
-                      </button>
-                      <button class="btn btn-danger btn-sm"
-                        onclick="archiveUpdate(<?= $update['update_id'] ?>)">
-                        <i class="fa-solid fa-box-archive fs-16"></i>
-                      </button>
-                    </div>
+                      <div class="update-btns">
+                        <button class="btn btn-light border btn-sm me-1"
+                          onclick="editUpdate(<?= $update['update_id'] ?>, '<?= addslashes($update['update_title']) ?>', '<?= addslashes($update['update_description']) ?>', <?= $update['progress_percentage'] ?>)">
+                          <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <button class="btn btn-danger btn-sm"
+                          onclick="archiveUpdate(<?= $update['update_id'] ?>)">
+                          <i class="fa-solid fa-box-archive fs-16"></i>
+                        </button>
+                      </div>
 
                     <?php endif; ?>
                   </div>
@@ -393,9 +405,9 @@ ob_end_flush();
           <div class="card-footer bg-white">
             <div class="d-grid">
               <?php if ($is_admin): ?>
-              <button class="btn btn-green mb-2" data-bs-toggle="modal" data-bs-target="#processPaymentModal">
-                <i class="fas fa-wallet me-1"></i> Process Payment
-              </button>
+                <button class="btn btn-green mb-2" data-bs-toggle="modal" data-bs-target="#processPaymentModal">
+                  <i class="fas fa-wallet me-1"></i> Process Payment
+                </button>
               <?php endif; ?>
 
               <a href="admin-quotation-proposal.php?id=<?= $quotation['assessment_id'] ?>&view_only=1"
@@ -585,6 +597,60 @@ ob_end_flush();
   </div>
 
   <script>
+    function generateProjectReport(projectId) {
+      const url = `admin-project-progress-report.php?id=${projectId}&auto=1`;
+      const reportWindow = window.open(url, '_blank', 'width=1200,height=800');
+
+      reportWindow.addEventListener('load', function() {
+        setTimeout(async function() {
+          try {
+            const {
+              jsPDF
+            } = reportWindow.jspdf;
+            const content = reportWindow.document.getElementById('report-content');
+
+            const canvas = await reportWindow.html2canvas(content, {
+              scale: 2,
+              useCORS: true,
+              logging: false,
+              backgroundColor: '#ffffff'
+            });
+
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF({
+              orientation: 'portrait',
+              unit: 'mm',
+              format: 'a4'
+            });
+
+            const imgWidth = 210;
+            const pageHeight = 297;
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            let heightLeft = imgHeight;
+            let position = 0;
+
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+
+            while (heightLeft > 0) {
+              position = heightLeft - imgHeight;
+              pdf.addPage();
+              pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+              heightLeft -= pageHeight;
+            }
+
+            const filename = 'Project_Report_<?= date("Y-m-d") ?>.pdf';
+            pdf.save(filename);
+
+            reportWindow.close();
+          } catch (error) {
+            console.error('Error generating PDF:', error);
+            alert('Error generating PDF. Please try again.');
+            reportWindow.close();
+          }
+        }, 1500);
+      });
+    }
     // Payment method toggle
     document.querySelectorAll("input[name='payment_method']").forEach(radio => {
       radio.addEventListener("change", function() {

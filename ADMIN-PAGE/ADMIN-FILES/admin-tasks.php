@@ -26,6 +26,10 @@ if ($project_result) {
   }
 }
 
+// Get filter values from GET parameters
+$filter_project = isset($_GET['project_filter']) ? intval($_GET['project_filter']) : 0;
+$filter_employee = isset($_GET['employee_filter']) ? intval($_GET['employee_filter']) : 0;
+
 // Handle form submission for ADD TASK
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_task'])) {
 
@@ -99,8 +103,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_task'])) {
     $project_name = mysqli_real_escape_string($conn, $project_name);
     $due_date = mysqli_real_escape_string($conn, $due_date);
 
-    $sql = "INSERT INTO tasks (task_title, task_desc, priority, status, assigned_to_id, assigned_to, project_name, due_date, is_archived) 
-                VALUES ('$task_title', '$task_desc', '$priority', '$status', $assigned_to_id, '$assigned_to_name', '$project_name', '$due_date', 0)";
+    // UPDATED: Include project_id in INSERT
+    $sql = "INSERT INTO tasks (task_title, task_desc, priority, status, assigned_to_id, assigned_to, project_id, project_name, due_date, is_archived) 
+            VALUES ('$task_title', '$task_desc', '$priority', '$status', $assigned_to_id, '$assigned_to_name', $project_id, '$project_name', '$due_date', 0)";
 
     if (mysqli_query($conn, $sql)) {
       $task_id = mysqli_insert_id($conn);
@@ -133,6 +138,130 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_task'])) {
       $success = true;
       echo "<script>
                 alert('Task added successfully!');
+                window.location = '" . $_SERVER['PHP_SELF'] . "?success=1';
+              </script>";
+      exit;
+    } else {
+      $errors['database'] = 'Database error: ' . mysqli_error($conn);
+    }
+  }
+}
+
+// REPLACE the EDIT TASK section with this:
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_task'])) {
+
+  if (!$is_admin) {
+    echo "<script>alert('You do not have permission to edit tasks.'); window.location='" . $_SERVER['PHP_SELF'] . "';</script>";
+    exit;
+  }
+
+  $task_id = intval($_POST['task_id']);
+  $task_title = trim($_POST['task_title'] ?? '');
+  $task_desc = trim($_POST['task_desc'] ?? '');
+  $priority = trim($_POST['priority'] ?? '');
+  $status = trim($_POST['status'] ?? '');
+  $assigned_to_id = intval($_POST['assigned_to'] ?? 0);
+  $project_id = intval($_POST['project_id'] ?? 0);
+  $due_date = trim($_POST['due_date'] ?? '');
+
+  // Validation
+  if (empty($task_title)) {
+    $errors['task_title'] = 'Task title is required';
+  }
+
+  if (empty($task_desc)) {
+    $errors['task_desc'] = 'Task description is required';
+  }
+
+  if (empty($priority)) {
+    $errors['priority'] = 'Priority is required';
+  }
+
+  if (empty($status)) {
+    $errors['status'] = 'Status is required';
+  }
+
+  if ($assigned_to_id === 0) {
+    $errors['assigned_to'] = 'Assigned to is required';
+  }
+
+  if ($project_id === 0) {
+    $errors['project_id'] = 'Project is required';
+  }
+
+  if (empty($due_date)) {
+    $errors['due_date'] = 'Due date is required';
+  }
+
+  // If no errors, update the database
+  if (empty($errors)) {
+    // Get assigned employee name
+    $assigned_employee_name = '';
+    foreach ($employees as $emp) {
+      if ($emp['employee_id'] == $assigned_to_id) {
+        $assigned_employee_name = $emp['first_name'] . ' ' . $emp['last_name'];
+        break;
+      }
+    }
+
+    // Get project name from projects table
+    $project_name = '';
+    foreach ($projects as $proj) {
+      if ($proj['project_id'] == $project_id) {
+        $project_name = $proj['project_name'];
+        break;
+      }
+    }
+
+    $task_title = mysqli_real_escape_string($conn, $task_title);
+    $task_desc = mysqli_real_escape_string($conn, $task_desc);
+    $priority = mysqli_real_escape_string($conn, $priority);
+    $status = mysqli_real_escape_string($conn, $status);
+    $assigned_to_name = mysqli_real_escape_string($conn, $assigned_employee_name);
+    $project_name = mysqli_real_escape_string($conn, $project_name);
+    $due_date = mysqli_real_escape_string($conn, $due_date);
+
+    // UPDATED: Include project_id in UPDATE
+    $sql = "UPDATE tasks SET 
+            task_title = '$task_title',
+            task_desc = '$task_desc',
+            priority = '$priority',
+            status = '$status',
+            assigned_to_id = $assigned_to_id,
+            assigned_to = '$assigned_to_name',
+            project_id = $project_id,
+            project_name = '$project_name',
+            due_date = '$due_date'
+        WHERE task_id = $task_id";
+
+    if (mysqli_query($conn, $sql)) {
+      // LOG ACTIVITY
+      log_activity(
+        $conn,
+        $employee_id,
+        $employee_full_name,
+        'UPDATE',
+        'TASKS',
+        $task_id,
+        $task_title,
+        "Updated task '$task_title'"
+      );
+
+      // CREATE NOTIFICATION FOR ASSIGNED EMPLOYEE
+      create_notification(
+        $conn,
+        $assigned_to_id,
+        $employee_id,
+        $employee_full_name,
+        'TASK_UPDATED',
+        'Task Updated',
+        "Task has been updated: $task_title",
+        'admin-tasks.php',
+        $task_id
+      );
+
+      echo "<script>
+                alert('Task updated successfully!');
                 window.location = '" . $_SERVER['PHP_SELF'] . "?success=1';
               </script>";
       exit;
@@ -424,14 +553,30 @@ if ($result) {
   $stats['completed'] = $row['count'];
 }
 
-// Get all tasks based on role
+// Get all tasks based on role with filters
 $tasks = [];
-if ($is_admin) {
-  $sql = "SELECT * FROM tasks WHERE is_archived = 0 ORDER BY due_date ASC";
-} else {
+
+// Build WHERE conditions
+$where_conditions = ["is_archived = 0"];
+
+if (!$is_admin) {
   // Employees only see tasks assigned to them
-  $sql = "SELECT * FROM tasks WHERE is_archived = 0 AND assigned_to_id = $employee_id ORDER BY due_date ASC";
+  $where_conditions[] = "assigned_to_id = $employee_id";
 }
+
+// Apply project filter
+if ($filter_project > 0) {
+  $where_conditions[] = "project_id = $filter_project";
+}
+
+// Apply employee filter (admin only)
+if ($is_admin && $filter_employee > 0) {
+  $where_conditions[] = "assigned_to_id = $filter_employee";
+}
+
+// Build final query
+$where_clause = implode(" AND ", $where_conditions);
+$sql = "SELECT * FROM tasks WHERE $where_clause ORDER BY due_date ASC";
 $result = mysqli_query($conn, $sql);
 
 if ($result) {
@@ -504,6 +649,11 @@ if ($result) {
         <a href="admin-archive-tasks.php" class="btn btn-danger text-white d-flex align-items-center">
           <i class="fa-solid fa-box-archive me-1"></i> Archived <span class="d-none d-md-block ms-1">Tasks</span>
         </a>
+        <?php if ($is_admin): ?>
+          <button class="btn btn-primary text-white d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#generateReportModal">
+            <i class="fa-solid fa-file-lines me-1"></i> Generate <span class="d-none d-md-block ms-1">Report</span>
+          </button>
+        <?php endif; ?>
       </div>
     </div>
 
@@ -559,8 +709,30 @@ if ($result) {
     <div class="row g-3 mb-2">
       <div class="col-12">
         <div class="tasks-container rounded-3 bg-white">
-          <div class="tasks-top p-4 border-bottom">
+          <div class="tasks-top p-4 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-3">
             <h2 class="fs-24 mobile-fs-22 mb-0"><?= $is_admin ? 'All Tasks' : 'My Assigned Tasks' ?></h2>
+            <div class="d-flex gap-2 flex-wrap">
+              <select name="project_filter" id="projectFilter" class="form-select" style="width: auto; min-width: 150px;">
+                <option value="0">All Projects</option>
+                <?php foreach ($projects as $proj): ?>
+                  <option value="<?= $proj['project_id'] ?>" <?= $filter_project == $proj['project_id'] ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($proj['project_name']) ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+
+              <?php if ($is_admin): ?>
+                <select name="employee_filter" id="employeeFilter" class="form-select" style="width: auto; min-width: 150px;">
+                  <option value="0">All Employees</option>
+                  <?php foreach ($employees as $emp): ?>
+                    <option value="<?= $emp['employee_id'] ?>" <?= $filter_employee == $emp['employee_id'] ? 'selected' : '' ?>>
+                      <?= htmlspecialchars($emp['first_name'] . ' ' . $emp['last_name']) ?>
+                    </option>
+                  <?php endforeach; ?>
+                </select>
+              <?php endif; ?>
+
+            </div>
           </div>
 
           <?php if (empty($tasks)): ?>
@@ -798,7 +970,7 @@ if ($result) {
 
             <div class="mb-3">
               <label class="form-label">Task Description</label>
-              <textarea name="task_desc" id="editTaskDesc" class="form-control" rows="3" placeholder="Complete Installation at Building A"></textarea>
+              <textarea name="task_desc" id="editTaskDesc" class="form-control" rows="4" placeholder="Complete Installation at Building A"></textarea>
             </div>
 
             <div class="row">
@@ -971,33 +1143,192 @@ if ($result) {
     </div>
   </div>
 
+  <!-- GENERATE REPORT MODAL -->
+  <div class="modal fade" id="generateReportModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Generate Task Report</h5>
+          <button class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <form id="reportForm">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Date From</label>
+              <input type="date" name="date_from" class="form-control" value="<?= date('Y-m-01') ?>" required>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Date To</label>
+              <input type="date" name="date_to" class="form-control" value="<?= date('Y-m-d') ?>" required>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Status Filter</label>
+              <select name="status_filter" class="form-select">
+                <option value="all">All Status</option>
+                <option value="Pending">Pending</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Completed" selected>Completed</option>
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Employee Filter</label>
+              <select name="employee_filter" class="form-select">
+                <option value="all">All Employees</option>
+                <?php foreach ($employees as $emp): ?>
+                  <option value="<?= $emp['employee_id'] ?>">
+                    <?= htmlspecialchars($emp['first_name'] . ' ' . $emp['last_name']) ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="generateTaskReportPDF()">Generate Report</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script>
+    $('#projectFilter, #employeeFilter').on('change', function() {
+      const projectFilter = $('#projectFilter').val();
+      const employeeFilter = $('#employeeFilter').val() || 0;
+
+      let url = window.location.pathname + '?';
+      const params = [];
+
+      if (projectFilter > 0) {
+        params.push('project_filter=' + projectFilter);
+      }
+
+      if (employeeFilter > 0) {
+        params.push('employee_filter=' + employeeFilter);
+      }
+
+      if (params.length > 0) {
+        url += params.join('&');
+      }
+
+      window.location.href = url;
+    });
+
+    // Function to generate Task Report PDF with filters
+    function generateTaskReportPDF() {
+      const dateFrom = document.querySelector('#generateReportModal input[name="date_from"]').value;
+      const dateTo = document.querySelector('#generateReportModal input[name="date_to"]').value;
+      const statusFilter = document.querySelector('#generateReportModal select[name="status_filter"]').value;
+      const employeeFilter = document.querySelector('#generateReportModal select[name="employee_filter"]').value;
+
+      if (!dateFrom || !dateTo) {
+        alert('Please select both date from and date to.');
+        return;
+      }
+
+      const url = `admin-task-completion-report.php?date_from=${dateFrom}&date_to=${dateTo}&status_filter=${statusFilter}&employee_filter=${employeeFilter}&auto=1`;
+      const reportWindow = window.open(url, '_blank', 'width=1200,height=800');
+
+      reportWindow.addEventListener('load', function() {
+        setTimeout(async function() {
+          try {
+            const {
+              jsPDF
+            } = reportWindow.jspdf;
+            const content = reportWindow.document.getElementById('report-content');
+
+            const canvas = await reportWindow.html2canvas(content, {
+              scale: 2,
+              useCORS: true,
+              logging: false,
+              backgroundColor: '#ffffff'
+            });
+
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF({
+              orientation: 'portrait',
+              unit: 'mm',
+              format: 'a4'
+            });
+
+            const imgWidth = 210;
+            const pageHeight = 297;
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            let heightLeft = imgHeight;
+            let position = 0;
+
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+
+            while (heightLeft > 0) {
+              position = heightLeft - imgHeight;
+              pdf.addPage();
+              pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+              heightLeft -= pageHeight;
+            }
+
+            const filename = 'Task_Report_' + dateFrom + '_to_' + dateTo + '.pdf';
+            pdf.save(filename);
+
+            reportWindow.close();
+          } catch (error) {
+            console.error('Error generating PDF:', error);
+            alert('Error generating PDF. Please try again.');
+            reportWindow.close();
+          }
+        }, 1500);
+      });
+
+      // Close the modal
+      const modal = bootstrap.Modal.getInstance(document.getElementById('generateReportModal'));
+      if (modal) {
+        modal.hide();
+      }
+    }
+
     $(document).ready(function() {
       // Edit Task Modal - Populate data (Admin)
       $('.edit-task').on('click', function() {
-        $('#editTaskId').val($(this).data('id'));
-        $('#editTaskTitle').val($(this).data('title'));
-        $('#editTaskDesc').val($(this).data('desc'));
-        $('#editPriority').val($(this).data('priority'));
-        $('#editStatus').val($(this).data('status'));
-        $('#editAssignedTo').val($(this).data('assigned'));
-        $('#editProjectId').val($(this).data('project-id'));
-        $('#editDueDate').val($(this).data('due'));
+        const taskId = $(this).data('id');
+        const title = $(this).data('title');
+        const desc = $(this).data('desc');
+        const priority = $(this).data('priority');
+        const status = $(this).data('status');
+        const assignedId = $(this).data('assigned');
+        const projectId = $(this).data('project-id');
+        const dueDate = $(this).data('due');
+
+        // Set values
+        $('#editTaskId').val(taskId);
+        $('#editTaskTitle').val(title);
+        $('#editTaskDesc').val(desc.replace(/<br\s*\/?>/gi, '\n'));
+        $('#editPriority').val(priority);
+        $('#editStatus').val(status);
+        $('#editAssignedTo').val(assignedId);
+
+        if (projectId) {
+          $('#editProjectId').val(projectId);
+        }
+
+        $('#editDueDate').val(dueDate);
       });
 
       // View Proof Modal - Display proof file
       $('.view-proof').on('click', function() {
         const filename = $(this).data('filename');
         const taskTitle = $(this).data('title');
-        const taskId = $(this).data('id');
         const filepath = '../uploads/task_proofs/' + filename;
         const fileExt = filename.split('.').pop().toLowerCase();
 
         $('#proofTaskTitle').text(taskTitle);
         $('#proofDownloadLink').attr('href', filepath).attr('download', filename);
 
-        // Determine how to display the file based on extension
         let contentHTML = '';
 
         if (['jpg', 'jpeg', 'png'].includes(fileExt)) {
@@ -1023,11 +1354,8 @@ if ($result) {
         $('#updateTaskId').val(taskId);
         $('#updateTaskTitle').val(taskTitle);
         $('#updateTaskCurrentStatus').val(currentStatus);
-
-        // Clear file input
         $('#proofFileInput').val('');
 
-        // Show current proof if exists
         if (currentProof && currentProof !== '') {
           const filepath = '../uploads/task_proofs/' + currentProof;
           const fileExt = currentProof.split('.').pop().toLowerCase();
@@ -1061,6 +1389,11 @@ if ($result) {
       <?php endif; ?>
     });
   </script>
+</body>
+
+</html>
+
+
 </body>
 
 </html>
