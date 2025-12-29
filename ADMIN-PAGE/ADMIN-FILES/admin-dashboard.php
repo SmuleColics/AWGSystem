@@ -20,7 +20,7 @@ $completed_projects = mysqli_fetch_assoc($projects_result)['total'];
 // Revenue (Admin only)
 $revenue = 0;
 if ($is_admin) {
-  $revenue_query = "SELECT SUM(amount_paid) as total FROM projects WHERE status = 'Completed'";
+  $revenue_query = "SELECT SUM(payment_amount) as total FROM project_payments WHERE is_archived = 0";
   $revenue_result = mysqli_query($conn, $revenue_query);
   $revenue = mysqli_fetch_assoc($revenue_result)['total'] ?? 0;
 }
@@ -83,13 +83,13 @@ if (!$is_admin) {
   $task_completion_rate = $total_tasks > 0 ? round(($completed_tasks / $total_tasks) * 100, 1) : 0;
 }
 
-// Get monthly revenue for admin (last 6 months)
+// Get monthly revenue for admin (last 6 months) 
 $monthly_revenue = [];
 if ($is_admin) {
   for ($i = 5; $i >= 0; $i--) {
     $month = date('Y-m', strtotime("-$i months"));
-    $query = "SELECT SUM(amount_paid) as total FROM projects 
-              WHERE status = 'Completed' AND DATE_FORMAT(created_at, '%Y-%m') = '$month'";
+    $query = "SELECT SUM(payment_amount) as total FROM project_payments 
+              WHERE DATE_FORMAT(payment_date, '%Y-%m') = '$month'";
     $result = mysqli_query($conn, $query);
     $monthly_revenue[] = mysqli_fetch_assoc($result)['total'] ?? 0;
   }

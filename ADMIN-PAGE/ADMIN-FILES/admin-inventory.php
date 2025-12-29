@@ -264,7 +264,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_item'])) {
             selling_price = $selling_price,
             status = '$status_esc',
             location = '$location_esc',
-            supplier = '$supplier_esc',
+            supplier = '$supplier_esc'
         WHERE item_id = $item_id";
 
     if (mysqli_query($conn, $sql)) {

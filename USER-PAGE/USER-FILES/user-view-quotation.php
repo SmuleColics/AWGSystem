@@ -29,11 +29,9 @@ if (!$quotation) {
 
 $project_sql = "SELECT p.project_id 
                 FROM projects p
-                INNER JOIN assessments a ON p.user_id = a.user_id 
-                WHERE a.assessment_id = {$quotation['assessment_id']}
+                WHERE p.quotation_id = $quotation_id
                 AND p.user_id = $user_id
                 AND p.is_archived = 0
-                ORDER BY p.created_at DESC
                 LIMIT 1";
 $project_result = mysqli_query($conn, $project_sql);
 $project_data = mysqli_fetch_assoc($project_result);

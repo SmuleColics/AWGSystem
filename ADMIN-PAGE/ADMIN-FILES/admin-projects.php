@@ -204,9 +204,13 @@ $projects_result = mysqli_query($conn, $projects_sql);
         <h1 class="fs-36 mobile-fs-32">Projects</h1>
         <p class="admin-top-desc">Create new projects, assign tasks, and monitor progress in real time.</p>
       </div>
-      <div>
+      <div class="d-flex gap-2 flex-column flex-md-row">
         <a href="admin-archive-project.php" class="btn btn-danger text-white d-flex align-items-center">
           <i class="fa-solid fa-folder me-1"></i> Archived <span class="d-none d-md-block ms-1">Project</span>
+        </a>
+
+        <a href="admin-archived-payments.php" class="btn btn-danger text-white d-flex align-items-center">
+          <i class="fa-solid fa-folder me-1"></i> Archived <span class="d-none d-md-block ms-1">Payments</span>
         </a>
       </div>
     </div>

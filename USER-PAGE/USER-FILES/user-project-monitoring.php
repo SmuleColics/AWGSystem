@@ -65,6 +65,7 @@ while ($row = mysqli_fetch_assoc($updates_result)) {
 // Fetch payment history
 $payments_sql = "SELECT * FROM project_payments 
                 WHERE project_id = $project_id 
+                AND is_archived = 0
                 ORDER BY payment_date DESC";
 $payments_result = mysqli_query($conn, $payments_sql);
 $payments = [];
@@ -80,6 +81,9 @@ $remaining_balance = floatval($project['remaining_balance']);
 // Format dates
 $start_date = !empty($project['start_date']) ? date('M d, Y', strtotime($project['start_date'])) : 'N/A';
 $end_date = !empty($project['end_date']) ? date('M d, Y', strtotime($project['end_date'])) : 'N/A';
+
+
+$is_archived_payment_view = ($remaining_balance == 0 && $amount_paid > 0 && count($payments) == 0);
 
 // Client info
 $client_name = $project['first_name'] . ' ' . $project['last_name'];
@@ -285,10 +289,10 @@ ob_end_flush();
                   $project_update_image_path = '';
 
                   if (!empty($update['update_image'])) {
-                    
+
                     $pu_clean_path = preg_replace('#^(\.\./|\.?/)+#', '', $update['update_image']);
 
-                    
+
                     $server_path = __DIR__ . '/../../ADMIN-PAGE/' . $pu_clean_path;
 
                     if (file_exists($server_path)) {
@@ -342,42 +346,70 @@ ob_end_flush();
           <div class="card-body" style="max-height: 400px; overflow-y: auto;">
 
             <!-- TOTAL COST -->
-            <div class="p-3 border rounded mb-3 bg-light">
-              <div class="fw-semibold mb-1">Project Cost</div>
-              <p class="light-text small mb-0">
-                Total Amount: <strong>₱<?= number_format($total_budget, 2) ?></strong>
-              </p>
-            </div>
+            <?php if (!$is_archived_payment_view): ?>
+              <div class="p-3 border rounded mb-3 bg-light">
+                <div class="fw-semibold mb-1">Project Cost</div>
+                <p class="light-text small mb-0">
+                  Total Amount: <strong>₱<?= number_format($total_budget, 2) ?></strong>
+                </p>
+              </div>
+            <?php endif; ?>
+
+
+            <?php if ($remaining_balance == 0 && $amount_paid > 0 && count($payments) == 0): ?>
+              <!-- ARCHIVED PAYMENTS STATE -->
+              <div class="p-4 text-center border rounded bg-light">
+                <div class="mb-3">
+                  <i class="fa-solid fa-box-archive text-muted" style="font-size: 56px;"></i>
+                </div>
+
+                <h5 class="fw-bold mb-2">Payment Records Archived</h5>
+
+                <p class="text-muted mb-3">
+                  Your payment records for this project have been archived.
+                </p>
+
+                <p class="small text-muted mb-0">
+                  Please contact us at
+                  <strong>awegreenenterprise@gmail.com</strong><br>
+                  or call <strong>0917 752 3343</strong> for any inquiries.
+                </p>
+              </div>
+            <?php endif; ?>
+
+
 
             <!-- PAYMENT HISTORY -->
-            <?php if (count($payments) > 0): ?>
-              <div class="p-3 border rounded mb-3 bg-light">
-                <div class="fw-semibold mb-2">Payment History</div>
-                <?php foreach ($payments as $payment): ?>
-                  <div class="mb-2 pb-2 border-bottom">
-                    <p class="light-text small mb-1">
-                      <strong>₱<?= number_format($payment['payment_amount'], 2) ?></strong>
-                    </p>
-                    <p class="text-muted small mb-0">
-                      <?= date('M d, Y', strtotime($payment['payment_date'])) ?>
-                      (<?= htmlspecialchars($payment['payment_method']) ?>)
-                    </p>
-                    <?php if (!empty($payment['reference_number'])): ?>
-                      <p class="text-muted small mb-0">Ref: <?= htmlspecialchars($payment['reference_number']) ?></p>
-                    <?php endif; ?>
-                    <?php if (!empty($payment['gcash_number'])): ?>
-                      <p class="text-muted small mb-0">GCash: <?= htmlspecialchars($payment['gcash_number']) ?></p>
-                    <?php endif; ?>
-                    <?php if (!empty($payment['notes'])): ?>
-                      <p class="text-muted small mb-0">Note: <?= htmlspecialchars($payment['notes']) ?></p>
-                    <?php endif; ?>
-                  </div>
-                <?php endforeach; ?>
-              </div>
-            <?php else: ?>
-              <div class="p-3 border rounded mb-3 bg-light">
-                <p class="text-muted small text-center mb-0">No payments recorded yet</p>
-              </div>
+            <?php if (!$is_archived_payment_view): ?>
+              <?php if (count($payments) > 0): ?>
+                <div class="p-3 border rounded mb-3 bg-light">
+                  <div class="fw-semibold mb-2">Payment History</div>
+                  <?php foreach ($payments as $payment): ?>
+                    <div class="mb-2 pb-2 border-bottom">
+                      <p class="light-text small mb-1">
+                        <strong>₱<?= number_format($payment['payment_amount'], 2) ?></strong>
+                      </p>
+                      <p class="text-muted small mb-0">
+                        <?= date('M d, Y', strtotime($payment['payment_date'])) ?>
+                        (<?= htmlspecialchars($payment['payment_method']) ?>)
+                      </p>
+                      <?php if (!empty($payment['reference_number'])): ?>
+                        <p class="text-muted small mb-0">Ref: <?= htmlspecialchars($payment['reference_number']) ?></p>
+                      <?php endif; ?>
+                      <?php if (!empty($payment['gcash_number'])): ?>
+                        <p class="text-muted small mb-0">GCash: <?= htmlspecialchars($payment['gcash_number']) ?></p>
+                      <?php endif; ?>
+                      <?php if (!empty($payment['notes'])): ?>
+                        <p class="text-muted small mb-0">Note: <?= htmlspecialchars($payment['notes']) ?></p>
+                      <?php endif; ?>
+                    </div>
+                  <?php endforeach; ?>
+                </div>
+              <?php else: ?>
+                <div class="p-3 border rounded mb-3 bg-light">
+                  <p class="text-muted small text-center mb-0">No payments recorded yet</p>
+                </div>
+              <?php endif; ?>
             <?php endif; ?>
 
             <?php
@@ -395,29 +427,33 @@ ob_end_flush();
             ?>
 
             <!-- REMAINING BALANCE -->
-            <div class="p-3 border rounded mb-3 bg-light">
-              <div class="d-flex justify-content-between mb-2">
-                <span class="fw-semibold">Amount Paid:</span>
-                <span class="text-success fw-bold">₱<?= number_format($amount_paid, 2) ?></span>
+            <?php if (!$is_archived_payment_view): ?>
+              <div class="p-3 border rounded mb-3 bg-light">
+                <div class="d-flex justify-content-between mb-2">
+                  <span class="fw-semibold">Amount Paid:</span>
+                  <span class="text-success fw-bold">₱<?= number_format($amount_paid, 2) ?></span>
+                </div>
+                <div class="d-flex justify-content-between">
+                  <span class="fw-semibold">Remaining:</span>
+                  <span class="text-danger fw-bold">₱<?= number_format($remaining_balance, 2) ?></span>
+                </div>
               </div>
-              <div class="d-flex justify-content-between">
-                <span class="fw-semibold">Remaining:</span>
-                <span class="text-danger fw-bold">₱<?= number_format($remaining_balance, 2) ?></span>
-              </div>
-            </div>
+            <?php endif; ?>
 
             <!-- PAYMENT STATUS -->
-            <?php if ($remaining_balance <= 0): ?>
-              <div class="alert alert-success mb-0">
-                <i class="fas fa-check-circle me-2"></i>
-                <strong>Paid in Full</strong>
-              </div>
-            <?php else: ?>
-              <div class="alert alert-warning mb-0">
-                <i class="fas fa-exclamation-triangle me-2"></i>
-                <strong>Payment Pending</strong>
-                <p class="small mb-0 mt-1">Please proceed to complete your payment to settle the remaining balance.</p>
-              </div>
+            <?php if (!$is_archived_payment_view): ?>
+              <?php if ($remaining_balance <= 0): ?>
+                <div class="alert alert-success mb-0">
+                  <i class="fas fa-check-circle me-2"></i>
+                  <strong>Paid in Full</strong>
+                </div>
+              <?php else: ?>
+                <div class="alert alert-warning mb-0">
+                  <i class="fas fa-exclamation-triangle me-2"></i>
+                  <strong>Payment Pending</strong>
+                  <p class="small mb-0 mt-1">Please proceed to complete your payment to settle the remaining balance.</p>
+                </div>
+              <?php endif; ?>
             <?php endif; ?>
 
           </div>
