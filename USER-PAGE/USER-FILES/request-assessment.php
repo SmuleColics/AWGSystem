@@ -150,7 +150,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['schedule_assessment']
             $notif_link = 'admin-assessments.php?id=' . $assessment_id;
             
             $notif_sql = "INSERT INTO notifications (recipient_id, type, title, message, link, is_read) 
-                         VALUES ({$admin['employee_id']}, 'ASSESSMENT_REQUEST', 
+                        VALUES ({$admin['employee_id']}, 'ASSESSMENT_REQUEST', 
                                 '" . mysqli_real_escape_string($conn, $notif_title) . "',
                                 '" . mysqli_real_escape_string($conn, $notif_message) . "',
                                 '" . mysqli_real_escape_string($conn, $notif_link) . "',

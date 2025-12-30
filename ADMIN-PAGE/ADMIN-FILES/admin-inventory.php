@@ -900,7 +900,8 @@ function updateItemStatus($conn, $item_id)
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <p>Are you sure you want to archive this item?</p>
+          <h3 class="fs-24 text-center m-0 py-4">Are you sure you want to archive this item?</h3>
+            <p class="text-center text-muted">Archived items can be restored later.</p>
         </div>
         <div class="modal-footer">
           <form method="POST" action="">

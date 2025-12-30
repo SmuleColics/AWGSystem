@@ -1,5 +1,22 @@
 <?php
 include 'LP-Header.php';
+include '../../INCLUDES/db-con.php';
+
+// Fetch recent public projects (limit to 3 most recent)
+$projects_sql = "SELECT * FROM projects 
+                WHERE visibility = 'Public' 
+                AND is_archived = 0 
+                ORDER BY created_at DESC 
+                LIMIT 3";
+$projects_result = mysqli_query($conn, $projects_sql);
+
+// Store projects in array
+$recent_projects = [];
+if ($projects_result && mysqli_num_rows($projects_result) > 0) {
+  while ($row = mysqli_fetch_assoc($projects_result)) {
+    $recent_projects[] = $row;
+  }
+}
 ?>
 
 <!DOCTYPE html>
@@ -28,6 +45,22 @@ include 'LP-Header.php';
       background-color: #fff !important;
       color: #2ca257 !important;
     }
+
+    .no-project-image {
+      width: 100%;
+      height: 200px;
+      background-color: #f0f0f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      color: #ccc;
+    }
+
+    .project-badge {
+      font-size: 12px;
+      padding: 4px 12px;
+    }
   </style>
 </head>
 
@@ -41,7 +74,7 @@ include 'LP-Header.php';
 
         <h1 class="green-text ">Building a Sustainable Future, One Project at a Time</h1>
         <p>A We Green Enterprise offers comprehensive solutions in security systems, renewable energy, and interior design to transform your spaces.</p>
-        <button class="btn green-bg btn-started text-light">Get Started</button>
+        <a href="../../LOGS/LOGS-FILES/signup.php" class="btn green-bg btn-started text-light">Get Started</a>
       </div>
     </section>
     <!--==========END OF HERO SECTION========== -->
@@ -142,170 +175,171 @@ include 'LP-Header.php';
           <p class="w-60 mx-auto">See how we've helped businesses and homeowners achieve their goals with our expert solutions</p>
         </div>
         <div class="row projects-container animate-on-scroll">
-          <div class="col-md-4">
-            <div class="card">
-              <div class="projects-img-con position-relative overflow-hidden">
-                <img src="../../INCLUDES/LP-IMAGES/center-island-cctv.jpg" class="card-img-top" alt="...">
-                <p class="position-absolute start-0 top-0 bg-success rounded-pill px-3 py-1 text-white fs-14 m-3">CCTV Installation</p>
-              </div>
-              <div class="card-body">
-                <h5 class="card-title green-text">Center Island CCTV </h5>
-                <p class="card-text fs-14">Complete surveillance solution for a corporate facility with 32 high-definition cameras and advanced monitoring.</p>
 
-                <div class="divider mb-3"></div>
+          <?php if (!empty($recent_projects)): ?>
+            <?php foreach ($recent_projects as $project): ?>
+              <?php
+              // Process project image path
+              $project_image_path = '';
+              $image_exists = false;
 
-                <div class="row">
-                  <div class="col-8">
-                    <p class="text-muted fs-12 mb-0">24 Cameras • 4K Resolution • 30-Day Storage</p>
+              if (!empty($project['project_image'])) {
+                // Remove all leading ../ or ./ or / from the path
+                $clean_path = preg_replace('#^(\.\./|\.?/)+#', '', $project['project_image']);
+
+                // Prepend the correct base path
+                $project_image_path = '../../ADMIN-PAGE/' . $clean_path;
+
+                // Check if file exists
+                if (file_exists('../../ADMIN-PAGE/' . $clean_path)) {
+                  $image_exists = true;
+                }
+              }
+
+              $badge_class = 'bg-success';
+              ?>
+
+              <div class="col-md-4">
+                <div class="card">
+                  <div class="projects-img-con position-relative overflow-hidden">
+                    <?php if ($image_exists): ?>
+                      <img src="<?= htmlspecialchars($project_image_path) ?>" 
+                          class="card-img-top" 
+                          alt="<?= htmlspecialchars($project['project_name']) ?>">
+                    <?php else: ?>
+                      <div class="no-project-image">
+                        <i class="fas fa-image"></i>
+                      </div>
+                    <?php endif; ?>
+                    <p class="position-absolute start-0 top-0 <?= $badge_class ?> rounded-pill px-3 py-1 text-white project-badge m-3">
+                      <?= htmlspecialchars($project['project_type']) ?>
+                    </p>
                   </div>
-                  <div class="col-4 flex">
-                    <a href="#" class="btn fs-14 flex gap-1 view-details-btn">
-                      <span class="view-details">View Details </span>
-                      <i class="fas fa-arrow-right ps-1"></i>
-                    </a>
-                  </div>
-                </div>
+                  <div class="card-body">
+                    <h5 class="card-title green-text"><?= htmlspecialchars($project['project_name']) ?></h5>
+                    <p class="card-text fs-14">
+                      <?php 
+                        // Limit description to 100 characters
+                        $description = $project['description'] ?? 'No description available.';
+                        echo htmlspecialchars(strlen($description) > 100 ? substr($description, 0, 100) . '...' : $description);
+                      ?>
+                    </p>
 
-              </div>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="card">
-              <div class="projects-img-con position-relative overflow-hidden">
-                <img src="../../INCLUDES/LP-IMAGES/20-panel-solar.jpg" class="card-img-top" alt="...">
-                <p class="position-absolute start-0 top-0 bg-success rounded-pill px-3 py-1 text-white fs-14 m-3">Solar Panel Installation</p>
-              </div>
-              <div class="card-body">
-                <h5 class="card-title green-text">Residential Solar Installation</h5>
-                <p class="card-text fs-14">20-panel solar system reducing energy costs and providing sustainable energy for the home.</p>
+                    <div class="divider mb-3"></div>
 
-                <div class="divider mb-3"></div>
+                    <div class="row">
+                      <div class="col-8">
+                        <p class="text-muted fs-12 mb-0">
+                          <?php if (!empty($project['location'])): ?>
+                            <i class="fas fa-map-marker-alt me-1"></i><?= htmlspecialchars($project['location']) ?>
+                          <?php else: ?>
+                            <?= htmlspecialchars($project['category'] ?? 'Project Details') ?>
+                          <?php endif; ?>
+                        </p>
+                      </div>
+                      <div class="col-4 flex">
+                        <a href="../../LOGS/LOGS-FILES/signup.php" class="btn fs-14 flex gap-1 view-details-btn">
+                          <span class="view-details">View Details </span>
+                          <i class="fas fa-arrow-right ps-1"></i>
+                        </a>
+                      </div>
+                    </div>
 
-                <div class="row">
-                  <div class="col-8">
-                    <p class="text-muted fs-12 mb-0">20 Panels • Renewable Energy • ROI in 6 Years</p>
-                  </div>
-                  <div class="col-4">
-                    <a href="#" class="btn fs-14 p-0 flex gap-1 view-details-btn d-inline-block">
-                      <span class="view-details">View Details </span>
-                      <i class="fas fa-arrow-right ps-1"></i>
-                    </a>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="card projects-card">
-              <div class="projects-img-con position-relative overflow-hidden">
-                <img src="../../INCLUDES/LP-IMAGES/wpc-ceiling.webp" class="card-img-top img-fluid" alt="...">
-                <p class="position-absolute start-0 top-0 bg-success rounded-pill px-3 py-1 text-white fs-14 m-3">Room Renovation</p>
-              </div>
-              <div class="card-body">
-                <h5 class="card-title green-text">WPC Ceiling Installation</h5>
-                <p class="card-text fs-14">Modern and eco-friendly ceiling installation using durable Wood-Plastic Composite materials.</p>
-
-                <div class="divider mb-3"></div>
-
-                <div class="row">
-                  <div class="col-8">
-                    <p class="text-muted fs-12 mb-0">WPC Material • Eco-Friendly • Modern Style</p>
-                  </div>
-                  <div class="col-4">
-                    <a href="#" class="btn fs-14 p-0 flex gap-1 view-details-btn d-inline-block">
-                      <span class="view-details">View Details </span>
-                      <i class="fas fa-arrow-right ps-1"></i>
-                    </a>
                   </div>
                 </div>
+              </div>
 
+            <?php endforeach; ?>
+
+          <?php else: ?>
+            <!-- Fallback to default projects if no database projects -->
+            <div class="col-md-4">
+              <div class="card">
+                <div class="projects-img-con position-relative overflow-hidden">
+                  <img src="../../INCLUDES/LP-IMAGES/center-island-cctv.jpg" class="card-img-top" alt="...">
+                  <p class="position-absolute start-0 top-0 bg-success rounded-pill px-3 py-1 text-white fs-14 m-3">CCTV Installation</p>
+                </div>
+                <div class="card-body">
+                  <h5 class="card-title green-text">Center Island CCTV </h5>
+                  <p class="card-text fs-14">Complete surveillance solution for a corporate facility with 32 high-definition cameras and advanced monitoring.</p>
+
+                  <div class="divider mb-3"></div>
+
+                  <div class="row">
+                    <div class="col-8">
+                      <p class="text-muted fs-12 mb-0">24 Cameras • 4K Resolution • 30-Day Storage</p>
+                    </div>
+                    <div class="col-4 flex">
+                      <a href="../../LOGS/LOGS-FILES/signup.php" class="btn fs-14 flex gap-1 view-details-btn">
+                        <span class="view-details">View Details </span>
+                        <i class="fas fa-arrow-right ps-1"></i>
+                      </a>
+                    </div>
+                  </div>
+
+                </div>
               </div>
             </div>
-          </div>
+            <div class="col-md-4">
+              <div class="card">
+                <div class="projects-img-con position-relative overflow-hidden">
+                  <img src="../../INCLUDES/LP-IMAGES/20-panel-solar.jpg" class="card-img-top" alt="...">
+                  <p class="position-absolute start-0 top-0 bg-success rounded-pill px-3 py-1 text-white fs-14 m-3">Solar Panel Installation</p>
+                </div>
+                <div class="card-body">
+                  <h5 class="card-title green-text">Residential Solar Installation</h5>
+                  <p class="card-text fs-14">20-panel solar system reducing energy costs and providing sustainable energy for the home.</p>
+
+                  <div class="divider mb-3"></div>
+
+                  <div class="row">
+                    <div class="col-8">
+                      <p class="text-muted fs-12 mb-0">20 Panels • Renewable Energy • ROI in 6 Years</p>
+                    </div>
+                    <div class="col-4">
+                      <a href="../../LOGS/LOGS-FILES/signup.php" class="btn fs-14 p-0 flex gap-1 view-details-btn d-inline-block">
+                        <span class="view-details">View Details </span>
+                        <i class="fas fa-arrow-right ps-1"></i>
+                      </a>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card projects-card">
+                <div class="projects-img-con position-relative overflow-hidden">
+                  <img src="../../INCLUDES/LP-IMAGES/wpc-ceiling.webp" class="card-img-top img-fluid" alt="...">
+                  <p class="position-absolute start-0 top-0 bg-success rounded-pill px-3 py-1 text-white fs-14 m-3">Room Renovation</p>
+                </div>
+                <div class="card-body">
+                  <h5 class="card-title green-text">WPC Ceiling Installation</h5>
+                  <p class="card-text fs-14">Modern and eco-friendly ceiling installation using durable Wood-Plastic Composite materials.</p>
+
+                  <div class="divider mb-3"></div>
+
+                  <div class="row">
+                    <div class="col-8">
+                      <p class="text-muted fs-12 mb-0">WPC Material • Eco-Friendly • Modern Style</p>
+                    </div>
+                    <div class="col-4">
+                      <a href="#" class="btn fs-14 p-0 flex gap-1 view-details-btn d-inline-block">
+                        <span class="view-details">View Details </span>
+                        <i class="fas fa-arrow-right ps-1"></i>
+                      </a>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          <?php endif; ?>
+
         </div>
       </div>
     </section>
     <!--==========END RECENT PROJECTS SECTION==========-->
-
-    <!--==========START OF CONTACT SECTION==========-->
-    <!-- <section class="lp-contact-sec green-bg" id="contact-us">
-      <div class="section-container">
-        <div class="lp-title-con text-center pb-5">
-          <h2 class="text-light">Ready to Start Your Project?</h2>
-          <p class="text-light">Get in touch with our team today and let us bring your vision to life</p>
-        </div>
-        <div class="row services-container">
-          <div class="col-md-6 animate-left-on-scroll">
-
-            <div class="contact-con border rounded-3 p-4 bg-white">
-              <h2 class="fs-24">Send Us a Message</h2>
-              <div class="mb-3">
-                <label for="f-name" class="form-label fs-14">Full Name *</label>
-                <input type="text" class="form-control fs-14" id="f-name" placeholder="(Optional)">
-              </div>
-
-              <div class="mb-3">
-                <label for="email" class="form-label fs-14">Email *</label>
-                <input type="email" class="form-control fs-14" id="email" placeholder="you@example.com">
-              </div>
-
-              <div class="mb-3">
-                <label for="subject" class="form-label fs-14">Subject *</label>
-                <input type="text" class="form-control fs-14" id="subject" placeholder="What can we help you with? ">
-              </div>
-
-              <div class="mb-3">
-                <label for="message" class="form-label fs-14">Message *</label>
-                <textarea class="form-control fs-14" id="message" rows="4" placeholder="Tell us about your project..."></textarea>
-              </div>
-
-              <div class="d-grid gap-2 mt-3">
-                <button class="btn green-bg text-white fs-14 btn-send" type="button">Send Message</button>
-                <button class="btn request-btn btn-white border fs-14 request-quotation-btn" type="button">Request Quotation</button>
-              </div>
-            </div>
-
-          </div>
-          <div class="col-md-6 animate-right-on-scroll">
-            <div class="flex h-100">
-              <div class="p-0 gap-3">
-
-                <div class="hikvision-container position-relative mb-3 overflow-hidden rounded-3 border border-secondary">
-                  <img class="img-fluid hikvision-logo w-100" src="../../INCLUDES/LP-IMAGES/hikvision-logo.png" alt="hikvision logo">
-                  <div class="position-absolute bottom-0 start-0 h-100 w-100 d-flex flex-column justify-content-end ps-4">
-                    <p class="mb-0 fs-20 fw-bold">Powered with Hikvision</p>
-                    <p class="fs-14">Global leaders in smart surveillance technology</p>
-                  </div>
-                </div>
-
-                <div class="row gap-3">
-                  <div class="col pe-0">
-                    <div class="card overflow-hidden">
-                      <img src="../../INCLUDES/LP-IMAGES/seminar.webp" class="card-img-top contact-img img-fluid" alt="...">
-                      <div class="card-body">
-                        <p class="card-text mb-0 fw-semibold">Professional Excellence</p>
-                        <p class="card-text fs-14 light-text">Certified technicians delivering quality results</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="col ps-0">
-                    <div class="card overflow-hidden">
-                      <img src="../../INCLUDES/LP-IMAGES/warranty.webp" class="card-img-top contact-img img-fluid" alt="...">
-                      <div class="card-body">
-                        <p class="card-text mb-0 fw-semibold">Warranty Guarantee</p>
-                        <p class="card-text fs-14 light-text">All of our installations and services come with a reliable warranty.</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section> -->
-    <!--==========END OF CONTACT SECTION==========-->
 
     <!--==========START OF CHOOSE US SECTION========== -->
     <section class="lp-choose-sec green-bg" id="choose-us">
@@ -321,10 +355,6 @@ include 'LP-Header.php';
               <div class="choose-icon-container">
                 <i class="fa-solid fa-clipboard-check p-3 fs-28 rounded-circle 
                 choose-con-icon"></i>
-
-
-                
-
               </div>
               <p class="services-title fs-20 fw-semibold mt-3 mb-2">Free Assessment</p>
               <p class="services-text text-white mb-0">Get a professional evaluation of your project needs at no cost</p>

@@ -455,8 +455,12 @@ ob_end_flush();
                   </button>
                 <?php else: ?>
                   <?php if (count($payments) > 0): ?>
-                    <button class="btn btn-danger" onclick="archivePayments(<?= $project_id ?>)">
-                      <i class="fas fa-box-archive me-1"></i> Archive Payment Records
+                    <button
+                      class="btn btn-danger"
+                      data-bs-toggle="modal"
+                      data-bs-target="#archivePaymentsModal"
+                      data-project-id="<?= $project_id ?>">
+                      <i class="fa fa-box-archive me-1"></i> Archive Payments Records
                     </button>
                   <?php else: ?>
                     <a href="admin-archived-payments.php?project_id=<?= $project_id ?>" class="btn btn-outline-secondary">
@@ -749,6 +753,44 @@ ob_end_flush();
   </div>
 
 
+  <!-- ARCHIVE PAYMENTS MODAL -->
+  <div class="modal fade" id="archivePaymentsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+
+        <div class="modal-header">
+          <h5 class="modal-title">
+            <i class="fa-solid fa-box-archive me-2"></i>
+            Archive Payment Records
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+          <h3 class="fs-24 text-center m-0 py-4">Are you sure you want to archive the payment records?</h3>
+          <p class="text-center text-muted">Archived payments can be restored later.</p>
+        </div>
+
+        <div class="modal-footer">
+          <form method="POST" action="archive-payments.php">
+            <input type="hidden" name="project_id" id="archiveProjectId">
+
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+              Cancel
+            </button>
+
+            <button type="submit" name="archive_payments" class="btn btn-danger">
+              <i class="fa-solid fa-box-archive me-1"></i> Archive
+            </button>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+
+
   <!-- Edit Payment Modal -->
   <div class="modal fade" id="editPaymentModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -968,12 +1010,21 @@ ob_end_flush();
       modal.show();
     }
 
-    // Archive payments function
-    function archivePayments(projectId) {
-      if (confirm('Are you sure you want to archive all payment records for this project? This action can be undone.')) {
-        window.location.href = 'archive-payments.php?project_id=' + projectId;
-      }
+    function openArchivePaymentsModal(projectId) {
+      document.getElementById('archiveProjectId').value = projectId;
+
+      const modal = new bootstrap.Modal(
+        document.getElementById('archivePaymentsModal')
+      );
+      modal.show();
     }
+
+    // Archive Payments Modal - Set project ID when modal opens
+    document.getElementById('archivePaymentsModal')?.addEventListener('show.bs.modal', function(event) {
+      const button = event.relatedTarget;
+      const projectId = button?.getAttribute('data-project-id') || <?= $project_id ?>;
+      document.getElementById('archiveProjectId').value = projectId;
+    });
 
     // Show messages
     <?php if (isset($_SESSION['success'])): ?>

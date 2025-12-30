@@ -1,4 +1,7 @@
 <?php
+
+include 'user-header.php';
+
 if (session_status() === PHP_SESSION_NONE) {
   session_start();
 }
@@ -126,8 +129,6 @@ $unread_count = mysqli_fetch_assoc($unread_result)['unread_count'];
 </head>
 
 <body>
-
-<?php include 'user-header.php'; ?>
 
 <main class="container-xxl px-4 min-vh-100 -mt-5">
 

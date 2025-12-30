@@ -1,7 +1,7 @@
 /* ========== START OF HERO SECTION ==========  */
 .main-bg {
   object-fit: cover;
-  height: 595px;
+  height: 624px;
   width: 100%;         /* Ensure it is full width */
   filter: brightness(0.75); /* Alternative to opacity, preserves text clarity */
   display: block;
@@ -88,6 +88,10 @@
     box-shadow 0.3s,
     filter 0.32s;
   cursor: pointer;
+}
+
+.no-project-image {
+  height: 250px !important;
 }
 
 .about-img-con img:hover,

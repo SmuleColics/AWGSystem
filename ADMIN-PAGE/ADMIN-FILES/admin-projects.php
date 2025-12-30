@@ -208,10 +208,6 @@ $projects_result = mysqli_query($conn, $projects_sql);
         <a href="admin-archive-project.php" class="btn btn-danger text-white d-flex align-items-center">
           <i class="fa-solid fa-folder me-1"></i> Archived <span class="d-none d-md-block ms-1">Project</span>
         </a>
-
-        <a href="admin-archived-payments.php" class="btn btn-danger text-white d-flex align-items-center">
-          <i class="fa-solid fa-folder me-1"></i> Archived <span class="d-none d-md-block ms-1">Payments</span>
-        </a>
       </div>
     </div>
 

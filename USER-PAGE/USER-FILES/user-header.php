@@ -10,6 +10,7 @@ include '../../INCLUDES/log-activity.php';
 $user_id = $_SESSION['user_id'] ?? null;
 $first_name = $_SESSION['first_name'] ?? 'Guest';
 $last_name = $_SESSION['last_name'] ?? '';
+$user_full_name = $first_name . ' ' . $last_name;
 $email = $_SESSION['email'] ?? null;
 
 // Get user notifications (ONLY client-side types)
@@ -194,9 +195,15 @@ if ($user_id) {
                   <i class="fa-solid fa-user text-white fs-18" style="position: relative; top: -2px;"></i>
                 </div>
                 <div class="dropdown-profile-text" style="margin-left: -4px;">
-                  <p class="fs-18 view-profile-text">View Profile</p>
+                  <p class="fs-18 view-profile-text mb-0"><?= htmlspecialchars($user_full_name) ?></p>
                   <p class="m-0 fs-14 db-text-secondary">Client</p>
                 </div>
+              </a>
+            </li>
+            <li class="mb-1">
+              <a class="dropdown-item d-flex align-items-center" href="user-activity-logs.php">
+                <i class="fa-solid fa-clock-rotate-left me-2 fs-22"></i>
+                <span class="fs-18 d-inline-block">Activity Logs</span>
               </a>
             </li>
             <li class="mb-1">

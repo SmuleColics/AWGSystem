@@ -466,7 +466,7 @@ ob_end_flush();
               <?php endif; ?>
 
               <?php if ($quotation): ?>
-                <a href="user-quotation-view.php?id=<?= $quotation['assessment_id'] ?>"
+                <a href="user-view-quotation.php?id=<?= $quotation['quotation_id'] ?>"
                   class="btn btn-green mb-2">
                   <i class="fas fa-file-invoice me-1"></i> View Quotation Details
                 </a>

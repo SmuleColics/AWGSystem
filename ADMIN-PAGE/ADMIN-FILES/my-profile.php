@@ -281,14 +281,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
             </div>
 
             <!-- Email (Read-only) -->
-            <div class="col-md-6">
+            <div class="col-md-4">
               <label class="form-label fw-semibold">Email Address *</label>
               <input type="email" class="form-control" value="<?= htmlspecialchars($profile_data['email']) ?>" readonly>
               <small class="text-muted">Email cannot be changed</small>
             </div>
 
             <!-- Phone -->
-            <div class="col-md-6">
+            <div class="col-md-4">
               <label class="form-label fw-semibold">Phone Number *</label>
               <input
                 type="text"
@@ -303,7 +303,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
             </div>
 
             <!-- Street Name, Bldg, House No -->
-            <div class="col-md-6">
+            <div class="col-md-4">
               <label class="form-label fw-semibold">Street Name, Bldg, House No. *</label>
               <input
                 type="text"
@@ -381,7 +381,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
           <div class="row g-4">
 
             <!-- Position -->
-            <div class="col-md-6">
+            <div class="col-md-4">
               <label class="form-label fw-semibold">Position *</label>
               <?php if ($is_admin): ?>
                 <select class="form-select <?= isset($errors['position']) ? 'border-danger' : '' ?>" id="inputPosition" name="position">
@@ -403,7 +403,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
             <?php 
             $current_position = isset($_POST['position']) ? $_POST['position'] : $profile_data['position'];
             ?>
-            <div class="col-md-6" id="salaryField" style="display: <?= $current_position === 'Admin' ? 'none' : 'block' ?>">
+            <div class="col-md-4" id="salaryField" style="display: <?= $current_position === 'Admin' ? 'none' : 'block' ?>">
               <label class="form-label fw-semibold">Daily Salary (₱) *</label>
               <?php if ($is_admin): ?>
                 <input
@@ -424,7 +424,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
             </div>
 
             <!-- Date Hired -->
-            <div class="col-md-6" id="dateHiredField" style="display: <?= $current_position === 'Admin' ? 'none' : 'block' ?>">
+            <div class="col-md-4" id="dateHiredField" style="display: <?= $current_position === 'Admin' ? 'none' : 'block' ?>">
               <label class="form-label fw-semibold">Date Hired *</label>
               <?php if ($is_admin): ?>
                 <input
@@ -442,13 +442,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
             </div>
 
             <!-- Account Created -->
-            <div class="col-md-6">
+            <div class="col-md-4">
               <label class="form-label fw-semibold">Account Created</label>
               <input type="text" class="form-control" value="<?= date('F d, Y', strtotime($profile_data['created_at'])) ?>" readonly>
             </div>
 
             <!-- Last Updated -->
-            <div class="col-md-6">
+            <div class="col-md-4">
               <label class="form-label fw-semibold">Last Updated</label>
               <input type="text" class="form-control" value="<?= date('F d, Y g:i A', strtotime($profile_data['updated_at'])) ?>" readonly>
             </div>

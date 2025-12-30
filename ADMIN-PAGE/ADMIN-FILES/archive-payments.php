@@ -11,11 +11,18 @@ if (!isset($_SESSION['employee_id'])) {
   exit;
 }
 
+// Check if form was submitted
+if (!isset($_POST['archive_payments'])) {
+  $_SESSION['error'] = 'Invalid request';
+  header('Location: admin-projects.php');
+  exit;
+}
+
 $employee_id = $_SESSION['employee_id'];
 $employee_name = $_SESSION['first_name'] . ' ' . $_SESSION['last_name'];
 
-// Get project ID
-$project_id = isset($_GET['project_id']) ? intval($_GET['project_id']) : 0;
+// Get project ID from POST
+$project_id = isset($_POST['project_id']) ? intval($_POST['project_id']) : 0;
 
 if ($project_id === 0) {
   $_SESSION['error'] = 'Invalid project ID';
@@ -61,19 +68,10 @@ try {
     }
   }
 
-  // Check if any payments are already archived
-  $archived_check_sql = "SELECT COUNT(*) as archived_count FROM project_payments WHERE project_id = $project_id AND is_archived = 1";
-  $archived_check_result = mysqli_query($conn, $archived_check_sql);
-  $archived_check = mysqli_fetch_assoc($archived_check_result);
-
-  if ($archived_check['archived_count'] > 0) {
-    $_SESSION['error'] = 'Payment records are already archived for this project.';
-    header("Location: admin-projects-detail.php?id=$project_id");
-    exit;
-  }
-
   // Get count of payments to archive
-  $count_sql = "SELECT COUNT(*) as count FROM project_payments WHERE project_id = $project_id AND is_archived = 0";
+  $count_sql = "SELECT COUNT(*) as count FROM project_payments 
+                WHERE project_id = $project_id 
+                AND (is_archived = 0 OR is_archived IS NULL)";
   $count_result = mysqli_query($conn, $count_sql);
   $count_row = mysqli_fetch_assoc($count_result);
   $payment_count = $count_row['count'];
@@ -87,15 +85,16 @@ try {
   // Archive all payments for this project
   $archive_sql = "UPDATE project_payments 
                   SET is_archived = 1 
-                  WHERE project_id = $project_id AND is_archived = 0";
+                  WHERE project_id = $project_id 
+                  AND (is_archived = 0 OR is_archived IS NULL)";
 
   if (!mysqli_query($conn, $archive_sql)) {
     throw new Exception('Failed to archive payments: ' . mysqli_error($conn));
   }
 
   // Create project update
-  $update_title = 'Payments Archived';
-  $update_desc = "All payment records ($payment_count payments totaling ₱" . number_format($project['amount_paid'], 2) . ") have been archived. Project is fully paid.";
+  $update_title = mysqli_real_escape_string($conn, 'Payments Archived');
+  $update_desc = mysqli_real_escape_string($conn, "All payment records ($payment_count payments totaling ₱" . number_format($project['amount_paid'], 2) . ") have been archived. Project is fully paid.");
 
   $insert_update_sql = "INSERT INTO project_updates 
                         (project_id, update_title, update_description, created_by, is_archived, created_at)
@@ -108,6 +107,7 @@ try {
   // Log activity
   log_activity(
     $conn,
+    
     $employee_id,
     $employee_name,
     'ARCHIVE',
@@ -142,7 +142,7 @@ try {
   $_SESSION['success'] = "Successfully archived $payment_count payment records for this fully paid project.";
 } catch (Exception $e) {
   mysqli_rollback($conn);
-  $_SESSION['error'] = $e->getMessage();
+  $_SESSION['error'] = 'Error archiving payments: ' . $e->getMessage();
   error_log("Payment archiving error: " . $e->getMessage());
 }
 
