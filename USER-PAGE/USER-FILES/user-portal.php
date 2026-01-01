@@ -234,13 +234,17 @@ $assessment_count = mysqli_fetch_assoc($assessment_count_result)['total'];
 
               <div class="d-grid mt-4">
                 <a href="user-project-monitoring.php?id=<?= $recent_project['project_id'] ?>"
-                  class="btn btn-green">View Project Details and Monitoring</a>
+                  class="btn btn-green">
+                  <i class="fa-solid fa-eye"></i>
+                  View Project Details and Monitoring
+                </a>
               </div>
+
 
               <?php if ($project_count > 1): ?>
                 <div class="d-grid mt-2">
                   <a href="user-awg-projects.php?view=my_projects" class="btn btn-outline-secondary">
-                    <i class="fas fa-folder-open me-1"></i> View All Projects (<?= $project_count ?>)
+                    <i class="fas fa-folder-open"></i> View All Projects (<?= $project_count ?>)
                   </a>
                 </div>
               <?php endif; ?>
@@ -372,12 +376,23 @@ $assessment_count = mysqli_fetch_assoc($assessment_count_result)['total'];
                     default                 => "status-badge"
                   };
                   ?>
-                  <span class="<?= $status_class ?> mb-2 d-inline-block"><?= htmlspecialchars($assess_status) ?></span>
+                  <span class="<?= $status_class ?> mb-2 d-inline-block d-flex justify-content-center"><?= htmlspecialchars($assess_status) ?></span>
 
-                  <a href="user-assessments-detail.php?id=<?= $assessment['assessment_id'] ?>"
-                    class="btn btn-light border w-100 small">
-                    View Assessment Details
-                  </a>
+                  <?php
+                  // Check if assessment has been completed (has details)
+                  $has_details = !empty($assessment['assessment_completed']) && $assessment['assessment_completed'] == 1;
+                  ?>
+                  
+                  <?php if ($has_details): ?>
+                    <a href="user-assessments-detail.php?id=<?= $assessment['assessment_id'] ?>"
+                      class="btn btn-light border w-100 small">
+                      View Assessment Details
+                    </a>
+                  <?php else: ?>
+                    <button class="btn btn-light border w-100 small" disabled>
+                      <i class="fas fa-clock me-1"></i>Details Not Available Yet
+                    </button>
+                  <?php endif; ?>
                 </div>
               <?php endwhile; ?>
             <?php else: ?>

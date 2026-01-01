@@ -51,7 +51,7 @@ while ($row = mysqli_fetch_assoc($updates_result)) {
 $payments_sql = "SELECT * FROM project_payments 
                 WHERE project_id = $project_id 
                 AND (is_archived = 0 OR is_archived IS NULL)
-                ORDER BY payment_date DESC";
+                ORDER BY created_at DESC";
 $payments_result = mysqli_query($conn, $payments_sql);
 $payments = [];
 while ($row = mysqli_fetch_assoc($payments_result)) {
@@ -398,7 +398,7 @@ ob_end_flush();
                       <div class="flex-grow-1">
                         <p class="light-text small mb-1">
                           <strong>₱<?= number_format($payment['payment_amount'], 2) ?></strong> -
-                          <?= date('m/d/Y', strtotime($payment['payment_date'])) ?>
+                          <?= date('M d, Y \a\t g:i A', strtotime($payment['created_at'])) ?>
                           (<?= htmlspecialchars($payment['payment_method']) ?>)
                           <?php if (!empty($payment['reference_number'])): ?>
                             <br><span class="text-muted">Ref: <?= htmlspecialchars($payment['reference_number']) ?></span>
@@ -845,7 +845,7 @@ ob_end_flush();
 
           <div class="modal-footer">
             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" name="edit_payment" class="btn btn-primary">Update Payment</button>
+            <button type="submit" name="edit_payment" class="btn btn-green">Update Payment</button>
           </div>
         </form>
       </div>

@@ -210,6 +210,14 @@ if (file_exists('../../INCLUDES/notifications.php')) {
                   <span class="fs-18 d-inline-block">Activity Logs</span>
                 </a>
               </li>
+              <?php if ($is_admin): ?>
+              <li class="mb-1">
+                <a class="dropdown-item d-flex align-items-center" href="admin-settings.php">
+                  <i class="fa-solid fa-gear me-2 fs-22"></i>
+                  <span class="fs-18 d-inline-block">Settings</span>
+                </a>
+              </li>
+              <?php endif; ?>
               <li class="mb-1">
                 <a class="dropdown-item d-flex align-items-center" href="logout.php">
                   <i class="fa-solid fa-right-from-bracket me-2 fs-22"></i>

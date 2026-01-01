@@ -4,6 +4,8 @@ ob_start();
 date_default_timezone_set('Asia/Manila');
 include 'admin-header.php';
 
+$employee_name = $employee_full_name;
+
 // Check if user is logged in as employee
 if (!isset($_SESSION['employee_id']) || $_SESSION['user_type'] !== 'employee') {
   header('Location: /INSY55-PROJECT/LOGS-PAGE/LOGS-FILES/login.php');
@@ -424,7 +426,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_project_details'
                     WHERE assessment_id = $assessment_id";
 
       if (mysqli_query($conn, $update_sql)) {
-        // Activity Log
+        
+        // ALSO UPDATE THE PROJECT IF IT EXISTS
+        $check_project_sql = "SELECT project_id FROM projects WHERE assessment_id = $assessment_id";
+        $check_project_result = mysqli_query($conn, $check_project_sql);
+        
+        if ($check_project_result && mysqli_num_rows($check_project_result) > 0) {
+          $project_row = mysqli_fetch_assoc($check_project_result);
+          $project_id = $project_row['project_id'];
+          
+          // Calculate duration if both dates are provided
+          $duration = 'NULL';
+          if ($start_date && $end_date) {
+            $start = new DateTime($start_date);
+            $end = new DateTime($end_date);
+            $diff = $start->diff($end);
+            $duration_str = $diff->days . ' days';
+            $duration = "'" . mysqli_real_escape_string($conn, $duration_str) . "'";
+          }
+          
+          // Update the project table
+          $update_project_sql = "UPDATE projects 
+                                SET project_name = '$project_name',
+                                    category = '$category',
+                                    start_date = " . ($start_date ? "'$start_date'" : "NULL") . ",
+                                    end_date = " . ($end_date ? "'$end_date'" : "NULL") . ",
+                                    duration = $duration,
+                                    notes = '$notes',
+                                    updated_at = NOW()
+                                WHERE project_id = $project_id";
+          
+          mysqli_query($conn, $update_project_sql);
+          
+          // Log activity for project update
+          log_activity(
+            $conn,
+            $employee_id,
+            $employee_name,
+            'UPDATE',
+            'PROJECTS',
+            $project_id,
+            $project_name,
+            "Updated project details for project #$project_id via quotation - Project: $project_name"
+          );
+        }
+        
+        // Activity Log for quotation
         log_activity(
           $conn,
           $employee_id,
@@ -445,7 +492,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_project_details'
         $errors['general'] = 'Failed to update project details: ' . mysqli_error($conn);
       }
     } else {
-      // Create new quotation
+      // Create new quotation (existing code remains the same)
       $insert_sql = "INSERT INTO quotations (assessment_id, project_name, category, start_date, end_date, notes, status, created_at)
                     VALUES ($assessment_id, '$project_name', '$category', " . ($start_date ? "'$start_date'" : "NULL") . ", " . ($end_date ? "'$end_date'" : "NULL") . ", '$notes', 'Draft', NOW())";
 
@@ -477,6 +524,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_project_details'
     }
   }
 }
+
 // Handle Create Quotation (Complete)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_quotation'])) {
   // Validate that we have at least project details and items

@@ -10,7 +10,7 @@ if ($project_id === 0) {
   exit;
 }
 
-// Fetch project details - ONLY if it belongs to this user
+// Fetch project details - Allow viewing if it's user's project OR if it's public
 $project_sql = "SELECT 
     p.*,
     u.first_name,
@@ -26,7 +26,6 @@ $project_sql = "SELECT
 FROM projects p
 JOIN users u ON p.user_id = u.user_id
 WHERE p.project_id = $project_id 
-AND p.user_id = $user_id 
 AND p.is_archived = 0";
 
 $project_result = mysqli_query($conn, $project_sql);
@@ -41,8 +40,11 @@ if (mysqli_num_rows($project_result) === 0) {
 
 $project = mysqli_fetch_assoc($project_result);
 
+// Check if viewing public project or own project
+$is_own_project = ($project['user_id'] == $user_id);
+
 // Only show if visibility is Public OR it's the user's own project
-if ($project['visibility'] === 'Private' && $project['user_id'] != $user_id) {
+if ($project['visibility'] === 'Private' && !$is_own_project) {
   echo "<script>
     alert('This project is private.');
     window.location='user-awg-projects.php';
@@ -62,28 +64,45 @@ while ($row = mysqli_fetch_assoc($updates_result)) {
   $updates[] = $row;
 }
 
-// Fetch payment history
-$payments_sql = "SELECT * FROM project_payments 
-                WHERE project_id = $project_id 
-                AND is_archived = 0
-                ORDER BY payment_date DESC";
-$payments_result = mysqli_query($conn, $payments_sql);
+// Only fetch payment data if it's the user's own project
 $payments = [];
-while ($row = mysqli_fetch_assoc($payments_result)) {
-  $payments[] = $row;
-}
-
-// Calculate financial summary
 $total_budget = floatval($project['total_budget']);
-$amount_paid = floatval($project['amount_paid']);
-$remaining_balance = floatval($project['remaining_balance']);
+$amount_paid = 0;
+$remaining_balance = 0;
+$is_archived_payment_view = false;
+$quotation = null;
+
+if ($is_own_project) {
+  // Fetch payment history
+  $payments_sql = "SELECT * FROM project_payments 
+                    WHERE project_id = $project_id AND is_archived = 0 
+                    ORDER BY payment_date DESC, created_at DESC";
+  $payments_result = mysqli_query($conn, $payments_sql);
+  while ($row = mysqli_fetch_assoc($payments_result)) {
+    $payments[] = $row;
+  }
+
+  // Calculate financial summary
+  $amount_paid = floatval($project['amount_paid']);
+  $remaining_balance = floatval($project['remaining_balance']);
+  $is_archived_payment_view = ($remaining_balance == 0 && $amount_paid > 0 && count($payments) == 0);
+
+  // Get quotation ID for this project
+  $quotation_sql = "SELECT q.quotation_id, q.assessment_id, q.total_amount, a.service_type
+        FROM quotations q 
+        INNER JOIN assessments a ON q.assessment_id = a.assessment_id 
+        WHERE a.user_id = {$project['user_id']} 
+        AND q.status IN ('Sent', 'Approved')
+        AND a.service_type = '{$project['project_type']}'
+        ORDER BY q.created_at DESC 
+        LIMIT 1";
+  $quotation_result = mysqli_query($conn, $quotation_sql);
+  $quotation = mysqli_fetch_assoc($quotation_result);
+}
 
 // Format dates
 $start_date = !empty($project['start_date']) ? date('M d, Y', strtotime($project['start_date'])) : 'N/A';
 $end_date = !empty($project['end_date']) ? date('M d, Y', strtotime($project['end_date'])) : 'N/A';
-
-
-$is_archived_payment_view = ($remaining_balance == 0 && $amount_paid > 0 && count($payments) == 0);
 
 // Client info
 $client_name = $project['first_name'] . ' ' . $project['last_name'];
@@ -148,8 +167,8 @@ ob_end_flush();
 
     <div class="row g-4">
 
-      <!-- LEFT SIDE -->
-      <div class="col-lg-8">
+      <!-- LEFT SIDE - Full width if viewing A We Green project, col-lg-8 if own project -->
+      <div class="<?= $is_own_project ? 'col-lg-8' : 'col-lg-12' ?>">
 
         <!-- PROJECT INFO CARD -->
         <div class="card mb-4 p-4">
@@ -337,316 +356,309 @@ ob_end_flush();
 
       </div>
 
-      <!-- RIGHT SIDE — PAYMENT DETAILS -->
-      <div class="col-lg-4">
-        <div class="card shadow-sm sticky-payment">
-          <div class="card-header bg-white">
-            <h5 class="fw-semibold mb-0">Payment Details</h5>
-          </div>
-          <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+      <!-- RIGHT SIDE — PAYMENT DETAILS (Only show if it's user's own project) -->
+      <?php if ($is_own_project): ?>
+        <div class="col-lg-4">
+          <div class="card shadow-sm sticky-payment">
+            <div class="card-header bg-white">
+              <h5 class="fw-semibold mb-0">Payment Details</h5>
+            </div>
+            <div class="card-body" style="max-height: 400px; overflow-y: auto;">
 
-            <!-- TOTAL COST -->
-            <?php if (!$is_archived_payment_view): ?>
-              <div class="p-3 border rounded mb-3 bg-light">
-                <div class="fw-semibold mb-1">Project Cost</div>
-                <p class="light-text small mb-0">
-                  Total Amount: <strong>₱<?= number_format($total_budget, 2) ?></strong>
-                </p>
-              </div>
-            <?php endif; ?>
-
-
-            <?php if ($remaining_balance == 0 && $amount_paid > 0 && count($payments) == 0): ?>
-              <!-- ARCHIVED PAYMENTS STATE -->
-              <div class="p-4 text-center border rounded bg-light">
-                <div class="mb-3">
-                  <i class="fa-solid fa-box-archive text-muted" style="font-size: 56px;"></i>
-                </div>
-
-                <h5 class="fw-bold mb-2">Payment Records Archived</h5>
-
-                <p class="text-muted mb-3">
-                  Your payment records for this project have been archived.
-                </p>
-
-                <p class="small text-muted mb-0">
-                  Please contact us at
-                  <strong>awegreenenterprise@gmail.com</strong><br>
-                  or call <strong>0917 752 3343</strong> for any inquiries.
-                </p>
-              </div>
-            <?php endif; ?>
-
-
-
-            <!-- PAYMENT HISTORY -->
-            <?php if (!$is_archived_payment_view): ?>
-              <?php if (count($payments) > 0): ?>
+              <!-- TOTAL COST -->
+              <?php if (!$is_archived_payment_view): ?>
                 <div class="p-3 border rounded mb-3 bg-light">
-                  <div class="fw-semibold mb-2">Payment History</div>
-                  <?php foreach ($payments as $payment): ?>
-                    <div class="mb-2 pb-2 border-bottom">
-                      <p class="light-text small mb-1">
-                        <strong>₱<?= number_format($payment['payment_amount'], 2) ?></strong>
-                      </p>
-                      <p class="text-muted small mb-0">
-                        <?= date('M d, Y', strtotime($payment['payment_date'])) ?>
-                        (<?= htmlspecialchars($payment['payment_method']) ?>)
-                      </p>
-                      <?php if (!empty($payment['reference_number'])): ?>
-                        <p class="text-muted small mb-0">Ref: <?= htmlspecialchars($payment['reference_number']) ?></p>
-                      <?php endif; ?>
-                      <?php if (!empty($payment['gcash_number'])): ?>
-                        <p class="text-muted small mb-0">GCash: <?= htmlspecialchars($payment['gcash_number']) ?></p>
-                      <?php endif; ?>
-                      <?php if (!empty($payment['notes'])): ?>
-                        <p class="text-muted small mb-0">Note: <?= htmlspecialchars($payment['notes']) ?></p>
-                      <?php endif; ?>
-                    </div>
-                  <?php endforeach; ?>
-                </div>
-              <?php else: ?>
-                <div class="p-3 border rounded mb-3 bg-light">
-                  <p class="text-muted small text-center mb-0">No payments recorded yet</p>
+                  <div class="fw-semibold mb-1">Project Cost</div>
+                  <p class="light-text small mb-0">
+                    Total Amount: <strong>₱<?= number_format($total_budget, 2) ?></strong>
+                  </p>
                 </div>
               <?php endif; ?>
-            <?php endif; ?>
 
-            <?php
-            // Get quotation ID for this project
-            $quotation_sql = "SELECT q.quotation_id, q.assessment_id, q.total_amount, a.service_type
-                  FROM quotations q 
-                  INNER JOIN assessments a ON q.assessment_id = a.assessment_id 
-                  WHERE a.user_id = {$project['user_id']} 
-                  AND q.status IN ('Sent', 'Approved')
-                  AND a.service_type = '{$project['project_type']}'
-                  ORDER BY q.created_at DESC 
-                  LIMIT 1";
-            $quotation_result = mysqli_query($conn, $quotation_sql);
-            $quotation = mysqli_fetch_assoc($quotation_result);
-            ?>
 
-            <!-- REMAINING BALANCE -->
-            <?php if (!$is_archived_payment_view): ?>
-              <div class="p-3 border rounded mb-3 bg-light">
-                <div class="d-flex justify-content-between mb-2">
-                  <span class="fw-semibold">Amount Paid:</span>
-                  <span class="text-success fw-bold">₱<?= number_format($amount_paid, 2) ?></span>
+              <?php if ($remaining_balance == 0 && $amount_paid > 0 && count($payments) == 0): ?>
+                <!-- ARCHIVED PAYMENTS STATE -->
+                <div class="p-4 text-center border rounded bg-light">
+                  <div class="mb-3">
+                    <i class="fa-solid fa-box-archive text-muted" style="font-size: 56px;"></i>
+                  </div>
+
+                  <h5 class="fw-bold mb-2">Payment Records Archived</h5>
+
+                  <p class="text-muted mb-3">
+                    Your payment records for this project have been archived.
+                  </p>
+
+                  <p class="small text-muted mb-0">
+                    Please contact us at
+                    <strong>awegreenenterprise@gmail.com</strong><br>
+                    or call <strong>0917 752 3343</strong> for any inquiries.
+                  </p>
+                </div>
+              <?php endif; ?>
+
+
+
+              <!-- PAYMENT HISTORY -->
+              <!-- PAYMENT HISTORY -->
+              <?php if (!$is_archived_payment_view): ?>
+                <?php if (count($payments) > 0): ?>
+                  <div class="p-3 border rounded mb-3 bg-light">
+                    <div class="fw-semibold mb-2">Payment History</div>
+                    <?php foreach ($payments as $payment): ?>
+                      <div class="mb-2 pb-2 border-bottom">
+                        <p class="light-text small mb-1">
+                          <strong>₱<?= number_format($payment['payment_amount'], 2) ?></strong>
+                        </p>
+                        <p class="text-muted small mb-0">
+                          <?= date('M d, Y \a\t g:i A', strtotime($payment['created_at'])) ?>
+                          (<?= htmlspecialchars($payment['payment_method']) ?>)
+                        </p>
+                        <?php if (!empty($payment['reference_number'])): ?>
+                          <p class="text-muted small mb-0">Ref: <?= htmlspecialchars($payment['reference_number']) ?></p>
+                        <?php endif; ?>
+                        <?php if (!empty($payment['gcash_number'])): ?>
+                          <p class="text-muted small mb-0">GCash: <?= htmlspecialchars($payment['gcash_number']) ?></p>
+                        <?php endif; ?>
+                        <?php if (!empty($payment['payment_notes'])): ?>
+                          <p class="text-muted small mb-0">Note: <?= htmlspecialchars($payment['payment_notes']) ?></p>
+                        <?php endif; ?>
+                      </div>
+                    <?php endforeach; ?>
+                  </div>
+                <?php else: ?>
+                  <div class="p-3 border rounded mb-3 bg-light">
+                    <p class="text-muted small text-center mb-0">No payments recorded yet</p>
+                  </div>
+                <?php endif; ?>
+              <?php endif; ?>
+
+              <!-- REMAINING BALANCE -->
+              <?php if (!$is_archived_payment_view): ?>
+                <div class="p-3 border rounded mb-3 bg-light">
+                  <div class="d-flex justify-content-between mb-2">
+                    <span class="fw-semibold">Amount Paid:</span>
+                    <span class="text-success fw-bold">₱<?= number_format($amount_paid, 2) ?></span>
+                  </div>
+                  <div class="d-flex justify-content-between">
+                    <span class="fw-semibold">Remaining:</span>
+                    <span class="text-danger fw-bold">₱<?= number_format($remaining_balance, 2) ?></span>
+                  </div>
+                </div>
+              <?php endif; ?>
+
+              <!-- PAYMENT STATUS -->
+              <?php if (!$is_archived_payment_view): ?>
+                <?php if ($remaining_balance <= 0): ?>
+                  <div class="alert alert-success mb-0">
+                    <i class="fas fa-check-circle me-2"></i>
+                    <strong>Paid in Full</strong>
+                  </div>
+                <?php else: ?>
+                  <div class="alert alert-warning mb-0">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Payment Pending</strong>
+                    <p class="small mb-0 mt-1">Please proceed to complete your payment to settle the remaining balance.</p>
+                  </div>
+                <?php endif; ?>
+              <?php endif; ?>
+
+            </div>
+            <div class="card-footer bg-white">
+              <div class="d-grid">
+                <?php if ($remaining_balance > 0): ?>
+                  <button class="btn btn-green mb-2" data-bs-toggle="modal" data-bs-target="#processPaymentModal">
+                    <i class="fas fa-wallet me-1"></i> Make Payment
+                  </button>
+                <?php endif; ?>
+
+                <?php if ($quotation): ?>
+                  <a href="user-view-quotation.php?id=<?= $quotation['quotation_id'] ?>"
+                    class="btn btn-green mb-2">
+                    <i class="fas fa-file-invoice me-1"></i> View Quotation Details
+                  </a>
+                <?php endif; ?>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      <?php endif; ?>
+
+    </div>
+
+  </div>
+
+  <!-- Process Payment Modal (Only show if it's user's own project) -->
+  <?php if ($is_own_project): ?>
+    <div class="modal fade" id="processPaymentModal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Process Payment</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+
+          <form action="../../ADMIN-PAGE/ADMIN-FILES/user-process-payment.php" method="POST" id="paymentForm">
+            <input type="hidden" name="project_id" value="<?= $project_id ?>">
+            <input type="hidden" name="process_payment" value="1">
+
+            <div class="modal-body">
+              <!-- Summary -->
+              <div class="p-3 rounded bg-light mb-3">
+                <div class="d-flex justify-content-between mb-1">
+                  <span class="light-text small">Total Amount</span>
+                  <span class="fw-semibold">₱<?= number_format($total_budget, 2) ?></span>
+                </div>
+                <div class="d-flex justify-content-between mb-1">
+                  <span class="light-text small">Already Paid</span>
+                  <span class="fw-semibold">₱<?= number_format($amount_paid, 2) ?></span>
                 </div>
                 <div class="d-flex justify-content-between">
-                  <span class="fw-semibold">Remaining:</span>
-                  <span class="text-danger fw-bold">₱<?= number_format($remaining_balance, 2) ?></span>
+                  <span class="light-text small">Remaining Balance</span>
+                  <span class="fw-bold text-danger">₱<?= number_format($remaining_balance, 2) ?></span>
                 </div>
               </div>
-            <?php endif; ?>
 
-            <!-- PAYMENT STATUS -->
-            <?php if (!$is_archived_payment_view): ?>
-              <?php if ($remaining_balance <= 0): ?>
-                <div class="alert alert-success mb-0">
-                  <i class="fas fa-check-circle me-2"></i>
-                  <strong>Paid in Full</strong>
+              <!-- Payment Amount -->
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Enter Payment Amount *</label>
+                <input type="number" name="amount" class="form-control" id="paymentAmount"
+                  step="0.01" min="0.01" max="<?= $remaining_balance ?>"
+                  placeholder="e.g., 5000" required>
+                <small class="text-muted">Maximum: ₱<?= number_format($remaining_balance, 2) ?></small>
+              </div>
+
+              <!-- Payment Method -->
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Payment Method *</label>
+                <div>
+                  <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="payment_method"
+                      value="Cash" id="cashRadio" required>
+                    <label class="form-check-label" for="cashRadio">Cash</label>
+                  </div>
+                  <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="payment_method"
+                      value="GCash" id="gcashRadio">
+                    <label class="form-check-label" for="gcashRadio">GCash</label>
+                  </div>
                 </div>
-              <?php else: ?>
-                <div class="alert alert-warning mb-0">
-                  <i class="fas fa-exclamation-triangle me-2"></i>
-                  <strong>Payment Pending</strong>
-                  <p class="small mb-0 mt-1">Please proceed to complete your payment to settle the remaining balance.</p>
+              </div>
+
+              <!-- GCash Section (Hidden by default) -->
+              <div id="gcashSection" class="d-none">
+                <div class="mb-3">
+                  <label class="form-label fw-semibold">GCash Number *</label>
+                  <input type="text" name="gcash_number" id="gcashNumber" class="form-control"
+                    placeholder="09XX XXX XXXX" pattern="[0-9]{11}" maxlength="11">
+                  <small class="text-muted">Enter 11-digit GCash number (e.g., 09123456789)</small>
                 </div>
-              <?php endif; ?>
-            <?php endif; ?>
 
-          </div>
-          <div class="card-footer bg-white">
-            <div class="d-grid">
-              <?php if ($remaining_balance > 0): ?>
-                <button class="btn btn-green mb-2" data-bs-toggle="modal" data-bs-target="#processPaymentModal">
-                  <i class="fas fa-wallet me-1"></i> Make Payment
-                </button>
-              <?php endif; ?>
+                <div class="mb-3">
+                  <label class="form-label fw-semibold">Reference Number *</label>
+                  <input type="text" name="reference_number" id="referenceNumber" class="form-control"
+                    placeholder="Enter reference number">
+                  <small class="text-muted">Transaction reference number from GCash</small>
+                </div>
+              </div>
 
-              <?php if ($quotation): ?>
-                <a href="user-view-quotation.php?id=<?= $quotation['quotation_id'] ?>"
-                  class="btn btn-green mb-2">
-                  <i class="fas fa-file-invoice me-1"></i> View Quotation Details
-                </a>
-              <?php endif; ?>
-
+              <!-- Notes -->
+              <div class="mb-3">
+                <label class="form-label">Notes (Optional)</label>
+                <textarea name="notes" class="form-control" rows="2"
+                  placeholder="Add payment notes..."></textarea>
+              </div>
             </div>
-          </div>
+
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-green" id="submitPaymentBtn">
+                <i class="fas fa-wallet me-1"></i> Confirm Payment
+              </button>
+            </div>
+          </form>
         </div>
       </div>
-
     </div>
-
-  </div>
-
-  <!-- Process Payment Modal -->
-  <div class="modal fade" id="processPaymentModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Process Payment</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-
-        <form action="../../ADMIN-PAGE/ADMIN-FILES/user-process-payment.php" method="POST" id="paymentForm">
-          <input type="hidden" name="project_id" value="<?= $project_id ?>">
-          <input type="hidden" name="process_payment" value="1">
-
-          <div class="modal-body">
-            <!-- Summary -->
-            <div class="p-3 rounded bg-light mb-3">
-              <div class="d-flex justify-content-between mb-1">
-                <span class="light-text small">Total Amount</span>
-                <span class="fw-semibold">₱<?= number_format($total_budget, 2) ?></span>
-              </div>
-              <div class="d-flex justify-content-between mb-1">
-                <span class="light-text small">Already Paid</span>
-                <span class="fw-semibold">₱<?= number_format($amount_paid, 2) ?></span>
-              </div>
-              <div class="d-flex justify-content-between">
-                <span class="light-text small">Remaining Balance</span>
-                <span class="fw-bold text-danger">₱<?= number_format($remaining_balance, 2) ?></span>
-              </div>
-            </div>
-
-            <!-- Payment Amount -->
-            <div class="mb-3">
-              <label class="form-label fw-semibold">Enter Payment Amount *</label>
-              <input type="number" name="amount" class="form-control" id="paymentAmount"
-                step="0.01" min="0.01" max="<?= $remaining_balance ?>"
-                placeholder="e.g., 5000" required>
-              <small class="text-muted">Maximum: ₱<?= number_format($remaining_balance, 2) ?></small>
-            </div>
-
-            <!-- Payment Method -->
-            <div class="mb-3">
-              <label class="form-label fw-semibold">Payment Method *</label>
-              <div>
-                <div class="form-check mb-2">
-                  <input class="form-check-input" type="radio" name="payment_method"
-                    value="Cash" id="cashRadio" required>
-                  <label class="form-check-label" for="cashRadio">Cash</label>
-                </div>
-                <div class="form-check mb-2">
-                  <input class="form-check-input" type="radio" name="payment_method"
-                    value="GCash" id="gcashRadio">
-                  <label class="form-check-label" for="gcashRadio">GCash</label>
-                </div>
-              </div>
-            </div>
-
-            <!-- GCash Section (Hidden by default) -->
-            <div id="gcashSection" class="d-none">
-              <div class="mb-3">
-                <label class="form-label fw-semibold">GCash Number *</label>
-                <input type="text" name="gcash_number" id="gcashNumber" class="form-control"
-                  placeholder="09XX XXX XXXX" pattern="[0-9]{11}" maxlength="11">
-                <small class="text-muted">Enter 11-digit GCash number (e.g., 09123456789)</small>
-              </div>
-
-              <div class="mb-3">
-                <label class="form-label fw-semibold">Reference Number *</label>
-                <input type="text" name="reference_number" id="referenceNumber" class="form-control"
-                  placeholder="Enter reference number">
-                <small class="text-muted">Transaction reference number from GCash</small>
-              </div>
-            </div>
-
-            <!-- Notes -->
-            <div class="mb-3">
-              <label class="form-label">Notes (Optional)</label>
-              <textarea name="notes" class="form-control" rows="2"
-                placeholder="Add payment notes..."></textarea>
-            </div>
-          </div>
-
-          <div class="modal-footer">
-            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-green" id="submitPaymentBtn">
-              <i class="fas fa-wallet me-1"></i> Confirm Payment
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
+  <?php endif; ?>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 </body>
 
-<script>
-  // Payment method toggle
-  const cashRadio = document.getElementById('cashRadio');
-  const gcashRadio = document.getElementById('gcashRadio');
-  const gcashSection = document.getElementById('gcashSection');
-  const gcashNumber = document.getElementById('gcashNumber');
-  const referenceNumber = document.getElementById('referenceNumber');
+<?php if ($is_own_project): ?>
+  <script>
+    // Payment method toggle
+    const cashRadio = document.getElementById('cashRadio');
+    const gcashRadio = document.getElementById('gcashRadio');
+    const gcashSection = document.getElementById('gcashSection');
+    const gcashNumber = document.getElementById('gcashNumber');
+    const referenceNumber = document.getElementById('referenceNumber');
 
-  function updatePaymentFields() {
-    if (gcashRadio.checked) {
-      gcashSection.classList.remove('d-none');
-      gcashNumber.setAttribute('required', 'required');
-      referenceNumber.setAttribute('required', 'required');
-    } else {
-      gcashSection.classList.add('d-none');
-      gcashNumber.removeAttribute('required');
-      referenceNumber.removeAttribute('required');
-      gcashNumber.value = '';
-      referenceNumber.value = '';
-    }
-  }
-
-  cashRadio.addEventListener('change', updatePaymentFields);
-  gcashRadio.addEventListener('change', updatePaymentFields);
-
-  // Form submission handler
-  document.getElementById('paymentForm').addEventListener('submit', function(e) {
-    const paymentMethod = document.querySelector('input[name="payment_method"]:checked');
-    const amount = document.getElementById('paymentAmount').value;
-
-    if (!paymentMethod) {
-      e.preventDefault();
-      alert('Please select a payment method');
-      return;
+    function updatePaymentFields() {
+      if (gcashRadio.checked) {
+        gcashSection.classList.remove('d-none');
+        gcashNumber.setAttribute('required', 'required');
+        referenceNumber.setAttribute('required', 'required');
+      } else {
+        gcashSection.classList.add('d-none');
+        gcashNumber.removeAttribute('required');
+        referenceNumber.removeAttribute('required');
+        gcashNumber.value = '';
+        referenceNumber.value = '';
+      }
     }
 
-    if (!amount || parseFloat(amount) <= 0) {
-      e.preventDefault();
-      alert('Please enter a valid payment amount');
-      return;
-    }
+    cashRadio.addEventListener('change', updatePaymentFields);
+    gcashRadio.addEventListener('change', updatePaymentFields);
 
-    if (paymentMethod.value === 'GCash') {
-      const gcash = document.getElementById('gcashNumber').value;
-      const ref = document.getElementById('referenceNumber').value;
+    // Form submission handler
+    document.getElementById('paymentForm').addEventListener('submit', function(e) {
+      const paymentMethod = document.querySelector('input[name="payment_method"]:checked');
+      const amount = document.getElementById('paymentAmount').value;
 
-      if (!gcash || gcash.length !== 11) {
+      if (!paymentMethod) {
         e.preventDefault();
-        alert('Please enter a valid 11-digit GCash number');
+        alert('Please select a payment method');
         return;
       }
 
-      if (!ref) {
+      if (!amount || parseFloat(amount) <= 0) {
         e.preventDefault();
-        alert('Please enter a reference number');
+        alert('Please enter a valid payment amount');
         return;
       }
-    }
-  });
 
-  // Show success/error messages
-  <?php if (isset($_SESSION['success'])): ?>
-    alert('<?= addslashes($_SESSION['success']) ?>');
-    <?php unset($_SESSION['success']); ?>
-  <?php endif; ?>
+      if (paymentMethod.value === 'GCash') {
+        const gcash = document.getElementById('gcashNumber').value;
+        const ref = document.getElementById('referenceNumber').value;
 
-  <?php if (isset($_SESSION['error'])): ?>
-    alert('<?= addslashes($_SESSION['error']) ?>');
-    <?php unset($_SESSION['error']); ?>
-  <?php endif; ?>
-</script>
+        if (!gcash || gcash.length !== 11) {
+          e.preventDefault();
+          alert('Please enter a valid 11-digit GCash number');
+          return;
+        }
+
+        if (!ref) {
+          e.preventDefault();
+          alert('Please enter a reference number');
+          return;
+        }
+      }
+    });
+
+    // Show success/error messages
+    <?php if (isset($_SESSION['success'])): ?>
+      alert('<?= addslashes($_SESSION['success']) ?>');
+      <?php unset($_SESSION['success']); ?>
+    <?php endif; ?>
+
+    <?php if (isset($_SESSION['error'])): ?>
+      alert('<?= addslashes($_SESSION['error']) ?>');
+      <?php unset($_SESSION['error']); ?>
+    <?php endif; ?>
+  </script>
+<?php endif; ?>
 
 </html>

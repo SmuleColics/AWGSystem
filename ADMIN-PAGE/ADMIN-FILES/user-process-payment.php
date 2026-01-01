@@ -21,9 +21,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['process_payment'])) {
   $project_id = intval($_POST['project_id']);
   $amount = floatval($_POST['amount']);
   $payment_method = isset($_POST['payment_method']) ? mysqli_real_escape_string($conn, trim($_POST['payment_method'])) : '';
-  $reference_number = isset($_POST['reference_number']) ? mysqli_real_escape_string($conn, trim($_POST['reference_number'])) : null;
-  $gcash_number = isset($_POST['gcash_number']) ? mysqli_real_escape_string($conn, trim($_POST['gcash_number'])) : null;
-  $notes = isset($_POST['notes']) ? mysqli_real_escape_string($conn, trim($_POST['notes'])) : null;
+  
+  // Only get reference_number and gcash_number if payment method is GCash
+  $reference_number = null;
+  $gcash_number = null;
+  
+  if ($payment_method === 'GCash') {
+    $reference_number = isset($_POST['reference_number']) && !empty($_POST['reference_number']) 
+      ? mysqli_real_escape_string($conn, trim($_POST['reference_number'])) 
+      : null;
+    $gcash_number = isset($_POST['gcash_number']) && !empty($_POST['gcash_number']) 
+      ? mysqli_real_escape_string($conn, trim($_POST['gcash_number'])) 
+      : null;
+  }
+  
+  $notes = isset($_POST['notes']) && !empty($_POST['notes']) 
+    ? mysqli_real_escape_string($conn, trim($_POST['notes'])) 
+    : null;
 
   // Validate project_id
   if ($project_id === 0) {
@@ -50,19 +64,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['process_payment'])) {
   if ($payment_method === 'GCash') {
     if (empty($gcash_number)) {
       $_SESSION['error'] = 'GCash number is required for GCash payments';
-      header("Location: ../../USER-PAGE/USER-FILES/../../USER-PAGE/USER-FILES/user-project-monitoring.php?id=$project_id");
+      header("Location: ../../USER-PAGE/USER-FILES/user-project-monitoring.php?id=$project_id");
       exit;
     }
 
     if (!preg_match('/^[0-9]{11}$/', $gcash_number)) {
       $_SESSION['error'] = 'GCash number must be exactly 11 digits';
-      header("Location: ../../USER-PAGE/USER-FILES/../../USER-PAGE/USER-FILES/user-project-monitoring.php?id=$project_id");
+      header("Location: ../../USER-PAGE/USER-FILES/user-project-monitoring.php?id=$project_id");
       exit;
     }
 
     if (empty($reference_number)) {
       $_SESSION['error'] = 'Reference number is required for GCash payments';
-      header("Location: ../../USER-PAGE/USER-FILES/../../USER-PAGE/USER-FILES/user-project-monitoring.php?id=$project_id");
+      header("Location: ../../USER-PAGE/USER-FILES/user-project-monitoring.php?id=$project_id");
       exit;
     }
   }
@@ -83,19 +97,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['process_payment'])) {
   // Validate amount doesn't exceed remaining balance
   if ($amount > $remaining_balance) {
     $_SESSION['error'] = 'Payment amount cannot exceed remaining balance of ₱' . number_format($remaining_balance, 2);
-    header("Location: ../../USER-PAGE/USER-FILES/../../USER-PAGE/USER-FILES/user-project-monitoring.php?id=$project_id");
+    header("Location: ../../USER-PAGE/USER-FILES/user-project-monitoring.php?id=$project_id");
     exit;
   }
 
   // Start transaction
   if (!mysqli_begin_transaction($conn)) {
     $_SESSION['error'] = 'Database transaction error. Please try again.';
-    header("Location: ../../USER-PAGE/USER-FILES/../../USER-PAGE/USER-FILES/user-project-monitoring.php?id=$project_id");
+    header("Location: ../../USER-PAGE/USER-FILES/user-project-monitoring.php?id=$project_id");
     exit;
   }
 
   try {
-    // Insert payment record
+    // Insert payment record - properly handle NULL values
     $insert_payment_sql = "INSERT INTO project_payments 
                               (project_id, payment_amount, payment_method, reference_number, gcash_number, payment_notes, payment_date, created_at)
                               VALUES (
@@ -133,7 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['process_payment'])) {
     // Create project update record
     $payment_update_title = 'Payment Submitted';
     $payment_update_desc = "Payment of ₱" . number_format($amount, 2) . " submitted via $payment_method.";
-    if ($reference_number) {
+    if ($payment_method === 'GCash' && $reference_number) {
       $payment_update_desc .= " Reference: $reference_number";
     }
     if ($notes) {
@@ -185,7 +199,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['process_payment'])) {
       'payment_submitted',
       'Payment Submitted',
       $user_confirmation_message,
-      "../../USER-PAGE/USER-FILES/user-project-monitoring.php?id=$project_id",
+      "user-project-monitoring.php?id=$project_id",
       $project_id
     );
 
@@ -219,7 +233,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['process_payment'])) {
         'project_fully_paid',
         'Project Payment Complete!',
         "Congratulations! Your payment for project '{$project['project_name']}' is now complete. Thank you!",
-        "../../USER-PAGE/USER-FILES/../../USER-PAGE/USER-FILES/user-project-monitoring.php?id=$project_id",
+        "user-project-monitoring.php?id=$project_id",
         $project_id
       );
     }
@@ -241,7 +255,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['process_payment'])) {
     error_log("User payment processing error for user $user_id: " . $e->getMessage());
   }
 
-  header("Location: ../../USER-PAGE/USER-FILES/../../USER-PAGE/USER-FILES/user-project-monitoring.php?id=$project_id");
+  header("Location: ../../USER-PAGE/USER-FILES/user-project-monitoring.php?id=$project_id");
   exit;
 }
 

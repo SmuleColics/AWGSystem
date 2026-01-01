@@ -60,6 +60,7 @@ $projects_sql = "SELECT
     p.start_date,
     p.total_budget,
     p.created_at,
+    p.user_id,
     u.first_name,
     u.last_name,
     u.email,
@@ -349,7 +350,7 @@ $projects_result = mysqli_query($conn, $projects_sql);
                     </div>
                   <?php endif; ?>
                   <div class="d-grid">
-                    <a href="user-projects-detail.php?id=<?= $project['project_id'] ?>"
+                    <a href="user-project-monitoring.php?id=<?= $project['project_id'] ?>"
                       class="btn btn-outline-secondary mt-3">
                       View Details
                     </a>
