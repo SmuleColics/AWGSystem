@@ -883,7 +883,7 @@ function updateItemStatus($conn, $item_id)
 
             <div class="modal-footer mt-3">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="submit" name="edit_item" class="btn btn-primary">Update Item</button>
+              <button type="submit" name="edit_item" class="btn btn-green">Update Item</button>
             </div>
           </form>
         </div>

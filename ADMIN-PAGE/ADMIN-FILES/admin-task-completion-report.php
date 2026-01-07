@@ -2,7 +2,7 @@
 include 'admin-header.php';
 
 if (!isset($_SESSION['employee_id']) || $_SESSION['position'] !== 'Admin') {
-  header('Location: ../index.php');
+  header('Location: ../../LANDING-PAGE/LOGIN/login.php');
   exit;
 }
 
@@ -19,8 +19,11 @@ $auto_generate = isset($_GET['auto']) && $_GET['auto'] === '1';
 // Build query based on filters
 $where_conditions = ["is_archived = 0"];
 
+// FIXED: Changed from due_date to created_at for more accurate date filtering
 if (!empty($date_from) && !empty($date_to)) {
-  $where_conditions[] = "DATE(due_date) BETWEEN '$date_from' AND '$date_to'";
+  $date_from_escaped = mysqli_real_escape_string($conn, $date_from);
+  $date_to_escaped = mysqli_real_escape_string($conn, $date_to);
+  $where_conditions[] = "(DATE(created_at) BETWEEN '$date_from_escaped' AND '$date_to_escaped' OR DATE(due_date) BETWEEN '$date_from_escaped' AND '$date_to_escaped')";
 }
 
 if ($status_filter !== 'all') {
@@ -28,16 +31,16 @@ if ($status_filter !== 'all') {
   $where_conditions[] = "status = '$status_filter_escaped'";
 }
 
-if ($employee_filter !== 'all') {
-  $employee_filter = intval($employee_filter);
-  $where_conditions[] = "assigned_to_id = $employee_filter";
+if ($employee_filter !== 'all' && $employee_filter !== '') {
+  $employee_filter_int = intval($employee_filter);
+  $where_conditions[] = "assigned_to_id = $employee_filter_int";
 }
 
 $where_clause = implode(' AND ', $where_conditions);
 
 // Fetch tasks
 $report_tasks = [];
-$query = "SELECT * FROM tasks WHERE $where_clause ORDER BY due_date DESC";
+$query = "SELECT * FROM tasks WHERE $where_clause ORDER BY due_date DESC, created_at DESC";
 $result = mysqli_query($conn, $query);
 
 if ($result) {
@@ -50,11 +53,12 @@ if ($result) {
 $activity_logs = [];
 if (!empty($report_tasks)) {
   $task_ids = array_column($report_tasks, 'task_id');
-  $task_ids_str = implode(',', $task_ids);
+  $task_ids_str = implode(',', array_map('intval', $task_ids));
   
   $log_query = "SELECT * FROM activity_logs 
                 WHERE module = 'TASKS' 
                 AND item_id IN ($task_ids_str)
+                AND DATE(created_at) BETWEEN '$date_from_escaped' AND '$date_to_escaped'
                 ORDER BY created_at DESC";
   $log_result = mysqli_query($conn, $log_query);
   
@@ -68,8 +72,9 @@ if (!empty($report_tasks)) {
 // Get filter display names
 $status_display = $status_filter === 'all' ? 'All Status' : $status_filter;
 $employee_display = 'All Employees';
-if ($employee_filter !== 'all' && is_numeric($employee_filter)) {
-  $emp_query = "SELECT first_name, last_name FROM employees WHERE employee_id = $employee_filter";
+if ($employee_filter !== 'all' && $employee_filter !== '' && is_numeric($employee_filter)) {
+  $employee_filter_int = intval($employee_filter);
+  $emp_query = "SELECT first_name, last_name FROM employees WHERE employee_id = $employee_filter_int";
   $emp_result = mysqli_query($conn, $emp_query);
   if ($emp_result && $emp_row = mysqli_fetch_assoc($emp_result)) {
     $employee_display = $emp_row['first_name'] . ' ' . $emp_row['last_name'];
@@ -86,7 +91,7 @@ if (!$auto_generate) {
     'TASKS',
     NULL,
     'Task Completion Report',
-    "Generated task completion report from $date_from to $date_to - Status: $status_display, Employee: $employee_display"
+    "Generated task completion report from $date_from to $date_to - Status: $status_display, Employee: $employee_display - Total Tasks: " . count($report_tasks)
   );
 }
 ?>
@@ -252,6 +257,15 @@ if (!$auto_generate) {
       margin-bottom: 15px;
     }
 
+    .debug-info {
+      background-color: #f8f9fa;
+      border: 1px solid #dee2e6;
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+      font-size: 10px;
+    }
+
     <?php if ($auto_generate): ?>
     .no-print {
       display: none !important;
@@ -274,6 +288,17 @@ if (!$auto_generate) {
       <button onclick="window.close()" class="btn btn-secondary btn-lg">
         Close
       </button>
+    </div>
+
+    <!-- DEBUG INFO (Remove after testing) -->
+    <div class="debug-info no-print">
+      <strong>Debug Information:</strong><br>
+      Query: <?= htmlspecialchars($query) ?><br>
+      Total Tasks Found: <?= count($report_tasks) ?><br>
+      Date From: <?= htmlspecialchars($date_from) ?><br>
+      Date To: <?= htmlspecialchars($date_to) ?><br>
+      Status Filter: <?= htmlspecialchars($status_filter) ?><br>
+      Employee Filter: <?= htmlspecialchars($employee_filter) ?><br>
     </div>
 
     <div id="report-content">
@@ -343,7 +368,7 @@ if (!$auto_generate) {
         <?php if (empty($report_tasks)): ?>
           <div class="alert alert-info text-center">
             <i class="fa-solid fa-info-circle me-2"></i>
-            No tasks found for the selected filters.
+            No tasks found for the selected filters. Try adjusting your date range or removing filters.
           </div>
         <?php else: ?>
           <div class="table-responsive">
@@ -367,7 +392,7 @@ if (!$auto_generate) {
                     <td><?= htmlspecialchars($task['task_title']) ?></td>
                     <td><?= htmlspecialchars(substr($task['task_desc'], 0, 100)) ?><?= strlen($task['task_desc']) > 100 ? '...' : '' ?></td>
                     <td><?= htmlspecialchars($task['assigned_to']) ?></td>
-                    <td><?= htmlspecialchars($task['project_name']) ?></td>
+                    <td><?= htmlspecialchars($task['project_name'] ?? 'N/A') ?></td>
                     <td>
                       <?php
                       $priority_class = match($task['priority']) {
@@ -402,7 +427,7 @@ if (!$auto_generate) {
       <!-- ACTIVITY LOGS -->
       <?php if (!empty($activity_logs)): ?>
         <div class="mb-4">
-          <h3 class="h6 mb-3"><i class="fa-solid fa-history me-2"></i>Activity Logs</h3>
+          <h3 class="h6 mb-3"><i class="fa-solid fa-history me-2"></i>Activity Logs (Last 20)</h3>
           
           <?php 
           $displayed_logs = array_slice($activity_logs, 0, 20);
@@ -498,7 +523,7 @@ if (!$auto_generate) {
         }
 
         // Save PDF
-        const filename = 'Task_Report_<?= date("Y-m-d") ?>.pdf';
+        const filename = 'Task_Report_<?= date("Y-m-d_His") ?>.pdf';
         pdf.save(filename);
 
         // Reset button

@@ -1,21 +1,19 @@
 <?php
 
 function log_activity($conn, $param2, $param3 = null, $param4 = null, $param5 = null, $param6 = null, $param7 = null, $param8 = null) {
-    // Detect if this is OLD or NEW calling method
-    // OLD method: param2 is numeric (employee_id/user_id), param3 is string (name)
-    // NEW method: param2 is string (action), param3 is string (module)
+    // Detect calling method by checking if param2 is numeric (actor_id) or string (action)
     
-    if (is_numeric($param2) && is_string($param3) && !in_array(strtoupper($param3), ['CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT', 'ACCEPT', 'REJECT', 'ARCHIVE', 'RESTORE', 'VIEW'])) {
-        // OLD METHOD: Explicit employee_id/user_id and name passed
-        $actor_id = $param2;
+    if (is_numeric($param2) && is_string($param3) && !empty($param3) && !in_array(strtoupper($param3), ['CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT', 'ACCEPT', 'REJECT', 'ARCHIVE', 'RESTORE', 'VIEW'])) {
+        // OLD METHOD: Explicit actor_id and actor_name passed
+        $actor_id = intval($param2);
         $actor_name = $param3;
-        $action = $param4;
-        $module = $param5;
-        $item_id = $param6;
+        $action = strtoupper($param4);
+        $module = strtoupper($param5);
+        $item_id = $param6 ? intval($param6) : null;
         $item_name = $param7;
         $description = $param8;
         
-        // Determine if this is employee or user based on session or ID
+        // Determine actor type from session
         if (isset($_SESSION['employee_id']) && $_SESSION['employee_id'] == $actor_id) {
             $actor_type = 'employee';
         } else {
@@ -23,23 +21,28 @@ function log_activity($conn, $param2, $param3 = null, $param4 = null, $param5 = 
         }
     } else {
         // NEW METHOD: Get actor from session
-        $action = $param2;
-        $module = $param3;
-        $item_id = $param4;
+        $action = strtoupper($param2);
+        $module = strtoupper($param3);
+        $item_id = $param4 ? intval($param4) : null;
         $item_name = $param5;
         $description = $param6;
         
         if (isset($_SESSION['employee_id'])) {
             $actor_type = 'employee';
-            $actor_id = $_SESSION['employee_id'];
+            $actor_id = intval($_SESSION['employee_id']);
             $actor_name = $_SESSION['first_name'] . ' ' . $_SESSION['last_name'];
         } elseif (isset($_SESSION['user_id'])) {
             $actor_type = 'user';
-            $actor_id = $_SESSION['user_id'];
+            $actor_id = intval($_SESSION['user_id']);
             $actor_name = $_SESSION['first_name'] . ' ' . $_SESSION['last_name'];
         } else {
             return false; // No valid session
         }
+    }
+    
+    // Validate required fields
+    if (empty($action) || empty($module)) {
+        return false;
     }
     
     // Escape all string values
@@ -70,6 +73,5 @@ function log_activity($conn, $param2, $param3 = null, $param4 = null, $param5 = 
     
     return mysqli_query($conn, $sql);
 }
-
 
 ?>

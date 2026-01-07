@@ -1,6 +1,10 @@
 <?php
 include 'admin-header.php';
 
+$employee_id = $_SESSION['employee_id'];
+$employee_name = $_SESSION['first_name'] . ' ' . $_SESSION['last_name'];
+$is_admin = in_array($_SESSION['position'], ['Admin', 'Admin/Secretary']);
+
 // Fetch all assessments with user information and assigned employees
 $sql = "SELECT a.*, u.first_name, u.last_name, u.email, u.phone, 
         u.house_no, u.brgy, u.city, u.province, u.zip_code,

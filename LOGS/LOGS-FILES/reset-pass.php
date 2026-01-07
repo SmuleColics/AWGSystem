@@ -44,8 +44,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['resend_code'])) {
           $mail->isSMTP();
           $mail->Host = 'smtp.gmail.com';
           $mail->SMTPAuth = true;
-          $mail->Username = 'johnlowe1598@gmail.com';
-          $mail->Password = 'msbo sibo cwyy lrpd';
+          $mail->Username = 'richewales92@gmail.com';
+          $mail->Password = 'gwyy tgar hqve gnch';
           $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
           $mail->Port = 587;
 
@@ -225,6 +225,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['resend_code'])) {
               name="new_password"
               minlength="6"
               >
+            <button 
+              type="button" 
+              class="password-toggle" 
+              onclick="togglePassword('new_password', this)"
+              aria-label="Toggle password visibility">
+              <i class="far fa-eye"></i>
+            </button>
           </div>
 
           <!-- Confirm Password -->
@@ -238,6 +245,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['resend_code'])) {
               name="confirm_password"
               minlength="6"
               >
+            <button 
+              type="button" 
+              class="password-toggle <?= isset($errors['pass']) ? 'password-toggle-error' : '' ?>" 
+              onclick="togglePassword('confirm_password', this)"
+              aria-label="Toggle password visibility">
+              <i class="far fa-eye"></i>
+            </button>
             <?php if (isset($errors['pass'])): ?>
               <p class="text-danger fs-14 mt-1 mb-0"><?= $errors['pass'] ?></p>
             <?php endif; ?>
@@ -266,6 +280,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['resend_code'])) {
       </div>
     </div>
   </div>
+
+  <script>
+    function togglePassword(inputId, button) {
+      const input = document.getElementById(inputId);
+      const icon = button.querySelector('i');
+      
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+      } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+      }
+    }
+  </script>
 
 </body>
 

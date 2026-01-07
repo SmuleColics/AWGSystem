@@ -576,7 +576,7 @@ if ($is_admin && $filter_employee > 0) {
 
 // Build final query
 $where_clause = implode(" AND ", $where_conditions);
-$sql = "SELECT * FROM tasks WHERE $where_clause ORDER BY due_date ASC";
+$sql = "SELECT * FROM tasks WHERE $where_clause ORDER BY due_date DESC";
 $result = mysqli_query($conn, $sql);
 
 if ($result) {
@@ -712,6 +712,14 @@ if ($result) {
           <div class="tasks-top p-4 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-3">
             <h2 class="fs-24 mobile-fs-22 mb-0"><?= $is_admin ? 'All Tasks' : 'My Assigned Tasks' ?></h2>
             <div class="d-flex gap-2 flex-wrap">
+
+              <select name="status_filter" id="statusFilter" class="form-select" style="width: auto; min-width: 150px;">
+                <option value="all">All Status</option>
+                <option value="Pending">Pending</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+              </select>
+
               <select name="project_filter" id="projectFilter" class="form-select" style="width: auto; min-width: 150px;">
                 <option value="0">All Projects</option>
                 <?php foreach ($projects as $proj): ?>
@@ -1167,10 +1175,10 @@ if ($result) {
             <div class="mb-3">
               <label class="form-label">Status Filter</label>
               <select name="status_filter" class="form-select">
-                <option value="all">All Status</option>
+                <option value="all" selected>All Status</option>
                 <option value="Pending">Pending</option>
                 <option value="In Progress">In Progress</option>
-                <option value="Completed" selected>Completed</option>
+                <option value="Completed">Completed</option>
               </select>
             </div>
 
@@ -1189,7 +1197,7 @@ if ($result) {
 
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" onclick="generateTaskReportPDF()">Generate Report</button>
+            <button type="button" class="btn btn-green" onclick="generateTaskReportPDF()">Generate Report</button>
           </div>
         </form>
       </div>
@@ -1218,6 +1226,27 @@ if ($result) {
       }
 
       window.location.href = url;
+    });
+
+    // Status filter functionality
+    $('#statusFilter').on('change', function() {
+      const statusValue = $(this).val();
+
+      if (statusValue === 'all') {
+        $('.tasks-con').show();
+      } else {
+        $('.tasks-con').each(function() {
+          // Get the status badge element
+          const $statusBadge = $(this).find('.taskstatus-pending, .taskstatus-inprogress, .taskstatus-completed, .bg-secondary');
+          const taskStatus = $statusBadge.text().trim();
+
+          if (taskStatus === statusValue) {
+            $(this).show();
+          } else {
+            $(this).hide();
+          }
+        });
+      }
     });
 
     // Function to generate Task Report PDF with filters
