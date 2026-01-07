@@ -16,10 +16,14 @@ $employee_first_name = $_SESSION['first_name'];
 $employee_last_name = $_SESSION['last_name'];
 $employee_full_name = $employee_first_name . ' ' . $employee_last_name;
 $employee_email = $_SESSION['email'];
-$employee_position = $_SESSION['position'];
+$employee_position = trim($_SESSION['position']); // TRIM to remove extra spaces!
 
-// Check if user is Admin or Admin/Secretary (has full permissions)
-$is_admin = (strpos($employee_position, 'Admin') !== false);
+// Check if user is Super Admin or Admin (has full permissions)
+// IMPORTANT: Check exact matches to distinguish between Super Admin and Admin
+$is_super_admin = ($employee_position === 'Super Admin');
+$is_admin = ($employee_position === 'Admin' || 
+             $employee_position === 'Admin/Secretary' || 
+             $employee_position === 'Super Admin');
 
 
 // Check if user is logged in as employee
@@ -210,7 +214,7 @@ if (file_exists('../../INCLUDES/notifications.php')) {
                   <span class="fs-18 d-inline-block">Activity Logs</span>
                 </a>
               </li>
-              <?php if ($is_admin): ?>
+              <?php if ($is_super_admin): ?>
               <li class="mb-1">
                 <a class="dropdown-item d-flex align-items-center" href="admin-settings.php">
                   <i class="fa-solid fa-gear me-2 fs-22"></i>

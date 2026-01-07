@@ -8,15 +8,6 @@ $success = '';
 // Get the profile ID from URL or use logged-in employee's ID
 $profile_id = isset($_GET['id']) ? intval($_GET['id']) : $_SESSION['employee_id'];
 
-// SECURITY CHECK: Regular employees can ONLY view their own profile
-if (!$is_admin && $profile_id != $_SESSION['employee_id']) {
-    echo "<script>
-        alert('Access Denied: You can only view your own profile.');
-        window.location='admin-employees.php';
-    </script>";
-    exit;
-}
-
 // Fetch the profile data
 $profile_sql = "SELECT * FROM employees WHERE employee_id = $profile_id";
 $profile_result = mysqli_query($conn, $profile_sql);
@@ -31,14 +22,46 @@ if (mysqli_num_rows($profile_result) == 0) {
 
 $profile_data = mysqli_fetch_assoc($profile_result);
 $is_own_profile = ($profile_id == $_SESSION['employee_id']);
+$target_is_admin = (trim($profile_data['position']) === 'Admin' || 
+                    trim($profile_data['position']) === 'Admin/Secretary' || 
+                    trim($profile_data['position']) === 'Super Admin');
+
+// SECURITY CHECK: 
+// 1. Regular employees can ONLY view their own profile
+// 2. Regular admins CANNOT view/edit other admin profiles
+if (!$is_admin && !$is_own_profile) {
+    echo "<script>
+        alert('Access Denied: You can only view your own profile.');
+        window.location='admin-employees.php';
+    </script>";
+    exit;
+}
+
+if ($is_admin && !$is_super_admin && $target_is_admin && !$is_own_profile) {
+    echo "<script>
+        alert('Access Denied: Only Super Admin can view/edit other Admin profiles.');
+        window.location='admin-employees.php';
+    </script>";
+    exit;
+}
 
 // ========== UPDATE PROFILE ========== //
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     $update_id = intval($_POST['employee_id']);
     
-    // Security check
+    // Get target employee data for permission check
+    $target_sql = "SELECT position FROM employees WHERE employee_id = $update_id";
+    $target_result = mysqli_query($conn, $target_sql);
+    $target_data = mysqli_fetch_assoc($target_result);
+    $target_is_admin_check = (trim($target_data['position']) === 'Admin' || 
+                              trim($target_data['position']) === 'Admin/Secretary' || 
+                              trim($target_data['position']) === 'Super Admin');
+    
+    // Security checks
     if (!$is_admin && $update_id != $_SESSION['employee_id']) {
-        $errors['security'] = 'Access denied';
+        $errors['security'] = 'Access denied: You can only edit your own profile';
+    } elseif ($is_admin && !$is_super_admin && $target_is_admin_check && $update_id != $_SESSION['employee_id']) {
+        $errors['security'] = 'Access denied: Only Super Admin can edit other Admin profiles';
     } else {
         $first_name = trim($_POST['first_name'] ?? '');
         $last_name = trim($_POST['last_name'] ?? '');
@@ -86,14 +109,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
             $errors['zip_code'] = 'Zip code must be 4 digits';
         }
         
-        // Admin can update employment details
-        if ($is_admin) {
+        // Admin/Super Admin can update employment details
+        if ($is_admin || $is_super_admin) {
             $position = $_POST['position'] ?? '';
             $daily_salary = $_POST['daily_salary'] ?? '';
             $date_hired = $_POST['date_hired'] ?? '';
             
             if (empty($position)) {
                 $errors['position'] = 'Position is required';
+            }
+            
+            // Check if regular admin is trying to change position to/from Admin
+            if ($is_admin && !$is_super_admin) {
+                $original_is_admin = (trim($target_data['position']) === 'Admin' || 
+                                     trim($target_data['position']) === 'Admin/Secretary' || 
+                                     trim($target_data['position']) === 'Super Admin');
+                $new_is_admin = (trim($position) === 'Admin' || 
+                                trim($position) === 'Admin/Secretary' || 
+                                trim($position) === 'Super Admin');
+                
+                if ($original_is_admin !== $new_is_admin && $update_id != $_SESSION['employee_id']) {
+                    $errors['position'] = 'Only Super Admin can change Admin positions';
+                }
             }
             
             if ($position !== "Admin" && (empty($daily_salary) || $daily_salary <= 0)) {
@@ -116,8 +153,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
             $province_escaped = mysqli_real_escape_string($conn, $province);
             $zip_code_escaped = mysqli_real_escape_string($conn, $zip_code);
             
-            if ($is_admin) {
-                // Admin updates all fields
+            if ($is_admin || $is_super_admin) {
+                // Admin/Super Admin updates all fields
                 $position_escaped = mysqli_real_escape_string($conn, $position);
                 $date_hired_escaped = mysqli_real_escape_string($conn, $date_hired);
                 
@@ -153,7 +190,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                 $logged_employee_name = $_SESSION['first_name'] . ' ' . $_SESSION['last_name'];
                 $target_employee_name = $first_name . ' ' . $last_name;
                 
-                if ($is_admin && !$is_own_profile) {
+                if (($is_admin || $is_super_admin) && !$is_own_profile) {
                     // Admin updating another employee's profile
                     $description = "Updated profile information for $target_employee_name";
                     log_activity($conn, $_SESSION['employee_id'], $logged_employee_name, 'UPDATE', 'EMPLOYEES', $update_id, $target_employee_name, $description);
@@ -173,6 +210,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
             }
         }
     }
+}
+
+// Determine if current user can edit this profile
+$can_edit = false;
+if ($is_own_profile) {
+    $can_edit = true; // Anyone can edit their own profile
+} elseif ($is_super_admin) {
+    $can_edit = true; // Super admin can edit anyone
+} elseif ($is_admin && !$target_is_admin) {
+    $can_edit = true; // Regular admin can edit non-admin profiles
 }
 ?>
 
@@ -196,9 +243,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     <div class=" d-flex justify-content-between align-items-center">
       <div>
         <h1 class="fs-36 mobile-fs-32"><?= $is_own_profile ? 'My Profile' : htmlspecialchars($profile_data['first_name'] . "'s Profile") ?></h1>
-        <p class="admin-top-desc">Manage <?= $is_own_profile ? 'your' : 'employee' ?> personal information</p>
+        <p class="admin-top-desc">
+          <?php if (!$can_edit): ?>
+            Viewing employee information
+          <?php else: ?>
+            Manage <?= $is_own_profile ? 'your' : 'employee' ?> personal information
+          <?php endif; ?>
+        </p>
       </div>
-      <?php if ($is_own_profile || $is_admin): ?>
+      <?php if ($is_own_profile || $is_admin || $is_super_admin): ?>
       <div>
         <a href="admin-change-pass.php" class="btn btn-light border d-flex align-items-center">
           <i class="fas fa-key me-1 d-none d-md-block"></i> Change Password
@@ -233,16 +286,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
             </div>
           </div>
 
+          <?php if ($can_edit): ?>
           <div>
             <button type="button" class="btn btn-green text-white d-flex align-items-center" onclick="document.getElementById('profileForm').querySelector('button[name=update_profile]').click();">
               <i class="fa-solid fa-floppy-disk me-2"></i>Save Changes
             </button>
           </div>
+          <?php endif; ?>
         </div>
 
         <hr />
 
-        
+        <?php if (isset($errors['security'])): ?>
+          <div class="alert alert-danger">
+            <?= htmlspecialchars($errors['security']) ?>
+          </div>
+        <?php endif; ?>
 
         <!-- Profile Form -->
         <form method="POST" id="profileForm">
@@ -260,7 +319,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                 class="form-control <?= isset($errors['first_name']) ? 'border-danger' : '' ?>"
                 name="first_name"
                 value="<?= isset($_POST['first_name']) ? htmlspecialchars($_POST['first_name']) : htmlspecialchars($profile_data['first_name']) ?>"
-                placeholder="Enter first name" />
+                placeholder="Enter first name"
+                <?= !$can_edit ? 'readonly' : '' ?> />
               <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['first_name']) ? 'block' : 'none' ?>">
                 <?= isset($errors['first_name']) ? $errors['first_name'] : '' ?>
               </p>
@@ -274,7 +334,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                 class="form-control <?= isset($errors['last_name']) ? 'border-danger' : '' ?>"
                 name="last_name"
                 value="<?= isset($_POST['last_name']) ? htmlspecialchars($_POST['last_name']) : htmlspecialchars($profile_data['last_name']) ?>"
-                placeholder="Enter last name" />
+                placeholder="Enter last name"
+                <?= !$can_edit ? 'readonly' : '' ?> />
               <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['last_name']) ? 'block' : 'none' ?>">
                 <?= isset($errors['last_name']) ? $errors['last_name'] : '' ?>
               </p>
@@ -296,7 +357,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                 name="phone"
                 value="<?= isset($_POST['phone']) ? htmlspecialchars($_POST['phone']) : htmlspecialchars($profile_data['phone'] ?? '') ?>"
                 placeholder="09*********"
-                maxlength="11" />
+                maxlength="11"
+                <?= !$can_edit ? 'readonly' : '' ?> />
               <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['phone']) ? 'block' : 'none' ?>">
                 <?= isset($errors['phone']) ? $errors['phone'] : '' ?>
               </p>
@@ -310,7 +372,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                 class="form-control <?= isset($errors['house_no']) ? 'border-danger' : '' ?>"
                 name="house_no"
                 value="<?= isset($_POST['house_no']) ? htmlspecialchars($_POST['house_no']) : htmlspecialchars($profile_data['house_no'] ?? '') ?>"
-                placeholder="Block 1 Lot 33 Alfredo Diaz St." />
+                placeholder="Block 1 Lot 33 Alfredo Diaz St."
+                <?= !$can_edit ? 'readonly' : '' ?> />
               <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['house_no']) ? 'block' : 'none' ?>">
                 <?= isset($errors['house_no']) ? $errors['house_no'] : '' ?>
               </p>
@@ -324,7 +387,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                 class="form-control <?= isset($errors['brgy']) ? 'border-danger' : '' ?>"
                 name="brgy"
                 value="<?= isset($_POST['brgy']) ? htmlspecialchars($_POST['brgy']) : htmlspecialchars($profile_data['brgy'] ?? '') ?>"
-                placeholder="Granados" />
+                placeholder="Granados"
+                <?= !$can_edit ? 'readonly' : '' ?> />
               <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['brgy']) ? 'block' : 'none' ?>">
                 <?= isset($errors['brgy']) ? $errors['brgy'] : '' ?>
               </p>
@@ -338,7 +402,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                 class="form-control <?= isset($errors['city']) ? 'border-danger' : '' ?>"
                 name="city"
                 value="<?= isset($_POST['city']) ? htmlspecialchars($_POST['city']) : htmlspecialchars($profile_data['city'] ?? '') ?>"
-                placeholder="Carmona City" />
+                placeholder="Carmona City"
+                <?= !$can_edit ? 'readonly' : '' ?> />
               <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['city']) ? 'block' : 'none' ?>">
                 <?= isset($errors['city']) ? $errors['city'] : '' ?>
               </p>
@@ -352,7 +417,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                 class="form-control <?= isset($errors['province']) ? 'border-danger' : '' ?>"
                 name="province"
                 value="<?= isset($_POST['province']) ? htmlspecialchars($_POST['province']) : htmlspecialchars($profile_data['province'] ?? '') ?>"
-                placeholder="Cavite" />
+                placeholder="Cavite"
+                <?= !$can_edit ? 'readonly' : '' ?> />
               <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['province']) ? 'block' : 'none' ?>">
                 <?= isset($errors['province']) ? $errors['province'] : '' ?>
               </p>
@@ -367,7 +433,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                 name="zip_code"
                 value="<?= isset($_POST['zip_code']) ? htmlspecialchars($_POST['zip_code']) : htmlspecialchars($profile_data['zip_code'] ?? '') ?>"
                 placeholder="4117"
-                maxlength="4" />
+                maxlength="4"
+                <?= !$can_edit ? 'readonly' : '' ?> />
               <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['zip_code']) ? 'block' : 'none' ?>">
                 <?= isset($errors['zip_code']) ? $errors['zip_code'] : '' ?>
               </p>
@@ -383,13 +450,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
             <!-- Position -->
             <div class="col-md-4">
               <label class="form-label fw-semibold">Position *</label>
-              <?php if ($is_admin): ?>
+              <?php if ($can_edit && ($is_admin || $is_super_admin)): ?>
                 <select class="form-select <?= isset($errors['position']) ? 'border-danger' : '' ?>" id="inputPosition" name="position">
                   <option value="Driver" <?= (isset($_POST['position']) ? $_POST['position'] : $profile_data['position']) === 'Driver' ? 'selected' : '' ?>>Driver</option>
                   <option value="Technician" <?= (isset($_POST['position']) ? $_POST['position'] : $profile_data['position']) === 'Technician' ? 'selected' : '' ?>>Technician</option>
                   <option value="Driver/Technician" <?= (isset($_POST['position']) ? $_POST['position'] : $profile_data['position']) === 'Driver/Technician' ? 'selected' : '' ?>>Driver / Technician</option>
                   <option value="Admin/Secretary" <?= (isset($_POST['position']) ? $_POST['position'] : $profile_data['position']) === 'Admin/Secretary' ? 'selected' : '' ?>>Admin / Secretary</option>
+                  <?php if ($is_super_admin): ?>
                   <option value="Admin" <?= (isset($_POST['position']) ? $_POST['position'] : $profile_data['position']) === 'Admin' ? 'selected' : '' ?>>Admin</option>
+                  <?php endif; ?>
                 </select>
                 <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['position']) ? 'block' : 'none' ?>">
                   <?= isset($errors['position']) ? $errors['position'] : '' ?>
@@ -399,13 +468,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
               <?php endif; ?>
             </div>
 
-            <!-- Daily Salary (Admin only) -->
+            <!-- Daily Salary -->
             <?php 
             $current_position = isset($_POST['position']) ? $_POST['position'] : $profile_data['position'];
             ?>
             <div class="col-md-4" id="salaryField" style="display: <?= $current_position === 'Admin' ? 'none' : 'block' ?>">
               <label class="form-label fw-semibold">Daily Salary (₱) *</label>
-              <?php if ($is_admin): ?>
+              <?php if ($can_edit && ($is_admin || $is_super_admin)): ?>
                 <input
                   type="number"
                   class="form-control <?= isset($errors['daily_salary']) ? 'border-danger' : '' ?>"
@@ -426,7 +495,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
             <!-- Date Hired -->
             <div class="col-md-4" id="dateHiredField" style="display: <?= $current_position === 'Admin' ? 'none' : 'block' ?>">
               <label class="form-label fw-semibold">Date Hired *</label>
-              <?php if ($is_admin): ?>
+              <?php if ($can_edit && ($is_admin || $is_super_admin)): ?>
                 <input
                   type="date"
                   class="form-control <?= isset($errors['date_hired']) ? 'border-danger' : '' ?>"
@@ -454,18 +523,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
             </div>
           </div>
 
+          <?php if ($can_edit): ?>
           <button type="submit" name="update_profile" class="d-none">Submit</button>
+          <?php endif; ?>
         </form>
       </div>
     </div>
   </main>
 
   <script>
-    const isAdmin = <?= $is_admin ? 'true' : 'false' ?>;
+    const isAdmin = <?= ($is_admin || $is_super_admin) ? 'true' : 'false' ?>;
+    const canEdit = <?= $can_edit ? 'true' : 'false' ?>;
     const hasErrors = <?= !empty($errors) ? 'true' : 'false' ?>;
 
     // Handle position change to show/hide salary and date fields
-    <?php if ($is_admin): ?>
+    <?php if ($can_edit && ($is_admin || $is_super_admin)): ?>
     const positionSelect = document.getElementById('inputPosition');
     if (positionSelect) {
       positionSelect.addEventListener('change', function() {

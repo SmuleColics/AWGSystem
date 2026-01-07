@@ -8,7 +8,7 @@ $success = false;
 
 // Fetch all active employees for the dropdown
 $employees = [];
-$employee_query = "SELECT employee_id, first_name, last_name, position FROM employees WHERE is_archived = 0 AND POSITION NOT IN ('Admin', 'Admin/Secretary') ORDER BY first_name ASC";
+$employee_query = "SELECT employee_id, first_name, last_name, position FROM employees WHERE is_archived = 0 AND POSITION NOT IN ('Admin', 'Admin/Secretary', 'Super Admin') ORDER BY first_name ASC";
 $employee_result = mysqli_query($conn, $employee_query);
 if ($employee_result) {
   while ($emp = mysqli_fetch_assoc($employee_result)) {

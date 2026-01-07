@@ -411,7 +411,7 @@ ob_end_flush();
                           <?php endif; ?>
                         </p>
                       </div>
-                      <?php if ($is_admin): ?>
+                      <?php if ($is_super_admin): ?>
                         <button class="btn btn-sm btn-light border ms-2"
                           onclick="editPayment(<?= $payment['payment_id'] ?>, <?= $payment['payment_amount'] ?>, '<?= $payment['payment_method'] ?>', '<?= addslashes($payment['payment_date']) ?>', '<?= addslashes($payment['reference_number'] ?? '') ?>', '<?= addslashes($payment['gcash_number'] ?? '') ?>', '<?= addslashes($payment['payment_notes'] ?? '') ?>')">
                           <i class="fa-solid fa-pen"></i>
@@ -448,7 +448,7 @@ ob_end_flush();
           </div>
           <div class="card-footer bg-white">
             <div class="d-grid gap-2">
-              <?php if ($is_admin): ?>
+              <?php if ($is_super_admin): ?>
                 <?php if ($remaining_balance > 0): ?>
                   <button class="btn btn-green" data-bs-toggle="modal" data-bs-target="#processPaymentModal">
                     <i class="fas fa-wallet me-1"></i> Process Payment

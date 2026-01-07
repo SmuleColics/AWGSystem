@@ -110,7 +110,7 @@ include 'admin-header.php';
                     <i class="fas fa-envelope me-1"></i>
                     <?= htmlspecialchars($employee['email']) ?>
                   </p>
-                  <?php if ($is_admin): ?>
+                  <?php if ($is_super_admin): ?>
                   <div class="emp-btn-con d-grid gap-2">
                     <button onclick="openRestoreModal(<?= $employee['employee_id'] ?>)" class="btn btn-sm btn-success text-nowrap fs-14">
                       <i class="fas fa-undo me-1"></i> Restore

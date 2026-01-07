@@ -3,7 +3,7 @@ include 'admin-header.php';
 
 $employee_id = $_SESSION['employee_id'];
 $employee_name = $_SESSION['first_name'] . ' ' . $_SESSION['last_name'];
-$is_admin = in_array($_SESSION['position'], ['Admin', 'Admin/Secretary']);
+$is_admin = in_array($_SESSION['position'], ['Admin', 'Admin/Secretary', 'Super Admin']);
 
 // Fetch all assessments with user information and assigned employees
 $sql = "SELECT a.*, u.first_name, u.last_name, u.email, u.phone, 
@@ -29,7 +29,7 @@ if ($result) {
 $employees_sql = "SELECT employee_id, first_name, last_name, position 
                   FROM employees 
                   WHERE is_archived = 0 
-                  AND position NOT IN ('Admin', 'Admin/Secretary')
+                  AND position NOT IN ('Admin', 'Admin/Secretary', 'Super Admin')
                   ORDER BY first_name ASC";
 $employees_result = mysqli_query($conn, $employees_sql);
 $employees = [];

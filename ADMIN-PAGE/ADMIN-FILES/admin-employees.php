@@ -1,6 +1,6 @@
 <?php
 ob_start();
-include '../../INCLUDES/db-con.php';
+include 'admin-header.php';
 
 $errors = [];
 $success = '';
@@ -35,6 +35,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_employee'])) {
 
   if (empty($position)) {
     $errors['position'] = 'Position is required';
+  }
+
+  // ONLY Super Admin can create Admin or Admin/Secretary accounts
+  if (($position === "Admin" || $position === "Admin/Secretary") && !$is_super_admin) {
+    $errors['position'] = 'Only Super Admin can create Admin accounts';
   }
 
   if (empty($phone)) {
@@ -89,6 +94,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_employee'])) {
 // ========== ARCHIVE EMPLOYEE (FROM MODAL) ========== //
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['modal-archive-button'])) {
   $employee_id = intval($_POST['archive_id']);
+  
+  // Get the employee being archived
+  $check_sql = "SELECT position FROM employees WHERE employee_id = $employee_id";
+  $check_result = mysqli_query($conn, $check_sql);
+  $target_employee = mysqli_fetch_assoc($check_result);
+  
+  // Check permissions
+  $target_is_admin = (trim($target_employee['position']) === 'Admin' || 
+                      trim($target_employee['position']) === 'Admin/Secretary' || 
+                      trim($target_employee['position']) === 'Super Admin');
+  
+  if ($target_is_admin && !$is_super_admin) {
+    echo "<script>
+            alert('Access Denied: Only Super Admin can archive Admin accounts.');
+            window.location='admin-employees.php';
+        </script>";
+    exit;
+  }
+  
   $sql = "UPDATE employees SET is_archived = 1 WHERE employee_id = $employee_id";
   if (mysqli_query($conn, $sql)) {
     echo "<script>
@@ -103,17 +127,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['modal-archive-button'
 $total_query = mysqli_query($conn, "SELECT COUNT(*) as total FROM employees WHERE is_archived = 0");
 $total_employees = mysqli_fetch_assoc($total_query)['total'];
 
-$admin_query = mysqli_query($conn, "SELECT COUNT(*) as total FROM employees WHERE is_archived = 0 AND (position LIKE '%Admin%' OR position = 'Admin')");
+$admin_query = mysqli_query($conn, "SELECT COUNT(*) as total FROM employees WHERE is_archived = 0 AND (position = 'Admin' OR position = 'Admin/Secretary' OR position = 'Super Admin')");
 $total_admins = mysqli_fetch_assoc($admin_query)['total'];
 
-$employee_query = mysqli_query($conn, "SELECT COUNT(*) as total FROM employees WHERE is_archived = 0 AND position NOT LIKE '%Admin%'");
+$employee_query = mysqli_query($conn, "SELECT COUNT(*) as total FROM employees WHERE is_archived = 0 AND position NOT IN ('Admin', 'Admin/Secretary', 'Super Admin')");
 $total_staff = mysqli_fetch_assoc($employee_query)['total'];
 
 // ========== ACTIVE EMPLOYEES ==========
 $employees_sql = "SELECT * FROM employees WHERE is_archived = 0 ORDER BY created_at DESC";
 $employees_result = mysqli_query($conn, $employees_sql);
 
-include 'admin-header.php';
+
 ?>
 
 <!DOCTYPE html>
@@ -191,6 +215,24 @@ include 'admin-header.php';
           <div class="employee-container d-flex flex-wrap gap-4 justify-content-center">
             <?php if (mysqli_num_rows($employees_result) > 0): ?>
               <?php while ($employee = mysqli_fetch_assoc($employees_result)): ?>
+                <?php
+                $is_own_profile = ($employee['employee_id'] == $_SESSION['employee_id']);
+                $target_is_admin = (trim($employee['position']) === 'Admin' || 
+                                   trim($employee['position']) === 'Admin/Secretary' || 
+                                   trim($employee['position']) === 'Super Admin');
+                
+                // Determine permissions
+                $can_view_profile = $is_admin || $is_own_profile;
+                $can_archive = false;
+                
+                if ($is_super_admin) {
+                  // Super Admin can archive anyone except themselves
+                  $can_archive = !$is_own_profile;
+                } elseif ($is_admin) {
+                  // Regular Admin can only archive non-admin employees (not Admin, Admin/Secretary, or Super Admin)
+                  $can_archive = !$target_is_admin && !$is_own_profile;
+                }
+                ?>
                 <div class="employee-con p-4 border rounded-3">
                   <div class="w-100 flex mb-2">
                     <div class="employee-pfp">
@@ -205,25 +247,18 @@ include 'admin-header.php';
                   </p>
                   
                   <div class="emp-btn-con d-flex w-100 gap-2">
-                    <?php
-                    // Check if current user is viewing their own profile
-                    $is_own_profile = ($employee['employee_id'] == $_SESSION['employee_id']);
-
-                    // Only show View Profile button if admin OR it's their own profile
-                    if ($is_admin || $is_own_profile):
-                    ?>
+                    <?php if ($can_view_profile): ?>
                       <a href="my-profile.php?id=<?= $employee['employee_id'] ?>"
-                        class="btn btn-sm btn-outline-secondary text-nowrap fs-14 <?= $is_admin ? 'w-50' : 'w-100' ?>">
+                        class="btn btn-sm btn-outline-secondary text-nowrap fs-14 <?= $can_archive ? 'w-50' : 'w-100' ?>">
                         <?= $is_own_profile ? 'My Profile' : 'View Profile' ?>
                       </a>
                     <?php else: ?>
-                      <!-- For regular employees viewing others: show disabled button or nothing -->
-                      <button class="btn btn-sm btn-outline-secondary text-nowrap fs-14 w-100" disabled>
+                      <button class="btn btn-sm btn-outline-secondary text-nowrap fs-14 <?= $can_archive ? 'w-50' : 'w-100' ?>" disabled>
                         <i class="fas fa-lock me-1"></i> Private
                       </button>
                     <?php endif; ?>
 
-                    <?php if ($is_admin): ?>
+                    <?php if ($can_archive): ?>
                       <button onclick="openArchiveModal(<?= $employee['employee_id'] ?>)"
                         class="btn btn-sm btn-danger text-nowrap fs-14 w-50">
                         Archive
@@ -266,8 +301,10 @@ include 'admin-header.php';
                   <option value="Driver" <?= ($_POST['position'] ?? '') === 'Driver' ? 'selected' : '' ?>>Driver</option>
                   <option value="Technician" <?= ($_POST['position'] ?? '') === 'Technician' ? 'selected' : '' ?>>Technician</option>
                   <option value="Driver/Technician" <?= ($_POST['position'] ?? '') === 'Driver/Technician' ? 'selected' : '' ?>>Driver / Technician</option>
+                  <?php if ($is_super_admin): ?>
                   <option value="Admin/Secretary" <?= ($_POST['position'] ?? '') === 'Admin/Secretary' ? 'selected' : '' ?>>Admin / Secretary</option>
                   <option value="Admin" <?= ($_POST['position'] ?? '') === 'Admin' ? 'selected' : '' ?>>Admin</option>
+                  <?php endif; ?>
                 </select>
                 <p class="fs-14 text-danger mb-0 mt-1" style="display: <?= isset($errors['position']) ? 'block' : 'none' ?>"><?= $errors['position'] ?? '' ?></p>
               </div>
